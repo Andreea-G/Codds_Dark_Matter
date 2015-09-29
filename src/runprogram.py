@@ -414,7 +414,7 @@ class RunProgram:
                     interpolation_order = 2
                     delta_logL = [chi_squared1(c) for c in confidence_levels]
                     for d_logL in delta_logL:
-                        multiplot = (d_logL == delta_logL[0]) and MAKE_PLOT
+                        multiplot = (d_logL == delta_logL[0])
                         self.exper.ConfidenceBand(self.output_file_no_extension, d_logL,
                                                   interpolation_order,
                                                   extra_tail=extra_tail,
