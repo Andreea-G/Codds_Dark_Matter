@@ -418,7 +418,7 @@ class RunProgram:
                         self.exper.ConfidenceBand(self.output_file_no_extension, d_logL,
                                                   interpolation_order,
                                                   extra_tail=extra_tail,
-                                                  multiplot=multiplot)
+                                                  multiplot=False)
 
         if HALO_DEP or not np.any(EHI_METHOD) and MAKE_LIMITS:
             print("upper_limit = ", upper_limit)
