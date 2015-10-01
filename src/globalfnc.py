@@ -163,7 +163,7 @@ def FileNameTail(fp, fn, mPhi):
         fnfp_string = "_fnfp1"
     elif abs(fnfp) < 1:
         if fnfp < 0:
-            fnfp_string += "_neg0" + str(math.trunc(round(10 * abs(fnfp))))  
+            fnfp_string += "_neg0" + str(math.trunc(round(10 * abs(fnfp))))
         else:
             fnfp_string += "0" + str(math.trunc(round(10 * abs(fnfp))))
     else:
