@@ -143,7 +143,7 @@ def Logeta_guess(exper_name, mx, delta, mPhi=1000.):
     """
     if exper_name != "CDMSSi2012":
         return None
-    logeta_options = {(9., 0, 1000.): -21,
+    logeta_options = {(9., 0, 1000.): -24,
                       (3.5, -50, 1000.): -24,
                       (1.3, -200, 1000.): -22,
                       }

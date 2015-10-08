@@ -45,23 +45,22 @@ def main():
 
     HALO_DEP = F
     plot_dots = F
-    RUN_PROGRAM = F
-    MAKE_LIMITS = T
+    RUN_PROGRAM = T
+    MAKE_LIMITS = F
     MAKE_REGIONS = F
     MAKE_CROSSES = T
     MAKE_PLOT = T
     EXPORT_PLOT = F
 
-    # Note, when running Make_Crosses, Rebin in Experiment_HaloIndep.py may need to be False for CDMS-SI
 
-    scattering_types = ['SI']  # may be 'SI', 'SDAV', 'SDPS'
+    scattering_types = ['SDPS']  # may be 'SI', 'SDAV', 'SDPS'
     # indices of input_list which can be found in input files
-    input_indices = [0]
+    input_indices = [12]
     # indices of implemented_exper_list
-    exper_indices = [0, 17]
+    exper_indices = [11]
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]
-    extra_tail = "_mix"
+    extra_tail = ""
 
     inp = Input(HALO_DEP, implemented_exper_list, exper_indices=exper_indices,
                 input_indices=input_indices, scattering_types=scattering_types,
@@ -74,15 +73,15 @@ def main():
     # Add or override additional parameters that will be passed to run_program as
     # member variables of the inp class
 
-    # inp.initial_energy_bin = [3, 6]  # For combined DAMA halo-indep analysis -- Need to choose appropriate mass and Q s.t. energy bins selected appropriately. See arxiv 1502.07682
+    inp.initial_energy_bin = [2, 2.5]  # For combined DAMA halo-indep analysis -- Need to choose appropriate mass and Q s.t. energy bins selected appropriately. See arxiv 1502.07682
     # inp.confidence_levels.extend([confidence_level(s) for s in [3, 5]])
-    # inp.qDAMANa_list = [0.3]
+    inp.qDAMANa_list = [0.3]
 
     try:
         plt.close()
         xlim = None
         # ylim = None
-        ylim = [-28, -20]
+        ylim = [-30, -22]
         inp.RunProgram(EXPORT_PLOT=EXPORT_PLOT, xlim=xlim, ylim=ylim)
         if MAKE_PLOT or EHI_METHOD.get('ConfidenceBandPlot', F):
             if not EXPORT_PLOT:

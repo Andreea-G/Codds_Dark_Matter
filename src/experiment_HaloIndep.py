@@ -481,7 +481,7 @@ class Crosses_HaloIndep(Experiment_HaloIndep):
         self.BinEdges_right = self.BinEdges[1:]
 
     def UpperLimit(self, mx, fp, fn, delta, vmin_min, vmin_max, vmin_step,
-                   output_file, rebin=False, processes=None, **unused_kwargs):
+                   output_file, rebin=True, processes=None, **unused_kwargs):
         if rebin:
             self._Rebin()
 

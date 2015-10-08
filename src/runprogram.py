@@ -196,7 +196,7 @@ class PlotData:
             xerr_left, xerr_right = crosses[indices[1]], crosses[indices[2]]
             y = np.log10(crosses[indices[3]])
             yerr_up = np.log10(crosses[indices[3]] + crosses[indices[4]]) - y
-            yerr_low = -(y - np.log10(crosses[indices[3]] + crosses[indices[5]]))
+            yerr_low = y - np.log10(crosses[indices[3]] - crosses[indices[5]])
             yerr_low = np.array([ye if ye == ye else 100
                                  for ye in yerr_low])
             xerr = [xerr_left, xerr_right]
