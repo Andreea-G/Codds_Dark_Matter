@@ -63,6 +63,8 @@ DAMALimit_exper = ["DAMA2010Na_TotRateLimit"]
 Poisson_exper = ["SIMPLEModeStage2"]
 EHImethod_exper = ["CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif"]
 SHM_line = ["SHM_eta0", "SHM_eta1"]
+MultiExper_Binned_exper = ["SuperCDMS", "LUX2013zero", "LUX2013one", "LUX2013three",
+                           "LUX2013five", "LUX2013many"]
 
 """ Colors for plotting.
 """
@@ -241,6 +243,48 @@ def Output_file_name(exper_name, scattering_type, mPhi, mx, fp, fn, delta, HALO_
                 + str(math.trunc(round(vobs)))
     else:
         output_file_no_extension += "_mx_" + str(mx) + "GeV"
+
+    output_file_no_extension += FileNameTail(fp, fn, mPhi) + filename_tail
+
+    if quenching is not None:
+        output_file_no_extension += "_q" + str(quenching)
+    print(output_file_no_extension)
+    return output_file_no_extension
+    
+
+def MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
+                     filename_tail, OUTPUT_MAIN_DIR, quenching=None):
+    """ Gives the name of the output file name for the given input parameters.
+    Input:
+        multiexper_input: string
+            Names of experiments.
+        scattering_type: string
+            'SI' for spin-dependent, 'SDPS' for pseudo-scalar, 'SDAV' for axial-vector.
+        mPhi: float
+            Mass of mediator.
+        mx: float
+            DM mass.
+        fp and fn: float
+            Couplings to proton and neutron.
+        delta: float
+            DM mass split.
+        confidence_levels: list
+            List of confidence levels.
+        
+        filename_tail: string
+            Tag to be added to the file name.
+        OUTPUT_MAIN_DIR: string
+            Name of main output directory.
+        quenching: float, optional
+            quenching factor, needed for experiments that can have multiple options.
+    """
+    output_dir = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
+    output_file_no_extension = "./" + output_dir + "MultiExperiment_EHI_"
+    for x in range(0, multiexper_input.size):
+         output_file_no_extension += multiexper_input[x]
+
+ 
+    output_file_no_extension += "_mx_" + str(mx) + "GeV"
 
     output_file_no_extension += FileNameTail(fp, fn, mPhi) + filename_tail
 
