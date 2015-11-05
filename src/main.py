@@ -36,35 +36,40 @@ def main():
     EHI_METHOD = {}
     # EHI_METHOD['ResponseTables'] = T
     # EHI_METHOD['OptimalLikelihood'] = T
-    # EHI_METHOD['ImportOptimalLikelihood'] = T
+    EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
-    # EHI_METHOD['VminLogetaSamplingTable'] = T
-    # EHI_METHOD['LogLikelihoodList'] = T
+    EHI_METHOD['VminLogetaSamplingTable'] = T
+    EHI_METHOD['LogLikelihoodList'] = T
     # EHI_METHOD['ConfidenceBand'] = T
     # EHI_METHOD['ConfidenceBandPlot'] = T
 
     HALO_DEP = F
+    MULTI_EXPER = T  # To be used for multi experiment EHI method
     plot_dots = F
     RUN_PROGRAM = T
     MAKE_LIMITS = F
     MAKE_REGIONS = F
-    MAKE_CROSSES = T
-    MAKE_PLOT = T
+    MAKE_CROSSES = F
+    MAKE_PLOT = F
     EXPORT_PLOT = F
 
 
-    scattering_types = ['SDPS']  # may be 'SI', 'SDAV', 'SDPS'
+    scattering_types = ['SI']  # may be 'SI', 'SDAV', 'SDPS'
     # indices of input_list which can be found in input files
-    input_indices = [12]
+    input_indices = [0]
     # indices of implemented_exper_list
-    exper_indices = [11]
+    multiexper_input_indices = [17, 0]
+    # indices to be used in multiexperiment EHI anlysis
+    exper_indices = []
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]
     extra_tail = ""
 
     inp = Input(HALO_DEP, implemented_exper_list, exper_indices=exper_indices,
-                input_indices=input_indices, scattering_types=scattering_types,
-                RUN_PROGRAM=RUN_PROGRAM, MAKE_REGIONS=MAKE_REGIONS,
+                input_indices=input_indices,
+                multiexper_input_indices = multiexper_input_indices,
+                scattering_types=scattering_types,
+                RUN_PROGRAM=RUN_PROGRAM, MAKE_REGIONS=MAKE_REGIONS, MULTI_EXPER=MULTI_EXPER,
                 MAKE_CROSSES=MAKE_CROSSES, MAKE_LIMITS=MAKE_LIMITS, MAKE_PLOT=MAKE_PLOT,
                 EHI_METHOD=EHI_METHOD, OUTPUT_MAIN_DIR=OUTPUT_MAIN_DIR,
                 filename_tail_list=filename_tail_list, extra_tail=extra_tail,
@@ -89,8 +94,8 @@ def main():
 
     finally:
         if inp.RUN_PROGRAM or inp.MAKE_REGIONS:
-            os.system("say 'Finished running program'")
-            # pass
+            #os.system("say 'Finished running program'")
+            pass
 
 
 if __name__ == '__main__':
