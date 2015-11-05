@@ -28,13 +28,14 @@ import interp_uniform as unif
 from scipy import interpolate
 from scipy.optimize import brentq, minimize
 from basinhopping import *
+from globalfnc import *
 import matplotlib.pyplot as plt
 import os   # for speaking
 import parallel_map as par
 
 DEBUG = F
 DEBUG_FULL = F
-USE_BASINHOPPING = T
+USE_BASINHOPPING = F
 ADAPT_KWARGS = F
 ALLOW_MOVE = T
 
@@ -323,6 +324,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
         result = self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum()
+
         if np.any(self.mu_BKG_i + mu_i < 0):
             raise ValueError
         return result
@@ -348,6 +350,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         """
         constraints = constr_func(vars_list)
         constr_not_valid = constraints < 0
+
         if DEBUG_FULL:
             print("*** vars_list =", repr(vars_list))
         if DEBUG_FULL:
@@ -494,6 +497,159 @@ class Experiment_EHI(Experiment_HaloIndep):
             plt.show()
         return
 
+    def MultiExperimentMinusLogLikelihood(self, vars_list, multiexper_input, class_name,
+                    mx, fp, fn, delta, constr_func=None, vminStar=None,
+                    logetaStar=None, vminStar_index=None):
+        """ Computes -log(L) and tests whether constraints are satisfied.
+        Input:
+            vars_list: ndarray
+                List of variables [vmin_1, ..., vmin_No, log(eta_1), ..., log(eta_No)].
+            constr_func: callable, optional
+                Ffunction of vars_list giving an array of values each corresponding to
+                a constraint. If the values are > 0 the constraints are satisfied.
+            vminStar, logetaStar: float, optional
+                Values of fixed vmin^* and log(eta)^*.
+            vminStar_index: int, optional
+                Index corresponding to the position of vminStar in the array of vmin
+                steps.
+        Returns:
+            -log(L) if all constraints are valid, and the result of an artificial
+                function that grows with the invalid constraints if not all constraints
+                are valid.
+        """
+
+
+        constraints = constr_func(vars_list)
+        constr_not_valid = constraints < 0
+        expernum = multiexper_input.size
+        if DEBUG_FULL:
+            print("*** vars_list =", repr(vars_list))
+        if DEBUG_FULL:
+            print("vminStar =", vminStar)
+            print("logetaStar =", logetaStar)
+            print("constraints =", repr(constraints))
+            print("constr_not_valid =", repr(constr_not_valid))
+        try:
+            return (self._MinusLogLikelihood(vars_list, vminStar=vminStar,
+                                            logetaStar=logetaStar,
+                                            vminStar_index=vminStar_index)
+                                             + sum([class_name[x]._MinusLogLikelihood(vars_list,
+                                                    mx, fp, fn, delta)
+                                            for x in range(1, expernum)]))
+        except:
+            if np.any(constr_not_valid):
+                constr_list = constraints[constr_not_valid]
+                if DEBUG_FULL:
+                    print("Constraints not valid!!")
+                    print("constr sum =", -constr_list.sum())
+                return min(max(-constr_list.sum(), 0.001) * 1e6, 1e6)
+            else:
+                print("Error!!")
+                raise
+
+    def MultiExperimentOptimalLikelihood(self, multiexper_input, class_name, mx, fp, fn,
+                                         delta, output_file_tail, output_file_CDMS, logeta_guess):
+        """ Finds the best-fit piecewise constant eta function corresponding to the
+        minimum MinusLogLikelihood, and prints the results to file (value of the minimum
+        MinusLogLikelihood and the corresponding values of vmin, logeta steps.
+        Input:
+            output_file_tail: string
+                Tag to be added to the file name.
+            logeta_guess: float
+                Guess for the value of log(eta) in the minimization procedure.
+        """
+        self.ImportResponseTables(output_file_CDMS, plot=False)
+        vars_guess = np.append(self.vmin_sorted_list,
+                               logeta_guess * np.ones(self.vmin_sorted_list.size))
+        print("vars_guess =", vars_guess)
+        vmin_max = self.vmin_linspace[-1]
+        expernum = multiexper_input.size
+        def constr_func(x, vmin_max=vmin_max):
+            """ 0 -  8: bounds: 3 * (x.size/2) constraints = 9 for x.size/2 = 3
+                9 - 12: sorted array: 2 * (x.size/2 - 1) constraints = 4 for x.size/2 = 3
+            """
+            constraints = np.concatenate([x[:x.size/2], vmin_max - x[:x.size/2],
+                                          -x[x.size/2:],
+                                          np.diff(x[:x.size/2]), np.diff(-x[x.size/2:])])
+            is_not_close = np.logical_not(
+                np.isclose(constraints, np.zeros_like(constraints), atol=1e-5))
+            is_not_close[:3 * (x.size/2)] = T
+            constr = np.where(is_not_close, constraints, np.abs(constraints))
+            if DEBUG:
+                print("***constr =", repr(constr))
+                print("tf =", repr(constr < 0))
+            return constr
+        constr = ({'type': 'ineq', 'fun': constr_func})
+
+        np.random.seed(0)
+        if USE_BASINHOPPING:
+            minimizer_kwargs = {"constraints": constr, "args": (multiexper_input, class_name,
+                                                                mx, fp, fn, delta, constr_func,)}
+            optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
+                        minimizer_kwargs=minimizer_kwargs, niter=15, stepsize=0.05)
+        else:
+            optimum_log_likelihood = minimize(self.MultiExperimentMinusLogLikelihood,
+                            vars_guess, args=(multiexper_input, class_name, mx, fp,
+                                              fn, delta, constr_func), constraints=constr)
+
+        print(optimum_log_likelihood)
+        print("MinusLogLikelihood =", (self._MinusLogLikelihood(optimum_log_likelihood.x) +
+                                            sum([class_name[y]._MinusLogLikelihood(optimum_log_likelihood.x,
+                                                 mx, fp, fn, delta)
+                                            for y in range(1, expernum)])))
+        print("vars_guess =", repr(vars_guess))
+        file = output_file_tail + "_GloballyOptimalLikelihood.dat"
+        print(file)
+        np.savetxt(file, np.append([optimum_log_likelihood.fun],
+                                   optimum_log_likelihood.x))
+        os.system("say 'Finished finding optimum'")
+        return
+
+
+    def ImportMultiOptimalLikelihood(self, output_file_tail, output_file_CDMS, plot=False):
+        """ Import the minumum -log(L) and the locations of the steps in the best-fit
+        logeta function.
+        Input:
+            output_file_tail: string
+                Tag to be added to the file name.
+            plot: bool, optional
+                Whether to plot response tables.
+        """
+        self.ImportResponseTables(output_file_CDMS, plot=False)
+        file = output_file_tail + "_GloballyOptimalLikelihood.dat"
+        with open(file, 'r') as f_handle:
+            optimal_result = np.loadtxt(f_handle)
+        self.optimal_logL = optimal_result[0]
+        self.optimal_vmin = optimal_result[1: optimal_result.size/2 + 1]
+        self.optimal_logeta = optimal_result[optimal_result.size/2 + 1:]
+        print("optimal result =", optimal_result)
+
+        if plot:
+            self._MinusLogLikelihood(optimal_result[1:])  # to get self.gamma_i
+            self.xi_interp = unif.interp1d(self.vmin_linspace, self.xi_tab)
+            self.h_sum_tab = np.sum([self.curly_H_tab[i] / self.gamma_i[i]
+                                     for i in range(self.optimal_vmin.size)], axis=0)
+            self.q_tab = 2 * (self.xi_tab - self.h_sum_tab)
+            self.h_sum_interp = unif.interp1d(self.vmin_linspace, self.h_sum_tab)
+            self.q_interp = unif.interp1d(self.vmin_linspace, self.q_tab)
+
+            file = output_file_tail + "_HSumTable.dat"
+            print(file)
+            np.savetxt(file, self.h_sum_tab)
+            file = output_file_tail + "_QTable.dat"
+            print(file)
+            np.savetxt(file, self.q_tab)
+
+            self.PlotTable(self.xi_interp, dimension=0, plot_show=False)
+            self.PlotTable(self.h_sum_interp, dimension=0,
+                           xlim=[0, 2000], ylim=[-2e24, 2e24],
+                           title='Xi, H_sum', plot_close=False)
+            self.PlotTable(self.q_interp, dimension=0,
+                           xlim=[0, 2000], ylim=[-2e24, 2e24],
+                           title='q', show_zero_axis=True)
+        return
+
+
     def PlotOptimum(self, xlim_percentage=(0., 1.1), ylim_percentage=(1.01, 0.99),
                     color='red', linewidth=1,
                     plot_close=True, plot_show=True):
@@ -615,7 +771,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                         basinhopping(self.MinusLogLikelihood, vars_guess,
                                      minimizer_kwargs=minimizer_kwargs, niter=5,
                                      take_step=take_step, adapt_kwargs=adapt_kwargs,
-                                     stepsize=0.2)
+                                     stepsize=0.1)
                 else:
                     constr_optimum_log_likelihood = \
                         minimize(self.MinusLogLikelihood, vars_guess,
@@ -771,8 +927,266 @@ class Experiment_EHI(Experiment_HaloIndep):
                                         ylim_percentage=(1.2, 0.8))
         return self.constr_optimal_logl
 
-    def VminSamplingList(self, output_file_tail, vmin_min, vmin_max, vmin_num_steps,
-                         steepness_vmin=1.5, steepness_vmin_center=2.5, plot=False):
+
+
+    def _MultiExperConstrainedOptimalLikelihood(self, vminStar, logetaStar, vminStar_index,
+                                                multiexper_input, class_name, mx, fp, fn, delta):
+        """ Finds the constrained minimum MinusLogLikelihood for given vminStar,
+        logetaStar and vminStar_index.
+        Input:
+            vminStar, logetaStar: float
+                Location of the constrained step.
+            vminStar_index: int
+                Index of vminStar in the list of vmin steps of the constrained optimum
+                logeta function.
+        Returns:
+            constr_optimal_logl: float
+                The constrained minimum MinusLogLikelihood
+        """
+        if DEBUG:
+            print("~~~~~ vminStar_index =", vminStar_index)
+        vmin_guess_left = np.array([self.optimal_vmin[ind]
+                                    if self.optimal_vmin[ind] < vminStar
+                                    else vminStar * (1 - 0.001*(vminStar_index - ind))
+                                    for ind in range(vminStar_index)])
+        vmin_guess_right = np.array([self.optimal_vmin[ind]
+                                    if self.optimal_vmin[ind] > vminStar
+                                    else vminStar * (1 + 0.001*(ind - vminStar_index - 1))
+                                    for ind in range(vminStar_index, self.optimal_vmin.size)])
+        vmin_guess = np.append(vmin_guess_left, vmin_guess_right)
+        logeta_guess = self.optimal_logeta
+        logeta_guess_left = np.maximum(logeta_guess[:vminStar_index],
+                                       np.ones(vminStar_index)*logetaStar)
+        logeta_guess_right = np.minimum(logeta_guess[vminStar_index:],
+                                        np.ones(logeta_guess.size - vminStar_index) *
+                                        logetaStar)
+        logeta_guess = np.append(logeta_guess_left, logeta_guess_right)
+        vars_guess = np.append(vmin_guess, logeta_guess)
+
+        constr_func = ConstraintsFunction(vminStar, logetaStar, vminStar_index)
+        constr = ({'type': 'ineq', 'fun': constr_func})
+        args = (multiexper_input, class_name, mx, fp, fn, delta, constr_func,
+                vminStar, logetaStar, vminStar_index)
+
+        sol_not_found = True
+        attempts = 3
+        np.random.seed(1)
+        random_variation = 1e-5
+
+        if USE_BASINHOPPING:
+            class TakeStep(object):
+                def __init__(self, stepsize=0.1):
+                    pass
+                    self.stepsize = stepsize
+
+                def __call__(self, x):
+                    x[:x.size/2] += np.random.uniform(-5. * self.stepsize,
+                                                      5. * self.stepsize,
+                                                      x[x.size/2:].shape)
+                    x[x.size/2:] += np.random.uniform(-self.stepsize,
+                                                      self.stepsize, x[x.size/2:].shape)
+                    return x
+            take_step = TakeStep()
+
+            class AdaptiveKwargs(object):
+                def __init__(self, kwargs, random_variation=random_variation):
+                    self.kwargs = kwargs
+                    self.random_variation = random_variation
+
+                def __call__(self):
+                    new_kwargs = {}
+                    random_factor_vminStar = \
+                        (1 + self.random_variation * np.random.uniform(-1, 1))
+                    random_factor_logetaStar = \
+                        (1 + self.random_variation * np.random.uniform(-1, 1))
+                    constr_func_args = (self.kwargs['args'][1] * random_factor_vminStar,
+                                        self.kwargs['args'][2] * random_factor_logetaStar,
+                                        self.kwargs['args'][3])
+                    constr_func = ConstraintsFunction(*constr_func_args)
+                    new_kwargs['args'] = (constr_func,) + constr_func_args
+                    new_kwargs['constraints'] = ({'type': 'ineq', 'fun': constr_func})
+                    if 'method' in self.kwargs:
+                        new_kwargs['method'] = self.kwargs['method']
+                    return new_kwargs
+
+            minimizer_kwargs = {"constraints": constr, "args": args, "method": self.method}
+            if ADAPT_KWARGS:
+                adapt_kwargs = AdaptiveKwargs(minimizer_kwargs, random_variation)
+            else:
+                adapt_kwargs = None
+
+        while sol_not_found and attempts > 0:
+
+            try:
+                if USE_BASINHOPPING:
+                    constr_optimum_log_likelihood = \
+                        basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
+                                     minimizer_kwargs=minimizer_kwargs, niter=5,
+                                     take_step=take_step, adapt_kwargs=adapt_kwargs,
+                                     stepsize=0.05)
+                else:
+                    constr_optimum_log_likelihood = \
+                        minimize(self.MultiExperimentMinusLogLikelihood, vars_guess,
+                                 args=args, constraints=constr, method=self.method)
+                constraints = constr_func(constr_optimum_log_likelihood.x)
+                is_not_close = np.logical_not(np.isclose(constraints,
+                                                         np.zeros_like(constraints)))
+                constr_not_valid = np.logical_and(constraints < 0, is_not_close)
+                sol_not_found = np.any(constr_not_valid)
+            except ValueError:
+                sol_not_found = True
+                pass
+
+            attempts -= 1
+            args = (constr_func,
+                    vminStar * (1 + random_variation * np.random.uniform(-1, 1)),
+                    logetaStar * (1 + random_variation * np.random.uniform(-1, 1)),
+                    vminStar_index)
+            if USE_BASINHOPPING:
+                minimizer_kwargs = {"constraints": constr, "args": args}
+
+            if DEBUG and sol_not_found:
+                print(attempts, "attempts left! ####################################" +
+                      "################################################################")
+                print("sol_not_found =", sol_not_found)
+        if sol_not_found:
+            if DEBUG:
+                print("ValueError: sol not found")
+            raise ValueError
+
+        if DEBUG:
+            print(constr_optimum_log_likelihood)
+            print("kwargs =", constr_optimum_log_likelihood.minimizer.kwargs)
+            print("args =", constr_optimum_log_likelihood.minimizer.kwargs['args'])
+            print("optimum_logL =", self.optimal_logL)
+            print("constraints=", repr(constraints))
+            print("constr_not_valid =", repr(constr_not_valid))
+            print("vars_guess =", repr(vars_guess))
+            print("optimum_logL =", self.optimal_logL)
+            print("vminStar_index =", vminStar_index)
+
+        return constr_optimum_log_likelihood
+
+    def MultiExperConstrainedOptimalLikelihood(self, vminStar, logetaStar,
+                    multiexper_input, class_name, mx, fp, fn, delta, plot=False):
+        """ Finds the constrained minimum MinusLogLikelihood for given vminStar,
+        logetaStar. Finds the minimum for all vminStar_index, and picks the best one.
+        Input:
+            vminStar, logetaStar: float
+                Location of constrained step.
+            plot: bool, optional
+                Whether to plot the constrained piecewice-constant logeta function.
+        Returns:
+            constr_optimal_logl: float
+                The constrained minimum MinusLogLikelihood
+        """
+        vminStar_index = 0
+        while vminStar_index < self.optimal_vmin.size and \
+                vminStar > self.optimal_vmin[vminStar_index]:
+            vminStar_index += 1
+
+        try:
+            constr_optimum_log_likelihood = \
+                self._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar, vminStar_index,
+                                                multiexper_input, class_name, mx, fp, fn, delta)
+        except ValueError:
+            optim_logL = 10**6
+            pass
+        else:
+            optim_logL = constr_optimum_log_likelihood.fun
+            original_optimum = constr_optimum_log_likelihood
+
+        vminStar_index_original = vminStar_index
+        index = vminStar_index
+        while ALLOW_MOVE and index > 0:
+            try:
+                index -= 1
+                new_optimum = \
+                    self._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar, index,
+                                             multiexper_input, class_name, mx, fp, fn, delta)
+            except ValueError:
+                pass
+            else:
+                if new_optimum.fun < optim_logL:
+                    print("Moved left, index is now", index)
+                    print("############################################################" +
+                          "############################################################")
+                    vminStar_index = index
+                    constr_optimum_log_likelihood = new_optimum
+                    optim_logL = constr_optimum_log_likelihood.fun
+        index = vminStar_index_original
+        while ALLOW_MOVE and index < self.optimal_vmin.size:
+            try:
+                index += 1
+                new_optimum = self._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+                                                index, multiexper_input, class_name, mx, fp, fn, delta)
+            except ValueError:
+                pass
+            else:
+                if new_optimum.fun < optim_logL:
+
+                    print("Moved right, index is now", index)
+                    print("############################################################" +
+                          "############################################################")
+                    vminStar_index = index
+                    constr_optimum_log_likelihood = new_optimum
+                    optim_logL = constr_optimum_log_likelihood.fun
+        if optim_logL == 10**6:
+            raise ValueError
+
+        self.constr_optimal_logl = constr_optimum_log_likelihood.fun
+        vars_result = constr_optimum_log_likelihood.x
+
+        self.constr_optimal_vmin = vars_result[: vars_result.size/2]
+        self.constr_optimal_logeta = vars_result[vars_result.size/2:]
+
+        if plot:
+            print("vminStar =", vminStar)
+            print("logetaStar =", logetaStar)
+            print("vminStar_index =", vminStar_index)
+            try:
+                print("original:", original_optimum)
+            except:
+                print("Original failed.")
+                pass
+            try:
+                print("new:", constr_optimum_log_likelihood)
+                print(constr_optimum_log_likelihood.minimizer.kwargs['args'])
+            except:
+                print("All attepts failed.")
+                pass
+            try:
+                vminStar_rand = constr_optimum_log_likelihood.minimizer.kwargs['args'][1]
+                logetaStar_rand = constr_optimum_log_likelihood.minimizer.kwargs['args'][2]
+                constr_func = ConstraintsFunction(vminStar_rand, logetaStar_rand,
+                                                  vminStar_index)
+                constraints = constr_func(constr_optimum_log_likelihood.x)
+                is_not_close = np.logical_not(np.isclose(constraints,
+                                                         np.zeros_like(constraints)))
+                constr_not_valid = np.logical_and(constraints < 0, is_not_close)
+                sol_not_found = np.any(constr_not_valid)
+                print("random vminStar =", vminStar_rand)
+                print("random logetaStar =", logetaStar_rand)
+                print("x =", constr_optimum_log_likelihood.x)
+                print("constraints =", constraints)
+                print("is_not_close =", is_not_close)
+                print("constr_not_valid =", constr_not_valid)
+                print("sol_not_found =", sol_not_found)
+            except:
+                print("Error")
+                pass
+
+            self.PlotConstrainedOptimum(vminStar_rand, logetaStar_rand, vminStar_index,
+                                        xlim_percentage=(0., 1.1),
+                                        ylim_percentage=(1.2, 0.8))
+        return self.constr_optimal_logl
+
+
+
+
+    def VminSamplingList(self, output_file_tail, output_file_CDMS, vmin_min, vmin_max, vmin_num_steps,
+                         steepness_vmin=1.5, steepness_vmin_center=2.5, MULTI_EXPER = False,
+                         plot=False):
         """ Finds a non-linear way to sample the vmin range, such that more points are
         sampled near the location of the steps of the best-fit logeta function, and
         fewer in between. This is done by building a function of vmin that is steeper
@@ -795,7 +1209,10 @@ class Experiment_EHI(Experiment_HaloIndep):
             plot: bool, optional
                 Whether to plot intermediate results such as the sampling function.
         """
-        self.ImportOptimalLikelihood(output_file_tail)
+        if not MULTI_EXPER:
+            self.ImportOptimalLikelihood(output_file_tail)
+        else:
+            self.ImportMultiOptimalLikelihood(output_file_tail, output_file_CDMS)
         xmin = vmin_min
         xmax = vmin_max
         # TODO! This +4 is to compensate for a loss of ~4 points (not always 4 though),
@@ -938,6 +1355,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         self.vmin_logeta_sampling_table = []
         vmin_last_step = self.optimal_vmin[-1]
+
         if linear_sampling:
             for vmin in self.vmin_sampling_list:
                 logeta_opt = self.OptimumStepFunction(min(vmin, vmin_last_step))
@@ -1035,6 +1453,70 @@ class Experiment_EHI(Experiment_HaloIndep):
             np.savetxt(temp_file, table)
         return
 
+    def GetLikelihoodTableMultiExper(self, index, output_file_tail, logeta_index_range, extra_tail,
+                            multiexper_input, mx, fp, fn, delta, scattering_type,
+                            mPhi, quenching):
+        """ Prints to file lists of the form [logetaStar_ij, logL_ij] needed for
+        1D interpolation, where i is the index corresponding to vminStar_i and j is
+        the index for each logetaStar. Each file corresponds to a different index i.
+            Here only one file is written for a specific vminStar.
+        Input:
+            index: int
+                Index of vminStar.
+            output_file_tail: string
+                Tag to be added to the file name.
+            logeta_index_range: tuple
+                A touple (index0, index1) between which logetaStar will be considered.
+                If this is None, then the whole list of logetaStar is used.
+            extra_tail: string
+                Additional tail to be added to filenames.
+        """
+        print('index =', index)
+        print('output_file_tail =', output_file_tail)
+        num_exper = len(multiexper_input)
+        class_name_hold = [None] * num_exper
+        for x in range(0, num_exper):
+            if multiexper_input[x] in Poisson_exper:
+                class_name_hold[x] = PoissonExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in GaussianLimit_exper:
+                class_name_hold[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in MultiExper_Binned_exper:
+                class_name_hold[x] = MultExper_Binned_exper(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] == "CDMSSi2012":
+                class_name_hold[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
+            else:
+                print("NotImplementedError: This experiment was not implemented!")
+        vminStar = self.vmin_logeta_sampling_table[index, 0, 0]
+        logetaStar_list = self.vmin_logeta_sampling_table[index, :, 1]
+        plot = False
+        if logeta_index_range is not None:
+            logetaStar_list = \
+                logetaStar_list[logeta_index_range[0]: logeta_index_range[1]]
+            plot = True
+        print("vminStar =", vminStar)
+        table = np.empty((0, 2))
+        for logetaStar in logetaStar_list:
+            try:
+                constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+                                    multiexper_input, class_name_hold, mx, fp, fn, delta, plot)
+            except:
+                print("error")
+                os.system("say Error")
+                pass
+            else:
+                print("index =", index, "; vminStar =", vminStar,
+                      "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+#                table = np.append(table, [logetaStar])
+        print("vminStar =", vminStar, "; table =", table)
+        if True:
+            temp_file = output_file_tail + "_" + str(index) + \
+                "_LogetaStarLogLikelihoodList" + extra_tail + ".dat"
+            print(temp_file)
+            np.savetxt(temp_file, table)
+        return
+
+
     def LogLikelihoodList(self, output_file_tail, extra_tail="", processes=None,
                           vmin_index_list=None, logeta_index_range=None):
         """ Loops thorugh the list of all vminStar and calls GetLikelihoodTable,
@@ -1069,6 +1551,53 @@ class Experiment_EHI(Experiment_HaloIndep):
                    'extra_tail': extra_tail}
                   for index in vmin_index_list)
         par.parmap(self.GetLikelihoodTable, kwargs, processes)
+        return
+
+    def MultiExperLogLikelihoodList(self, output_file_tail, multiexper_input, class_name,
+                                    mx, fp, fn, delta, scattering_type, mPhi, quenching,
+                                    extra_tail="", processes=None,
+                          vmin_index_list=None, logeta_index_range=None):
+        """ Loops thorugh the list of all vminStar and calls GetLikelihoodTable,
+        which will print the likelihood tables to files.
+        Input:
+            output_file_tail: string
+                Tag to be added to the file name.
+            extra_tail: string, optional
+                Additional tail to be added to filenames.
+            processes: int, optional
+                Number of processes for parallel programming.
+            vmin_index_list: ndarray, optional
+                List of indices in vminStar_list for which we calculate the optimal
+                likelihood. If not given, the whole list of vminStars is used.
+            logeta_index_range: tuple, optional
+                Atuple (index0, index1) between which logetaStar will be considered.
+                If not given, then the whole list of logetaStar is used.
+        """
+        if vmin_index_list is None:
+            vmin_index_list = range(0, self.vmin_logeta_sampling_table.shape[0])
+        else:
+            try:
+                len(vmin_index_list)
+            except TypeError:
+                vmin_index_list = range(vmin_index_list,
+                                        self.vmin_logeta_sampling_table.shape[0])
+        print("vmin_index_list =", vmin_index_list)
+        print("logeta_index_range =", logeta_index_range)
+        kwargs = ({'index': index,
+                   'output_file_tail': output_file_tail,
+                   'logeta_index_range': logeta_index_range,
+                   'extra_tail': extra_tail,
+                   'multiexper_input': multiexper_input,
+                   'scattering_type': scattering_type,
+                   'mPhi': mPhi,
+                   'quenching': quenching,
+                   'mx': mx,
+                   'fp': fp,
+                   'fn': fn,
+                   'delta': delta}
+                  for index in vmin_index_list)
+
+        par.parmap(self.GetLikelihoodTableMultiExper, kwargs, processes)
         return
 
     def _logL_interp(vars_list, constraints):

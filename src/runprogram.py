@@ -379,11 +379,14 @@ class RunProgram:
                         print("Steepness:", steepness_vmin, ",",
                               steepness_vmin_center, ",", steepness_logeta)
                         self.exper.VminSamplingList(self.output_file_no_extension,
+                                                    self.output_file_no_extension,
                                                     vmin_Band_min, vmin_Band_max,
                                                     vmin_Band_numsteps,
                                                     steepness_vmin, steepness_vmin_center,
+                                                    MULTI_EXPER,
                                                     plot=not np.any(EHI_METHOD[5:]))
                         self.exper.VminLogetaSamplingTable(self.output_file_no_extension,
+                                                           self.output_file_no_extension,
                                                            logeta_percent_minus,
                                                            logeta_percent_plus,
                                                            logeta_num_steps,
@@ -392,14 +395,19 @@ class RunProgram:
                     else:
                         print("Steepness: Default")
                         self.exper.VminSamplingList(self.output_file_no_extension,
+                                                    self.output_file_no_extension,
                                                     vmin_Band_min, vmin_Band_max,
                                                     vmin_Band_numsteps,
+                                                    MULTI_EXPER,
                                                     plot=not np.any(EHI_METHOD[5:]))
                         self.exper.VminLogetaSamplingTable(self.output_file_no_extension,
+                                                           self.output_file_no_extension,
                                                            logeta_percent_minus,
                                                            logeta_percent_plus,
                                                            logeta_num_steps,
                                                            plot=not np.any(EHI_METHOD[5:]))
+
+
                 if EHI_METHOD.LogLikelihoodList:
                     print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max,
                           vmin_Band_numsteps)
@@ -512,7 +520,7 @@ class RunProgram:
 
     def __call__(self, exper_name, scattering_type, mPhi, fp, fn, delta,
                  confidence_levels,
-                 HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MAKE_CROSSES,
+                 HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MAKE_CROSSES, MULTI_EXPER,
                  MAKE_PLOT, EHI_METHOD, MAKE_LIMITS,
                  mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
                  vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
@@ -645,5 +653,291 @@ class RunProgram:
 
         # make band plot
         if EHI_METHOD.ConfidenceBandPlot and exper_name == "CDMSSi2012":
-            self.plot_EHI_band(exper_name, confidence_levels, HALO_DEP, extra_tail,
+            self.plot_EHI_band(exper_name, class_name, confidence_levels, HALO_DEP, extra_tail,
+                               plot_dots)
+
+
+class RunProgram_Multiexperiment:
+    """ Class implementing the main run of the multiexperiment EHI method.
+    """
+
+    def plot_limits(self, exper_name, confidence_levels, HALO_DEP, plot_dots, alpha=1):
+        plot_data = PlotData(exper_name, HALO_DEP, plot_close=False)
+        if HALO_DEP and exper_name.split()[0] in BinnedSignal_exper:
+            PlotData.count[exper_name] = -1
+            for index, CL in enumerate(confidence_levels):
+                output_file_regions = self.output_file_no_extension + \
+                    "_" + str(round(sigma_dev(CL), 2)) + "sigma"
+                output_file_lower = output_file_regions + "_lower_limit.dat"
+                output_file_upper = output_file_regions + "_upper_limit.dat"
+                lower_limit = np.loadtxt(output_file_lower)
+                upper_limit = np.loadtxt(output_file_upper)
+                plot_data(upper_limit, lower_limit=lower_limit, fill=(index < 2),
+                          alpha=alpha, plot_dots=plot_dots, plot_show=False)
+                if index < 2:
+                    PlotData.count[exper_name] -= 1
+        else:
+            output_file = self.output_file_no_extension + ".dat"
+            upper_limit = np.loadtxt(output_file)
+            # print("upper_limit = ", upper_limit)
+            plot_data(upper_limit, plot_dots=plot_dots, plot_show=False)
+
+    def plot_crosses(self, exper_name, HALO_DEP, alpha=1):
+        plot_data = PlotData(exper_name, HALO_DEP, plot_close=False)
+        output_file = self.output_file_no_extension + ".dat"
+        output_file = output_file.replace("UpperLimit", "BinResponseBoxlike")
+        crosses = np.loadtxt(output_file)
+        plot_data.plot_crosses(crosses, alpha=alpha, plot_show=False)
+
+    def plot_EHI_band(self, multiexper_input, class_name, confidence_levels, HALO_DEP, extra_tail,
+                      plot_dots):
+        output_file = MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
+                     filename_tail, OUTPUT_MAIN_DIR, quenching=None)
+        class_name[0].ImportOptimalLikelihood(output_file)
+        interp_kind = 'linear'
+        plot_limits = PlotData(multiexper_input[0], HALO_DEP, plot_close=False)
+
+#        self.exper.PlotSamplingTable(self.output_file_no_extension,
+#                                plot_close=False, plot_show=False, plot_optimum=False)
+        delta_logL = [chi_squared1(c) for c in confidence_levels]
+        print("delta_logL =", delta_logL)
+        for d_logL in delta_logL:
+            PlotData.count[multiexper_input[0]] = -1
+            class_name[0].ImportConfidenceBand(output_file, d_logL,
+                                            extra_tail=extra_tail)
+            first_vmin_low = class_name[0].vmin_logeta_band_low[0, 0]
+            first_vmin_up = class_name[0].vmin_logeta_band_up[0, 0]
+            last_eta_up = class_name[0].vmin_logeta_band_up[-1, 1]
+            class_name[0].vmin_logeta_band_up = \
+                np.vstack(([[first_vmin_low, -10], [first_vmin_up - 5, -10]],
+                           class_name[0].vmin_logeta_band_up,
+                           [[1000, last_eta_up]]))
+            last_vmin_low = class_name[0].vmin_logeta_band_low[-1, 0]
+            last_vmin_up = class_name[0].vmin_logeta_band_up[-1, 0]
+            class_name[0].vmin_logeta_band_low = \
+                np.vstack((class_name[0].vmin_logeta_band_low,
+                           [[last_vmin_low + 5, -40], [last_vmin_up, -40]]))
+
+            plot_limits(class_name[0].vmin_logeta_band_up,
+                        lower_limit=class_name[0].vmin_logeta_band_low, kind=interp_kind,
+                        fill=True, alpha=0.2, plot_dots=plot_dots, plot_show=False)
+
+        class_name[0].PlotOptimum(ylim_percentage=(1.2, 0.8),
+                               color=Color[exper_name + '_EHI'],
+                               linewidth=3, plot_close=False,  plot_show=False)
+
+    def __call__(self, multiexper_input, scattering_type, mPhi, fp, fn, delta,
+                 confidence_levels,
+                 HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MULTI_EXPER,
+                 MAKE_CROSSES, MAKE_PLOT, EHI_METHOD, MAKE_LIMITS,
+                 mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
+                 vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
+                 steepness=None, logeta_guess=None,
+                 vmin_index_list=None, logeta_index_range=None, log_sigma_p=None,
+                 OUTPUT_MAIN_DIR="Output/", filename_tail="", extra_tail="",
+                 plot_dots=True, quenching=None):
+        """ Main run of the program.
+        Input:
+            exper_name: string
+                Name of experiment.
+            scattering_type: string
+                Type of scattering. Can be
+                - 'SI' (spin-independent)
+                - 'SDAV' (spin-independent, axial-vector)
+                - 'SDPS' (spin-independent, pseudo-scalar).
+            mPhi: float
+                Mass of mediator.
+            fp and fn: float
+                Couplings to proton and neutron.
+            delta: float
+                DM mass split.
+            confidence_levels: list
+                List of confidence levels.
+            HALO_DEP: bool
+                Whether the analysis is halo-dependent or halo-independent.
+            RUN_PROGRAM: bool
+                Whether the data should be (re-)computed.
+            MAKE_REGIONS: bool
+                Whether the regions should be (re-)computed in the case of halo-dependent
+                analysis and experiments with potential DM signals.
+            MAKE_PLOT: bool
+                Whether the data should be plotted.
+            EHI_Method: ndarray of bools
+                Whether each step of the EHI Method is to be performed.
+            mx: float, optional
+                DM mass, only for halo-independent analysis.
+            mx_range: tuple (float, float, int), optional
+                (mx_min, mx_max, num_steps) = DM mass range and number or steps,
+                only for halo-dependent analysis.
+            vmin_range: tuple (float, float, float), optional
+                (vmin_min, vmin_max, vmin_step) = vmin range and step size,
+                only for halo-independent analysis.
+            initial_energy_bin: sequence, optional
+                Tuple or list of 2 elements, containing the starting energy bin.
+                Only for DAMA combined analysis.
+            vmin_EHIBand_range: tuple, optional
+                (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = vminStar range and
+                number of steps, used for calculating the EHI confidence band.
+                Only for EHI method.
+            logeta_EHIBand_percent_range: tuple, optional
+                (logeta_percent_minus, logeta_percent_plus, logeta_num_steps) = logetaStar
+                percentage range and number of steps, used for calculating the EHI
+                confidence band. The min and max logetaStar are calculated as a given
+                percentage above and below the optimum value. Only for EHI method.
+            steepness: tuple, optional
+                (steepness_vmin, steepness_vmin_center, steepness_logeta) parameters used
+                for nonlinear sampling in vminStar and logetaStar. The higher the
+                steepnesses the more points are taken close to the steps in the piecewise
+                constant best-fit logeta(vmin) function. Only for EHI method.
+            logeta_guess: float, optional
+                Guessing value of logeta for the best-fit piecewise-constant logeta(vmin)
+                function. Only for EHI method.
+            vmin_index_list: list, optional
+                List of indices in the list of sampling vminStar points for which we
+                calculate the optimal likelihood. If not given, the whole list of
+                vminStars is used. Only for EHI method.
+            logeta_index_range: tuple, optional
+                A tuple (index0, index1) between which logetaStar will be considered.
+                If not given, then the whole list of logetaStar is used. Only for EHI
+                method.
+            log_sigma_p: float, optional
+                Log base 10 of the total reference cross-section to a single proton.
+                Only for halo-independent SHM lines.
+            OUTPUT_MAIN_DIR: string, optional
+                Name of main output directory.
+            filename_tail: string, optional
+                Tag to be added to the file name.
+            extra_tail: string, optional
+                Additional tail to be added to filenames for the EHI confidence band.
+            plot_dots: bool, optional
+                Whether the plot should show the data points or just the interpolation.
+            quenching: float, optional
+                quenching factor, needed for experiments that can have multiple options.
+        """
+        print('Multiexperiment input list ', multiexper_input)
+        num_exper = len(multiexper_input)
+        class_name = [None] * num_exper
+        for x in range(0, num_exper):
+            # initialize the experiment class
+            print('name = ', multiexper_input[x])
+            print('Halo Independent')
+
+            if multiexper_input[x] in Poisson_exper:
+                print('PoissonExperiment')
+                class_name[x] = PoissonExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in GaussianLimit_exper:
+                print('GaussianExperiment')
+                class_name[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in MultiExper_Binned_exper:
+                print('Binned Likelihood')
+                class_name[x] = MultExper_Binned_exper(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] == "CDMSSi2012":
+                class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
+            else:
+                print("NotImplementedError: This experiment was not implemented!")
+
+        # obtain likelihood
+        if RUN_PROGRAM:
+            (vmin_min, vmin_max, vmin_step) = vmin_range
+
+            output_file_CDMS = Output_file_name("CDMSSi2012", scattering_type, mPhi, mx, fp, fn, delta, HALO_DEP,
+                     filename_tail, OUTPUT_MAIN_DIR, quenching=None)
+            f_handle = open(output_file_CDMS+"_temp.dat", 'w')   # clear the file first
+            f_handle.close()
+
+            if EHI_METHOD.ResponseTables:
+                class_name[0].ResponseTables(vmin_min, vmin_max, vmin_step, mx,
+                                 fp, fn, delta, output_file_CDMS)
+
+            class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
+            output_file = MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
+                     filename_tail, OUTPUT_MAIN_DIR, quenching=None)
+
+            f_handle = open(output_file+"_temp.dat", 'w')   # clear the file first
+            f_handle.close()
+
+            if EHI_METHOD.OptimalLikelihood:
+                class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
+                        fp, fn, delta, output_file, output_file_CDMS, logeta_guess)
+
+            if EHI_METHOD.ImportOptimalLikelihood:
+                    class_name[0].ImportResponseTables(output_file_CDMS,
+                                                    plot=False)
+                    class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
+
+            if EHI_METHOD.ConstrainedOptimalLikelihood:
+                    # Tests for delta = 0:
+                    (vminStar, logetaStar) = (500, -26.5)
+                    # Tests for delta = -50:
+#                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
+                    class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
+                    class_name[0].MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+                                        multiexper_input, class_name, mx, fp, fn, delta, True)
+
+            if np.any(EHI_METHOD[4:]):
+                (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = \
+                        vmin_EHIBand_range
+                (logeta_percent_minus, logeta_percent_plus, logeta_num_steps) = \
+                        logeta_EHIBand_percent_range
+                if steepness is not None:
+                        (steepness_vmin, steepness_vmin_center, steepness_logeta) = \
+                            steepness
+                        print("Steepness:", steepness_vmin, ",",
+                              steepness_vmin_center, ",", steepness_logeta)
+                        class_name[0].VminSamplingList(output_file, output_file_CDMS,
+                                                    vmin_Band_min, vmin_Band_max,
+                                                    vmin_Band_numsteps,
+                                                    steepness_vmin, steepness_vmin_center,
+                                                    MULTI_EXPER,
+                                                    plot=not np.any(EHI_METHOD[5:]))
+
+                        class_name[0].VminLogetaSamplingTable(output_file,
+                                                           logeta_percent_minus,
+                                                           logeta_percent_plus,
+                                                           logeta_num_steps,
+                                                           steepness_logeta,
+                                                           plot=not np.any(EHI_METHOD[5:]))
+                else:
+                        print("Steepness: Default")
+                        class_name[0].VminSamplingList(output_file, output_file_CDMS,
+                                                    vmin_Band_min, vmin_Band_max,
+                                                    vmin_Band_numsteps,
+                                                    MULTI_EXPER,
+                                                    plot=not np.any(EHI_METHOD[5:]))
+                        class_name[0].VminLogetaSamplingTable(output_file,
+                                                           logeta_percent_minus,
+                                                           logeta_percent_plus,
+                                                           logeta_num_steps,
+                                                           plot=not np.any(EHI_METHOD[5:]))
+
+            if EHI_METHOD.LogLikelihoodList:
+                    print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max,
+                          vmin_Band_numsteps)
+                    print("logeta_EHIBand_percent_range =", logeta_percent_minus,
+                          logeta_percent_plus, logeta_num_steps)
+                    class_name[0].MultiExperLogLikelihoodList(output_file,
+                                                 multiexper_input, class_name, mx, fp,
+                                                 fn, delta, scattering_type, mPhi, quenching,
+                                                 extra_tail=extra_tail,
+                                                 vmin_index_list=vmin_index_list,
+                                                 logeta_index_range=logeta_index_range)
+            exit()
+            if EHI_METHOD.ConfidenceBand:
+                    class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS)
+                    interpolation_order = 2
+                    delta_logL = [chi_squared1(c) for c in confidence_levels]
+                    for d_logL in delta_logL:
+                        class_name[0].ConfidenceBand(output_file, d_logL,
+                                                  interpolation_order,
+                                                  extra_tail=extra_tail,
+                                                  multiplot=False)
+
+
+
+
+        # TODO fix below
+
+        # make band plot
+        if EHI_METHOD.ConfidenceBandPlot:
+            self.plot_EHI_band(multiexper_input, class_name, confidence_levels, HALO_DEP, extra_tail,
                                plot_dots)
