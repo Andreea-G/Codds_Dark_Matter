@@ -153,6 +153,11 @@ class Experiment_HaloIndep(Experiment):
                                 epsrel=PRECISSION, epsabs=0)
         return integr[0]
 
+    def IntegratedResponseTable(self, vmin_list, E1, E2, mx, fp, fn, delta):
+        return np.array([self.IntegratedResponse(vmin_list[a], vmin_list[a+1],
+                        E1, E2, mx, fp, fn, delta)
+                        for a in range(0, vmin_list.size - 1)])
+
 
 class MaxGapExperiment_HaloIndep(Experiment_HaloIndep):
     """ Class for experiments using the Maximum Gap Method.
@@ -333,6 +338,128 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         with open(output_file, 'ab') as f_handle:
             np.savetxt(f_handle, upper_limit)
         return upper_limit
+
+
+class MultExper_Binned_exper(Experiment_HaloIndep):
+    """ Class for multi EHI method experiments with binned analysis.
+    Input:
+        exper_name: string
+            Name of experiment.
+        scattering_type: string
+            Type of scattering.
+        mPhi: float, optional
+            Mass of the mediator.
+        quenching_factor: float, optional
+            Quenching factor. If not given, the default used is specified in the data
+            modules.
+    """
+    def __init__(self, exper_name, scattering_type, mPhi=mPhiRef, quenching_factor=None):
+        super().__init__(exper_name, scattering_type, mPhi)
+        module = import_file(INPUT_DIR + exper_name + ".py")
+        self.BinEdges_left = module.BinEdges_left
+        self.BinEdges_right = module.BinEdges_right
+        self.BinData = module.BinData
+        self.BinError = module.BinError
+        self.BinSize = module.BinSize
+
+#        If you want to calculate the limit as is done in fig 2 of arxiv 1409.5446v2
+#        self.BinData = module.BinData/module.Exposure
+#        self.chiSquared = chi_squared(self.BinData.size)
+#        self.Expected_limit = module.Expected_limit * self.BinSize
+
+
+        self.bkgr = module.BinBkgr
+        if quenching_factor is not None:
+            self.QuenchingFactor = lambda e: quenching_factor
+
+        print('BinData', self.BinData)
+
+
+    def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
+                            vminStar=None, logetaStar=None, vminStar_index=None):
+        """ Compute -log(L)
+        Input:
+            vars_list: ndarray
+                List of variables [vmin_1, ..., vmin_No, log(eta_1), ..., log(eta_No)]
+            vminStar, logetaStar: float, optional
+                Values of fixed vmin^* and log(eta)^*.
+        Returns:
+            -log(L): float
+        """
+
+        if vminStar is None:
+            vmin_list_w0 = vars_list[: vars_list.size/2]
+            logeta_list = vars_list[vars_list.size/2:]
+        else:
+            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+                                     vminStar_index, vminStar)
+            logeta_list = np.insert(vars_list[vars_list.size/2:],
+                                    vminStar_index, logetaStar)
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+        for x in range(0, self.BinEdges_left.size - 1):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                            self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
+
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+
+        result = 0
+
+        for x in range(0, self.BinData.size - 1):
+            try:
+                self.bkgr[x]
+            except:
+                if (self.Exposure * rate_partials[x]) <= self.BinData[x]:
+                    self.bkgr.append(self.BinData[x] - self.Exposure * rate_partials[x])
+                else:
+                    self.bkgr.append(0.0)
+            if self.BinData[x] != 0 and (self.Exposure * rate_partials[x]
+                                + self.bkgr[x] > 0):
+                last_term = self.BinData[x] * math.log(self.BinData[x] / (self.Exposure * rate_partials[x]
+                                + self.bkgr[x]))
+            else:
+                last_term = 0
+
+            result += 2.0 * (self.Exposure * rate_partials[x] + self.bkgr[x] - self.BinData[x] + last_term)
+
+        return result
+
+    def _GaussianUpperBound(self, vmin, mx, fp, fn, delta):
+        int_response = \
+            np.array(list(map(lambda i, j:
+                              self.IntegratedResponse(0, vmin, i, j, mx, fp, fn, delta),
+                              self.BinEdges_left, self.BinEdges_right)))
+        for x in range(0, self.BinData.size -1):
+            if int_response[x] <= self.BinData[x]:
+                self.BinError[x] = self.BinData[x] - int_response[x]
+            else:
+                self.BinError[x] = 0.0
+
+        self.Expected_limit = (self.BinData + np.sqrt(chi_squared1(ConfidenceLevel)) *
+                                self.BinError) * self.BinSize
+        result = [i for i in self.Expected_limit / int_response if i > 0]
+        result = np.min(result)
+        if result > 0:
+            result = np.log10(result)
+        else:
+            result = np.inf
+        print("(vmin, result) =", (vmin, result))
+        return [vmin, result]
+
+    def UpperLimit(self, mx, fp, fn, delta, vmin_min, vmin_max, vmin_step,
+                   output_file, processes=None, **unused_kwargs):
+        vmin_list = np.linspace(vmin_min, vmin_max, (vmin_max - vmin_min)/vmin_step + 1)
+        kwargs = ({'vmin': vmin, 'mx': mx, 'fp': fp, 'fn': fn, 'delta': delta}
+                  for vmin in vmin_list)
+        upper_limit = np.array(par.parmap(self._GaussianUpperBound, kwargs, processes))
+        upper_limit = upper_limit[upper_limit[:, 1] != np.inf]
+        print("upper_limit = ", upper_limit)
+        with open(output_file, 'ab') as f_handle:
+            np.savetxt(f_handle, upper_limit)
+        return upper_limit
+
 
 
 class Crosses_HaloIndep(Experiment_HaloIndep):
