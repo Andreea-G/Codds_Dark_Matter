@@ -22,3 +22,4 @@ from LUX2013zero import *
 name = "LUX2013three"
 
 ERecoilList = np.array([3.122595, 5.492096, 6.001462])
+BinData = np.array([2, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])

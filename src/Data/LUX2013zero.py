@@ -85,3 +85,10 @@ def Efficiency(e):
 
 Exposure = 85.3 * 118.3
 ERecoilList = np.array([])
+
+BinSize = 3.5
+BinEdges_left = np.array([2.0, 5.5, 9.0, 12.5, 16.0, 19.5, 23.0, 26.5])
+BinEdges_right = np.array([5.5, 9.0, 12.5, 16.0, 19.5, 23.0, 26.5])
+BinBkgr = [0.03, 0.04, 0.06, 0.07, 0.09, .10, 0.12, 0.13]
+BinData = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+BinError = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
