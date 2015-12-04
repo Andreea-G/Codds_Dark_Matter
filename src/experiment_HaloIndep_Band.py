@@ -35,7 +35,7 @@ import parallel_map as par
 
 DEBUG = T
 DEBUG_FULL = F
-USE_BASINHOPPING = T
+USE_BASINHOPPING = F
 ADAPT_KWARGS = F
 ALLOW_MOVE = T
 
@@ -576,8 +576,11 @@ class Experiment_EHI(Experiment_HaloIndep):
             constraints = np.concatenate([x[:x.size/2], vmin_max - x[:x.size/2],
                                           -x[x.size/2:],
                                           np.diff(x[:x.size/2]), np.diff(-x[x.size/2:])])
+            for a in range(int(3 * x.size / 2), 2 * x.size - 1):
+                if abs(constraints[a]) < 0.003:
+                    constraints[a] = abs(constraints[a])
             is_not_close = np.logical_not(
-                np.isclose(constraints, np.zeros_like(constraints), atol=1e-5))
+                np.isclose(constraints, np.zeros_like(constraints), atol=1e-3))
             is_not_close[:3 * (x.size/2)] = T
             constr = np.where(is_not_close, constraints, np.abs(constraints))
             if DEBUG:
@@ -588,14 +591,18 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         np.random.seed(0)
         if USE_BASINHOPPING:
-            minimizer_kwargs = {"constraints": constr, "args": (multiexper_input, class_name,
-                                                                mx, fp, fn, delta, constr_func,)}
+            minimizer_kwargs = {"method": "COBYLA", "constraints": constr, "args": (multiexper_input, class_name,
+                                                                mx, fp, fn, delta, constr_func,), 
+                                                                "options": {'tol': 1, 'catol': 1}}
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
-                        minimizer_kwargs=minimizer_kwargs, niter=30, stepsize=0.1, niter_success=1)
+                        minimizer_kwargs=minimizer_kwargs, niter=5, stepsize=0.1)
         else:
             optimum_log_likelihood = minimize(self.MultiExperimentMinusLogLikelihood,
                             vars_guess, args=(multiexper_input, class_name, mx, fp,
-                                            fn, delta, constr_func), constraints=constr)
+                                            fn, delta, constr_func), method='SLSQP',
+                                            constraints=constr,
+                                            options = {'ftol': 1e-2, 'maxiter': 10})
+                                            
 
 
         print(optimum_log_likelihood)
@@ -1486,8 +1493,10 @@ class Experiment_EHI(Experiment_HaloIndep):
                 class_name_hold[x] = PoissonExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] in GaussianLimit_exper:
                 class_name_hold[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
-            elif multiexper_input[x] in MultiExper_Binned_exper:
+            elif multiexper_input[x] in MultiExper_Binned_exper_G:
                 class_name_hold[x] = MultExper_Binned_exper_G(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in MultiExper_Binned_exper_P:
+                class_name_hold[x] = MultExper_Binned_exper_P(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] == "CDMSSi2012":
                 class_name_hold[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
             else:
