@@ -22,6 +22,8 @@ from __future__ import absolute_import
 from __future__ import print_function
 from experiment import *
 from experiment_HaloIndep_er import *
+from math import *
+from globalfnc import *
 import parallel_map as par
 from scipy.linalg import det, inv
 # from scipy.special import lambertw
@@ -340,7 +342,7 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         return upper_limit
 
 
-class MultExper_Binned_exper(Experiment_HaloIndep):
+class MultExper_Binned_exper_G(Experiment_HaloIndep):
     """ Class for multi EHI method experiments with binned analysis.
     Input:
         exper_name: string
@@ -372,8 +374,14 @@ class MultExper_Binned_exper(Experiment_HaloIndep):
         if quenching_factor is not None:
             self.QuenchingFactor = lambda e: quenching_factor
 
+
+        self.mT_avg = np.sum(module.target_nuclide_AZC_list[:,2] * module.target_nuclide_mass_list)
+
         print('BinData', self.BinData)
 
+    def Vmin_Sorted_List(self, mx, delta):
+        self.vmin_sorted_list = np.sort(VMin(self.BinEdges_left, self.mT_avg, mx, delta))
+        return self.vmin_sorted_list
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
                             vminStar=None, logetaStar=None, vminStar_index=None):
@@ -384,7 +392,8 @@ class MultExper_Binned_exper(Experiment_HaloIndep):
             vminStar, logetaStar: float, optional
                 Values of fixed vmin^* and log(eta)^*.
         Returns:
-            -log(L): float
+            -2log(L): float
+
         """
 
         if vminStar is None:
@@ -399,7 +408,7 @@ class MultExper_Binned_exper(Experiment_HaloIndep):
 
         rate_partials = [None] * (self.BinEdges_left.size)
 
-        for x in range(0, self.BinEdges_left.size - 1):
+        for x in range(0, self.BinEdges_left.size):
             resp_integr = self.IntegratedResponseTable(vmin_list_w0,
                             self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
 
@@ -407,31 +416,80 @@ class MultExper_Binned_exper(Experiment_HaloIndep):
 
         result = 0
 
-        for x in range(0, self.BinData.size - 1):
-            try:
-                self.bkgr[x]
-            except:
-                if (self.Exposure * rate_partials[x]) <= self.BinData[x]:
-                    self.bkgr.append(self.BinData[x] - self.Exposure * rate_partials[x])
-                else:
-                    self.bkgr.append(0.0)
-            if self.BinData[x] != 0 and (self.Exposure * rate_partials[x]
-                                + self.bkgr[x] > 0):
-                last_term = self.BinData[x] * math.log(self.BinData[x] / (self.Exposure * rate_partials[x]
-                                + self.bkgr[x]))
-            else:
-                last_term = 0
+        if self.energy_resolution_type == "Dirac":
+            self.Response = self._Response_Dirac
+        else:
+            self.Response = self._Response_Finite
 
-            result += 2.0 * (self.Exposure * rate_partials[x] + self.bkgr[x] - self.BinData[x] + last_term)
+        for x in range(0, self.BinData.size):
+            if self.BinData[x] != 0:
+                result += 2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
+                        (sqrt(self.BinData[x]) / self.Exposure)) ** 2.0
 
+        self.KKT_Condition_Q(vars_list, mx, fp, fn, delta)
+        exit()
         return result
+
+    def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
+                        vminStar=None, logetaStar=None, vminStar_index=None):
+        """This is intended to calculate the contribution to q(vmin) from a particular experiment.
+        It may currently have issues, has not been tested.
+        """
+
+        if vminStar is None:
+            vmin_list_w0 = vars_list[: vars_list.size/2]
+            logeta_list = vars_list[vars_list.size/2:]
+        else:
+            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+                                     vminStar_index, vminStar)
+            logeta_list = np.insert(vars_list[vars_list.size/2:],
+                                    vminStar_index, logetaStar)
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+        for x in range(0, self.BinEdges_left.size):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                            self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
+
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+
+
+
+        if self.energy_resolution_type == "Dirac":
+            self.Response = self._Response_Dirac
+        else:
+            self.Response = self._Response_Finite
+
+        KKT_cond = [None] * 1000
+        KKT_cond[0] = 0.0
+
+        for v_dummy in range(1, 1000):
+            result = 0
+            for x in range(0, self.BinData.size):
+                Curly_H = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
+                                args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
+                                epsrel=PRECISSION, epsabs=0)
+                if self.BinData[x] != 0:
+                    result += 2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
+                            (sqrt(self.BinData[x]) / self.Exposure) ** 2.0 * Curly_H[0])
+            print(result)
+            KKT_cond[v_dummy] = result
+
+        outputfile = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                             F, "test", "../Output/", self.QuenchingFactor)
+        file = outputfile + "_KKT_Cond_322.dat"
+        print(file)
+        np.savetxt(file, KKT_cond)
+
+        return
 
     def _GaussianUpperBound(self, vmin, mx, fp, fn, delta):
         int_response = \
             np.array(list(map(lambda i, j:
                               self.IntegratedResponse(0, vmin, i, j, mx, fp, fn, delta),
                               self.BinEdges_left, self.BinEdges_right)))
-        for x in range(0, self.BinData.size -1):
+        for x in range(0, self.BinData.size):
             if int_response[x] <= self.BinData[x]:
                 self.BinError[x] = self.BinData[x] - int_response[x]
             else:
@@ -459,6 +517,149 @@ class MultExper_Binned_exper(Experiment_HaloIndep):
         with open(output_file, 'ab') as f_handle:
             np.savetxt(f_handle, upper_limit)
         return upper_limit
+
+
+class MultExper_Binned_exper_P(Experiment_HaloIndep):
+    """ Class for multi EHI method experiments with binned possoin analysis.
+    Input:
+        exper_name: string
+            Name of experiment.
+        scattering_type: string
+            Type of scattering.
+        mPhi: float, optional
+            Mass of the mediator.
+        quenching_factor: float, optional
+            Quenching factor. If not given, the default used is specified in the data
+            modules.
+    """
+    def __init__(self, exper_name, scattering_type, mPhi=mPhiRef, quenching_factor=None):
+        super().__init__(exper_name, scattering_type, mPhi)
+        module = import_file(INPUT_DIR + exper_name + ".py")
+        self.BinEdges_left = module.BinEdges_left
+        self.BinEdges_right = module.BinEdges_right
+        self.BinData = module.BinData
+        self.BinError = module.BinError
+        self.BinSize = module.BinSize
+
+#        If you want to calculate the limit as is done in fig 2 of arxiv 1409.5446v2
+#        self.BinData = module.BinData/module.Exposure
+#        self.chiSquared = chi_squared(self.BinData.size)
+#        self.Expected_limit = module.Expected_limit * self.BinSize
+
+
+        self.bkgr = module.BinBkgr
+        if quenching_factor is not None:
+            self.QuenchingFactor = lambda e: quenching_factor
+
+
+        self.mT_avg = np.sum(module.target_nuclide_AZC_list[:,2] * module.target_nuclide_mass_list)
+
+        print('BinData', self.BinData)
+
+    def Vmin_Sorted_List(self, mx, delta):
+        self.vmin_sorted_list = np.sort(VMin(self.BinEdges_left, self.mT_avg, mx, delta))
+        return self.vmin_sorted_list
+
+    def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
+                            vminStar=None, logetaStar=None, vminStar_index=None):
+        """ Compute -log(L)
+        Input:
+            vars_list: ndarray
+                List of variables [vmin_1, ..., vmin_No, log(eta_1), ..., log(eta_No)]
+            vminStar, logetaStar: float, optional
+                Values of fixed vmin^* and log(eta)^*.
+        Returns:
+            -2log(L): float
+
+        """
+
+        if vminStar is None:
+            vmin_list_w0 = vars_list[: vars_list.size/2]
+            logeta_list = vars_list[vars_list.size/2:]
+        else:
+            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+                                     vminStar_index, vminStar)
+            logeta_list = np.insert(vars_list[vars_list.size/2:],
+                                    vminStar_index, logetaStar)
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+        for x in range(0, self.BinEdges_left.size):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                            self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
+
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+
+        result = 0
+
+        if self.energy_resolution_type == "Dirac":
+            self.Response = self._Response_Dirac
+        else:
+            self.Response = self._Response_Finite
+
+        for x in range(0, self.BinData.size):
+            if self.BinData[x] != 0:
+                result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
+                    self.BinData[x] * log(self.Exposure * rate_partials[x]))
+            else:
+                result += 2.0 * (self.Exposure * rate_partials[x])
+
+        return result
+
+    def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
+                        vminStar=None, logetaStar=None, vminStar_index=None):
+        """This is intended to calculate the contribution to q(vmin) from a particular experiment.
+        It may currently have issues, has not been tested.
+        """
+
+        if vminStar is None:
+            vmin_list_w0 = vars_list[: vars_list.size/2]
+            logeta_list = vars_list[vars_list.size/2:]
+        else:
+            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+                                     vminStar_index, vminStar)
+            logeta_list = np.insert(vars_list[vars_list.size/2:],
+                                    vminStar_index, logetaStar)
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+        for x in range(0, self.BinEdges_left.size):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                            self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
+
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+
+
+
+        if self.energy_resolution_type == "Dirac":
+            self.Response = self._Response_Dirac
+        else:
+            self.Response = self._Response_Finite
+
+        KKT_cond = [None] * 1000
+        KKT_cond[0] = 0.0
+
+        for v_dummy in range(1, 1000):
+            result = 0
+            for x in range(0, self.BinData.size):
+                Curly_H = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
+                                args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
+                                epsrel=PRECISSION, epsabs=0)
+                if self.BinData[x] != 0:
+                    result += 2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
+                            (self.Exposure / rate_partials[x]) * Curly_H[0])
+            KKT_cond[v_dummy] = result
+
+#        outputfile = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+#                             F, "test", OUTPUT_MAIN_DIR, [none])
+#        file = outputfile + "_KKT_Cond_322.dat"
+#        print(file)
+#        np.savetxt(file, KKT_cond)
+
+        return
+
 
 
 
@@ -608,7 +809,7 @@ class Crosses_HaloIndep(Experiment_HaloIndep):
         self.BinEdges_right = self.BinEdges[1:]
 
     def UpperLimit(self, mx, fp, fn, delta, vmin_min, vmin_max, vmin_step,
-                   output_file, rebin=True, processes=None, **unused_kwargs):
+                   output_file, rebin=False, processes=None, **unused_kwargs):
         if rebin:
             self._Rebin()
 

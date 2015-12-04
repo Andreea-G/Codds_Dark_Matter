@@ -196,9 +196,12 @@ class PlotData:
             xerr_left, xerr_right = crosses[indices[1]], crosses[indices[2]]
             y = np.log10(crosses[indices[3]])
             yerr_up = np.log10(crosses[indices[3]] + crosses[indices[4]]) - y
-            yerr_low = y - np.log10(crosses[indices[3]] - crosses[indices[5]])
-            yerr_low = np.array([ye if ye == ye else 100
+            if "DAMA" in self.exper_name:
+                yerr_low = y - np.log10(crosses[indices[3]] - crosses[indices[5]])
+                yerr_low = np.array([ye if ye == ye else 100
                                  for ye in yerr_low])
+            elif self.exper_name == "CDMSSi2012":
+                yerr_low = - (y - np.log10(crosses[indices[3]] + crosses[indices[5]]))
             xerr = [xerr_left, xerr_right]
             yerr = [yerr_low, yerr_up]
             return x, y, xerr, yerr
@@ -695,7 +698,7 @@ class RunProgram_Multiexperiment:
                      filename_tail, OUTPUT_MAIN_DIR, quenching=None)
         class_name[0].ImportOptimalLikelihood(output_file)
         interp_kind = 'linear'
-        plot_limits = PlotData(multiexper_input[0], HALO_DEP, plot_close=False)
+#        plot_limits = PlotData(multiexper_input[0], HALO_DEP, plot_close=False)
 
 #        self.exper.PlotSamplingTable(self.output_file_no_extension,
 #                                plot_close=False, plot_show=False, plot_optimum=False)
@@ -828,9 +831,12 @@ class RunProgram_Multiexperiment:
             elif multiexper_input[x] in GaussianLimit_exper:
                 print('GaussianExperiment')
                 class_name[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
-            elif multiexper_input[x] in MultiExper_Binned_exper:
-                print('Binned Likelihood')
-                class_name[x] = MultExper_Binned_exper(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in MultiExper_Binned_exper_G:
+                print('Gaussian Binned Likelihood')
+                class_name[x] = MultExper_Binned_exper_G(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in MultiExper_Binned_exper_P:
+                print('Poisson Binned Likelihood')
+                class_name[x] = MultExper_Binned_exper_P(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] == "CDMSSi2012":
                 class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
             else:
@@ -850,11 +856,15 @@ class RunProgram_Multiexperiment:
                                  fp, fn, delta, output_file_CDMS)
 
             class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
+
+
             output_file = MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
                      filename_tail, OUTPUT_MAIN_DIR, quenching=None)
 
             f_handle = open(output_file+"_temp.dat", 'w')   # clear the file first
             f_handle.close()
+
+
 
             if EHI_METHOD.OptimalLikelihood:
                 class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,

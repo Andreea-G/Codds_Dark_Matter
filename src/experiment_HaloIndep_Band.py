@@ -26,16 +26,16 @@ from experiment_HaloIndep import *
 import interp_uniform as unif
 # from interp import interp1d
 from scipy import interpolate
-from scipy.optimize import brentq, minimize
+from scipy.optimize import brentq, minimize, brute
 from basinhopping import *
 from globalfnc import *
 import matplotlib.pyplot as plt
 import os   # for speaking
 import parallel_map as par
 
-DEBUG = F
+DEBUG = T
 DEBUG_FULL = F
-USE_BASINHOPPING = F
+USE_BASINHOPPING = T
 ADAPT_KWARGS = F
 ALLOW_MOVE = T
 
@@ -559,8 +559,13 @@ class Experiment_EHI(Experiment_HaloIndep):
                 Guess for the value of log(eta) in the minimization procedure.
         """
         self.ImportResponseTables(output_file_CDMS, plot=False)
-        vars_guess = np.append(self.vmin_sorted_list,
-                               logeta_guess * np.ones(self.vmin_sorted_list.size))
+        vhold = np.array([])
+        for x in range(1, len(class_name) ):
+            vhold = np.append(vhold, class_name[x].Vmin_Sorted_List(mx, delta))
+        vmin_list = np.sort(np.append(self.vmin_sorted_list, vhold))
+
+        vars_guess = np.append(vmin_list,
+                               logeta_guess * np.ones(vmin_list.size))
         print("vars_guess =", vars_guess)
         vmin_max = self.vmin_linspace[-1]
         expernum = multiexper_input.size
@@ -586,11 +591,12 @@ class Experiment_EHI(Experiment_HaloIndep):
             minimizer_kwargs = {"constraints": constr, "args": (multiexper_input, class_name,
                                                                 mx, fp, fn, delta, constr_func,)}
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
-                        minimizer_kwargs=minimizer_kwargs, niter=15, stepsize=0.05)
+                        minimizer_kwargs=minimizer_kwargs, niter=30, stepsize=0.1, niter_success=1)
         else:
             optimum_log_likelihood = minimize(self.MultiExperimentMinusLogLikelihood,
                             vars_guess, args=(multiexper_input, class_name, mx, fp,
-                                              fn, delta, constr_func), constraints=constr)
+                                            fn, delta, constr_func), constraints=constr)
+
 
         print(optimum_log_likelihood)
         print("MinusLogLikelihood =", (self._MinusLogLikelihood(optimum_log_likelihood.x) +
@@ -1481,7 +1487,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             elif multiexper_input[x] in GaussianLimit_exper:
                 class_name_hold[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] in MultiExper_Binned_exper:
-                class_name_hold[x] = MultExper_Binned_exper(multiexper_input[x], scattering_type, mPhi, quenching)
+                class_name_hold[x] = MultExper_Binned_exper_G(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] == "CDMSSi2012":
                 class_name_hold[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
             else:

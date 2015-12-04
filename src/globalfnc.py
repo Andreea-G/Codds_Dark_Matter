@@ -63,7 +63,8 @@ DAMALimit_exper = ["DAMA2010Na_TotRateLimit"]
 Poisson_exper = ["SIMPLEModeStage2"]
 EHImethod_exper = ["CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif"]
 SHM_line = ["SHM_eta0", "SHM_eta1"]
-MultiExper_Binned_exper = ["SuperCDMS", "LUX2013zero", "LUX2013one", "LUX2013three",
+MultiExper_Binned_exper_G = []
+MultiExper_Binned_exper_P = ["SuperCDMS", "LUX2013zero", "LUX2013one", "LUX2013three",
                            "LUX2013five", "LUX2013many"]
 
 """ Colors for plotting.
