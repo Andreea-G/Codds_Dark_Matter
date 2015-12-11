@@ -380,7 +380,8 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):#NOT READY FOR USE
         print('BinData', self.BinData)
 
     def Vmin_Sorted_List(self, mx, delta):
-        self.vmin_sorted_list = np.sort(VMin(self.BinEdges_left, self.mT_avg, mx, delta))
+        BinCenter = 0.5 * (self.BinEdges_left + self.BinEdges_right)
+        self.vmin_sorted_list = np.sort(VMin(BinCenter, self.mT_avg, mx, delta))
         return self.vmin_sorted_list
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
@@ -420,14 +421,15 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):#NOT READY FOR USE
             self.Response = self._Response_Dirac
         else:
             self.Response = self._Response_Finite
-            
+
 
         for x in range(0, self.BinData.size):
                 if self.BinData[x] != 0:
                     result += ((rate_partials[x] - self.BinData[x] / self.Exposure) ** 2.0 /
                         (self.BinData[x] / self.Exposure))
 
-        
+
+
         return result
 
     def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
@@ -435,12 +437,12 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):#NOT READY FOR USE
         """This is intended to calculate the contribution to q(vmin) from a particular experiment.
         It may currently have issues, has not been tested.
         """
-                
-        
+
+
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
             logeta_list = vars_list[vars_list.size/2:]
-        
+
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
         self.curly_H_tab = np.zeros((self.BinData.size, 1001))
@@ -462,11 +464,11 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):#NOT READY FOR USE
         # TODO parallelize this section of the code
         calculate_Q = False
         if calculate_Q:
-            for x in range(0, self.BinData.size):   
-                for v_dummy in range(1, 1001):                
+            for x in range(0, self.BinData.size):
+                for v_dummy in range(1, 1001):
                     self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
                                 args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
-                                epsrel=PRECISSION, epsabs=0)[0] 
+                                epsrel=PRECISSION, epsabs=0)[0]
                     if self.BinData[x] != 0:
                             result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
                                         self.BinData[x]) * self.Exposure * self.curly_H_tab[x, v_dummy])
@@ -483,9 +485,9 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):#NOT READY FOR USE
             f_handle = open(file, 'rb')
             self.Q_contrib = np.loadtxt(f_handle)
             f_handle.close()
-            
+
         print('Obtained Variational of Likelihood')
-        
+
         return self.Q_contrib
 
     def _GaussianUpperBound(self, vmin, mx, fp, fn, delta):
@@ -561,7 +563,8 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         print('BinData', self.BinData)
 
     def Vmin_Sorted_List(self, mx, delta):
-        self.vmin_sorted_list = np.sort(VMin(self.BinEdges_left, self.mT_avg, mx, delta))
+        BinCenter = 0.5 * (self.BinEdges_left + self.BinEdges_right)
+        self.vmin_sorted_list = np.sort(VMin(BinCenter, self.mT_avg, mx, delta))
         return self.vmin_sorted_list
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
@@ -605,7 +608,7 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         for x in range(0, self.BinData.size):
             result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
                     self.BinData[x] * log(self.Exposure * rate_partials[x]))
-        
+
         return result
 
     def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
@@ -613,12 +616,12 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         """This is intended to calculate the contribution to q(vmin) from a particular experiment.
         It may currently have issues, has not been tested.
         """
-                
-        
+
+
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
             logeta_list = vars_list[vars_list.size/2:]
-        
+
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
         self.curly_H_tab = np.zeros((self.BinData.size, 1001))
@@ -640,12 +643,12 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         # TODO parallelize this section of the code
         calculate_Q = True
         if calculate_Q:
-            for x in range(0, self.BinData.size):   
-                for v_dummy in range(1, 1001):                
+            for x in range(0, self.BinData.size):
+                for v_dummy in range(1, 1001):
                     self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
                                 args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
-                                epsrel=PRECISSION, epsabs=0)[0] 
- 
+                                epsrel=PRECISSION, epsabs=0)[0]
+
                     result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
                             rate_partials[x]) * self.Exposure * self.curly_H_tab[x, v_dummy])
                     self.Q_contrib[x, v_dummy] = result[x, v_dummy]
@@ -660,9 +663,9 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
             f_handle = open(file, 'rb')
             self.Q_contrib = np.loadtxt(f_handle)
             f_handle.close()
-            
+
         print('Obtained Variational of Likelihood')
-        
+
         return self.Q_contrib
 
 
