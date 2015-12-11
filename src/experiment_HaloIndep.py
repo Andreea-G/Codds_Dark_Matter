@@ -342,7 +342,7 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         return upper_limit
 
 
-class MultExper_Binned_exper_G(Experiment_HaloIndep):
+class MultExper_Binned_exper_G(Experiment_HaloIndep):#NOT READY FOR USE
     """ Class for multi EHI method experiments with binned analysis.
     Input:
         exper_name: string
@@ -420,14 +420,14 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):
             self.Response = self._Response_Dirac
         else:
             self.Response = self._Response_Finite
+            
 
         for x in range(0, self.BinData.size):
-            if self.BinData[x] != 0:
-                result += 2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
-                        (sqrt(self.BinData[x]) / self.Exposure)) ** 2.0
+                if self.BinData[x] != 0:
+                    result += ((rate_partials[x] - self.BinData[x] / self.Exposure) ** 2.0 /
+                        (self.BinData[x] / self.Exposure))
 
-        self.KKT_Condition_Q(vars_list, mx, fp, fn, delta)
-        exit()
+        
         return result
 
     def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
@@ -435,17 +435,16 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):
         """This is intended to calculate the contribution to q(vmin) from a particular experiment.
         It may currently have issues, has not been tested.
         """
-
+                
+        
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
             logeta_list = vars_list[vars_list.size/2:]
-        else:
-            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
-                                     vminStar_index, vminStar)
-            logeta_list = np.insert(vars_list[vars_list.size/2:],
-                                    vminStar_index, logetaStar)
+        
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
+        self.curly_H_tab = np.zeros((self.BinData.size, 1001))
+        self.Q_contrib = np.zeros((self.BinData.size, 1001))
         rate_partials = [None] * (self.BinEdges_left.size)
 
         for x in range(0, self.BinEdges_left.size):
@@ -454,35 +453,40 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):
 
             rate_partials[x] = np.dot(10**logeta_list, resp_integr)
 
-
-
         if self.energy_resolution_type == "Dirac":
             self.Response = self._Response_Dirac
         else:
             self.Response = self._Response_Finite
 
-        KKT_cond = [None] * 1000
-        KKT_cond[0] = 0.0
-
-        for v_dummy in range(1, 1000):
-            result = 0
-            for x in range(0, self.BinData.size):
-                Curly_H = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
+        result = np.zeros((self.BinData.size, 1001))
+        # TODO parallelize this section of the code
+        calculate_Q = False
+        if calculate_Q:
+            for x in range(0, self.BinData.size):   
+                for v_dummy in range(1, 1001):                
+                    self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
                                 args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
-                                epsrel=PRECISSION, epsabs=0)
-                if self.BinData[x] != 0:
-                    result += 2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
-                            (sqrt(self.BinData[x]) / self.Exposure) ** 2.0 * Curly_H[0])
-            print(result)
-            KKT_cond[v_dummy] = result
+                                epsrel=PRECISSION, epsabs=0)[0] 
+                    if self.BinData[x] != 0:
+                            result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
+                                        self.BinData[x]) * self.Exposure * self.curly_H_tab[x, v_dummy])
 
-        outputfile = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
-                             F, "test", "../Output/", self.QuenchingFactor)
-        file = outputfile + "_KKT_Cond_322.dat"
-        print(file)
-        np.savetxt(file, KKT_cond)
-
-        return
+                    self.Q_contrib[x, v_dummy] = result[x, v_dummy]
+            file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                             F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+            f_handle = open(file, 'wb')   # clear the file first
+            np.savetxt(f_handle, self.Q_contrib)
+            f_handle.close()
+        else:
+            file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                             F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+            f_handle = open(file, 'rb')
+            self.Q_contrib = np.loadtxt(f_handle)
+            f_handle.close()
+            
+        print('Obtained Variational of Likelihood')
+        
+        return self.Q_contrib
 
     def _GaussianUpperBound(self, vmin, mx, fp, fn, delta):
         int_response = \
@@ -599,12 +603,9 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
             self.Response = self._Response_Finite
 
         for x in range(0, self.BinData.size):
-            if self.BinData[x] != 0:
-                result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
+            result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
                     self.BinData[x] * log(self.Exposure * rate_partials[x]))
-            else:
-                result += 2.0 * (self.Exposure * rate_partials[x])
-
+        
         return result
 
     def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
@@ -612,17 +613,16 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         """This is intended to calculate the contribution to q(vmin) from a particular experiment.
         It may currently have issues, has not been tested.
         """
-
+                
+        
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
             logeta_list = vars_list[vars_list.size/2:]
-        else:
-            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
-                                     vminStar_index, vminStar)
-            logeta_list = np.insert(vars_list[vars_list.size/2:],
-                                    vminStar_index, logetaStar)
+        
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
+        self.curly_H_tab = np.zeros((self.BinData.size, 1001))
+        self.Q_contrib = np.zeros((self.BinData.size, 1001))
         rate_partials = [None] * (self.BinEdges_left.size)
 
         for x in range(0, self.BinEdges_left.size):
@@ -631,35 +631,39 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
 
             rate_partials[x] = np.dot(10**logeta_list, resp_integr)
 
-
-
         if self.energy_resolution_type == "Dirac":
             self.Response = self._Response_Dirac
         else:
             self.Response = self._Response_Finite
 
-        KKT_cond = [None] * 1000
-        KKT_cond[0] = 0.0
-
-        for v_dummy in range(1, 1000):
-            result = 0
-            for x in range(0, self.BinData.size):
-                Curly_H = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
+        result = np.zeros((self.BinData.size, 1001))
+        # TODO parallelize this section of the code
+        calculate_Q = True
+        if calculate_Q:
+            for x in range(0, self.BinData.size):   
+                for v_dummy in range(1, 1001):                
+                    self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
                                 args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
-                                epsrel=PRECISSION, epsabs=0)
-                if self.BinData[x] != 0:
-                    result += 2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
-                            (self.Exposure / rate_partials[x]) * Curly_H[0])
-            KKT_cond[v_dummy] = result
-
-#        outputfile = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
-#                             F, "test", OUTPUT_MAIN_DIR, [none])
-#        file = outputfile + "_KKT_Cond_322.dat"
-#        print(file)
-#        np.savetxt(file, KKT_cond)
-
-        return
-
+                                epsrel=PRECISSION, epsabs=0)[0] 
+ 
+                    result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
+                            rate_partials[x]) * self.Exposure * self.curly_H_tab[x, v_dummy])
+                    self.Q_contrib[x, v_dummy] = result[x, v_dummy]
+            file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                             F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+            f_handle = open(file, 'wb')   # clear the file first
+            np.savetxt(f_handle, self.Q_contrib)
+            f_handle.close()
+        else:
+            file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                             F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+            f_handle = open(file, 'rb')
+            self.Q_contrib = np.loadtxt(f_handle)
+            f_handle.close()
+            
+        print('Obtained Variational of Likelihood')
+        
+        return self.Q_contrib
 
 
 

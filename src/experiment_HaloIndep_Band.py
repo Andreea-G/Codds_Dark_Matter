@@ -35,7 +35,7 @@ import parallel_map as par
 
 DEBUG = T
 DEBUG_FULL = F
-USE_BASINHOPPING = F
+USE_BASINHOPPING = T
 ADAPT_KWARGS = F
 ALLOW_MOVE = T
 
@@ -576,9 +576,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             constraints = np.concatenate([x[:x.size/2], vmin_max - x[:x.size/2],
                                           -x[x.size/2:],
                                           np.diff(x[:x.size/2]), np.diff(-x[x.size/2:])])
-            for a in range(int(3 * x.size / 2), 2 * x.size - 1):
-                if abs(constraints[a]) < 0.003:
-                    constraints[a] = abs(constraints[a])
+            
             is_not_close = np.logical_not(
                 np.isclose(constraints, np.zeros_like(constraints), atol=1e-3))
             is_not_close[:3 * (x.size/2)] = T
@@ -591,19 +589,17 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         np.random.seed(0)
         if USE_BASINHOPPING:
-            minimizer_kwargs = {"method": "COBYLA", "constraints": constr, "args": (multiexper_input, class_name,
-                                                                mx, fp, fn, delta, constr_func,), 
-                                                                "options": {'tol': 1, 'catol': 1}}
+            minimizer_kwargs = {"method": "SLSQP", "constraints": constr, "args": (multiexper_input, class_name,
+                                                                mx, fp, fn, delta, constr_func,),
+                                                                 "options": {'ftol': 1e-4, 'maxiter': 30}}
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
-                        minimizer_kwargs=minimizer_kwargs, niter=5, stepsize=0.1)
+                        minimizer_kwargs=minimizer_kwargs, niter=5, stepsize=0.4)
         else:
             optimum_log_likelihood = minimize(self.MultiExperimentMinusLogLikelihood,
                             vars_guess, args=(multiexper_input, class_name, mx, fp,
                                             fn, delta, constr_func), method='SLSQP',
                                             constraints=constr,
-                                            options = {'ftol': 1e-2, 'maxiter': 10})
-                                            
-
+                                            options = {'ftol': 1e-2, 'maxiter': 30})                                         
 
         print(optimum_log_likelihood)
         print("MinusLogLikelihood =", (self._MinusLogLikelihood(optimum_log_likelihood.x) +
@@ -618,6 +614,46 @@ class Experiment_EHI(Experiment_HaloIndep):
         os.system("say 'Finished finding optimum'")
         return
 
+    def PlotQ_KKT_Multi(self, class_name, mx, fp, fn, delta, output_file, plot=False):
+        
+        vminlist = class_name[0].optimal_vmin
+        logetalist = class_name[0].optimal_logeta
+        optimum_steps = np.concatenate((vminlist, logetalist), axis=1)
+        print('optimum_steps', optimum_steps)
+        explen = len(class_name)
+        if plot:   
+            Q_contrib = [None] * (explen)
+            for x in range (1, explen):
+                Q_contrib[x] = class_name[x].KKT_Condition_Q(optimum_steps, mx, fp, fn, delta)
+            class_name[0]._MinusLogLikelihood(optimum_steps)  # to get self.gamma_i
+            xi_interp = unif.interp1d(class_name[0].vmin_linspace, class_name[0].xi_tab)
+            h_sum_tab = np.sum([class_name[0].curly_H_tab[i] / class_name[0].gamma_i[i]
+                                     for i in range(self.ERecoilList.size)], axis=0)         
+            q_sum = [None] * 1001
+            q_sum[0] = 0.0
+            for x in range(0, 1000):
+                for y in range(1, explen):
+                    q_sum[x+1] = Q_contrib[y][:,x].sum()
+                           
+            q_tab = 2.0 * (class_name[0].xi_tab - h_sum_tab) + q_sum 
+#            for x in range(0,1001):            
+#                print(h_sum_tab[x], ',')
+            file = output_file + "KKT_Q.dat"
+            f_handle = open(file, 'wb')   # clear the file first
+            np.savetxt(f_handle, q_tab)
+            f_handle.close()
+            
+            self.q_interp = unif.interp1d(self.vmin_linspace, q_tab)
+            self.h_sum_interp = unif.interp1d(self.vmin_linspace, h_sum_tab)
+            self.PlotTable(xi_interp, dimension=0, plot_show=False)
+            self.PlotTable(self.h_sum_interp, dimension=0,
+                           xlim=[0, 2000], ylim=[-2e24, 5e25],
+                           title='Xi, H_{sum}', plot_close=False)
+            self.PlotTable(self.q_interp, dimension=0,
+                           xlim=[0, 2000], ylim=[-2e24, 5e26],
+                           title='q', show_zero_axis=True)
+            
+        return
 
     def ImportMultiOptimalLikelihood(self, output_file_tail, output_file_CDMS, plot=False):
         """ Import the minumum -log(L) and the locations of the steps in the best-fit
