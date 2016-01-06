@@ -58,7 +58,7 @@ def main():
     # indices of input_list which can be found in input files
     input_indices = [0]
     # indices of implemented_exper_list
-    multiexper_input_indices = [17, 0]
+    multiexper_input_indices = [17, 1]
     # indices to be used in multiexperiment EHI anlysis
     exper_indices = []
     OUTPUT_MAIN_DIR = "../Output_Band/"

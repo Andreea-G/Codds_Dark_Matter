@@ -606,7 +606,8 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
             self.Response = self._Response_Finite
 
         for x in range(0, self.BinData.size):
-            result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
+            if rate_partials[x] != 0:
+                result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
                     self.BinData[x] * log(self.Exposure * rate_partials[x]))
 
         return result

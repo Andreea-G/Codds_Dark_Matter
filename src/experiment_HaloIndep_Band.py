@@ -591,9 +591,9 @@ class Experiment_EHI(Experiment_HaloIndep):
         if USE_BASINHOPPING:
             minimizer_kwargs = {"method": "SLSQP", "constraints": constr, "args": (multiexper_input, class_name,
                                                                 mx, fp, fn, delta, constr_func,),
-                                                                 "options": {'ftol': 1e-4, 'maxiter': 30}}
+                                                                 "options": {'ftol': 1e-5, 'maxiter': 15}}
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
-                        minimizer_kwargs=minimizer_kwargs, niter=5, stepsize=0.4)
+                        minimizer_kwargs=minimizer_kwargs, niter=5, stepsize=0.2)
         else:
             optimum_log_likelihood = minimize(self.MultiExperimentMinusLogLikelihood,
                             vars_guess, args=(multiexper_input, class_name, mx, fp,
