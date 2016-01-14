@@ -381,7 +381,7 @@ class MultExper_Binned_exper_G(Experiment_HaloIndep):#NOT READY FOR USE
 
     def Vmin_Sorted_List(self, mx, delta):
         BinCenter = 0.5 * (self.BinEdges_left + self.BinEdges_right)
-        self.vmin_sorted_list = np.sort(VMin(BinCenter, self.mT_avg, mx, delta))
+        self.vmin_sorted_list = np.sort(VMin(self.BinEdges_left, self.mT_avg, mx, delta))
         return self.vmin_sorted_list
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
@@ -564,7 +564,7 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
 
     def Vmin_Sorted_List(self, mx, delta):
         BinCenter = 0.5 * (self.BinEdges_left + self.BinEdges_right)
-        self.vmin_sorted_list = np.sort(VMin(BinCenter, self.mT_avg, mx, delta))
+        self.vmin_sorted_list = np.sort(VMin(self.BinEdges_left, self.mT_avg, mx, delta))
         return self.vmin_sorted_list
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
@@ -606,7 +606,7 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
             self.Response = self._Response_Finite
 
         for x in range(0, self.BinData.size):
-            if rate_partials[x] != 0:
+            if (self.Exposure * rate_partials[x]) > self.BinData[x]:
                 result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
                     self.BinData[x] * log(self.Exposure * rate_partials[x]))
 
@@ -646,13 +646,14 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         if calculate_Q:
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
-                    self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
+                    if (self.Exposure * rate_partials[x]) > self.BinData[x]:
+                        self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
                                 args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
                                 epsrel=PRECISSION, epsabs=0)[0]
 
-                    result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
+                        result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
                             rate_partials[x]) * self.Exposure * self.curly_H_tab[x, v_dummy])
-                    self.Q_contrib[x, v_dummy] = result[x, v_dummy]
+                        self.Q_contrib[x, v_dummy] = result[x, v_dummy]
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
                              F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
             f_handle = open(file, 'wb')   # clear the file first
