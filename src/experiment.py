@@ -21,10 +21,13 @@ from globalfnc import *
 from formfactors_eft import *
 import numpy as np
 from numpy import pi
+from math import factorial
+from scipy.special import gamma, gammaincc
 from scipy import integrate, interpolate
 from scipy.optimize import fsolve, minimize
 # from scipy.special import lambertw
 from lambertw import *
+from math import log
 import parallel_map as par
 import matplotlib.pyplot as plt
 
@@ -432,6 +435,7 @@ class PoissonExperiment(Experiment):
         with open(output_file, 'ab') as f_handle:
             np.savetxt(f_handle, result)
         return result
+
 
 
 class GaussianExperiment(Experiment):

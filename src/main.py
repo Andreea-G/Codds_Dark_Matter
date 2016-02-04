@@ -35,7 +35,7 @@ def main():
 
     EHI_METHOD = {}
     # EHI_METHOD['ResponseTables'] = T
-    # EHI_METHOD['OptimalLikelihood'] = T
+    EHI_METHOD['OptimalLikelihood'] = T
     EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
     # EHI_METHOD['VminLogetaSamplingTable'] = T
@@ -84,7 +84,7 @@ def main():
 
     try:
         plt.close()
-        xlim = None
+        xlim = [0, 1000]
         # ylim = None
         ylim = [-30, -22]
         inp.RunProgram(EXPORT_PLOT=EXPORT_PLOT, xlim=xlim, ylim=ylim)

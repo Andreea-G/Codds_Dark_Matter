@@ -832,9 +832,6 @@ class RunProgram_Multiexperiment:
             elif multiexper_input[x] in GaussianLimit_exper:
                 print('GaussianExperiment')
                 class_name[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
-            elif multiexper_input[x] in MultiExper_Binned_exper_G:
-                print('Gaussian Binned Likelihood')
-                class_name[x] = MultExper_Binned_exper_G(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] in MultiExper_Binned_exper_P:
                 print('Poisson Binned Likelihood')
                 class_name[x] = MultExper_Binned_exper_P(multiexper_input[x], scattering_type, mPhi, quenching)

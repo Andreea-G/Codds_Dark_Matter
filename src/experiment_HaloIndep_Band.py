@@ -452,7 +452,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.q_tab = 2 * (self.xi_tab - self.h_sum_tab)
             self.h_sum_interp = unif.interp1d(self.vmin_linspace, self.h_sum_tab)
             self.q_interp = unif.interp1d(self.vmin_linspace, self.q_tab)
-
+            print('gamma', self.gamma_i[0], self.gamma_i[1], self.gamma_i[2])
             file = output_file_tail + "_HSumTable.dat"
             print(file)
             np.savetxt(file, self.h_sum_tab)
@@ -559,10 +559,9 @@ class Experiment_EHI(Experiment_HaloIndep):
                 Guess for the value of log(eta) in the minimization procedure.
         """
         self.ImportResponseTables(output_file_CDMS, plot=False)
-        vhold = np.array([])
-        for x in range(1, len(class_name) ):
-            vhold = np.append(vhold, class_name[x].Vmin_Sorted_List(mx, delta))
-        vmin_list = np.sort(np.append(self.vmin_sorted_list, vhold))
+       
+        
+        vmin_list = np.sort(self.vmin_sorted_list)
 
         vars_guess = np.append(vmin_list,
                                logeta_guess * np.ones(vmin_list.size))
@@ -590,16 +589,15 @@ class Experiment_EHI(Experiment_HaloIndep):
         np.random.seed(0)
         if USE_BASINHOPPING:
             minimizer_kwargs = {"method": "SLSQP", "constraints": constr, "args": (multiexper_input, class_name,
-                                                                mx, fp, fn, delta, constr_func,),
-                                                                 "options": {'ftol': 1e-6, 'maxiter': 20}}
+                                                                mx, fp, fn, delta, constr_func,)}
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
-                        minimizer_kwargs=minimizer_kwargs, niter=10, stepsize=.2)
+                        minimizer_kwargs=minimizer_kwargs, niter=30, stepsize=.2)
         else:
             optimum_log_likelihood = minimize(self.MultiExperimentMinusLogLikelihood,
                             vars_guess, args=(multiexper_input, class_name, mx, fp,
                                             fn, delta, constr_func), method='SLSQP',
                                             constraints=constr,
-                                            options = {'ftol': 1e-2, 'maxiter': 30})                                         
+                                            options = {'ftol': 1e-7, 'maxiter': 100})                                         
 
         print(optimum_log_likelihood)
         print("MinusLogLikelihood =", (self._MinusLogLikelihood(optimum_log_likelihood.x) +
@@ -629,8 +627,11 @@ class Experiment_EHI(Experiment_HaloIndep):
             xi_interp = unif.interp1d(class_name[0].vmin_linspace, class_name[0].xi_tab)
             h_sum_tab = np.sum([class_name[0].curly_H_tab[i] / class_name[0].gamma_i[i]
                                      for i in range(self.ERecoilList.size)], axis=0)         
+            print('gamma',class_name[0].gamma_i[0],class_name[0].gamma_i[1],class_name[0].gamma_i[2])
             q_sum = [None] * 1001
             q_sum[0] = 0.0
+            
+               
             for x in range(0, 1000):
                 for y in range(1, explen):
                     q_sum[x+1] = Q_contrib[y][:,x].sum()
