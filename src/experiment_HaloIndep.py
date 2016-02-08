@@ -316,14 +316,14 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         print('BinData', self.BinData)
         print('BinError', self.BinError)
 
-        
+
 #        If you want to calculate the limit as is done in fig 2 of arxiv 1409.5446v2
 #        self.BinData = module.BinData/module.Exposure
 #        self.chiSquared = chi_squared(self.BinData.size)
 #        self.Expected_limit = module.Expected_limit * self.BinSize
 
 
-        
+
     def _GaussianUpperBound(self, vmin, mx, fp, fn, delta):
         int_response = \
             np.array(list(map(lambda i, j:
@@ -539,7 +539,7 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
             self.Response = self._Response_Finite
 
         for x in range(0, self.BinData.size):
-            
+
             if (self.Exposure * rate_partials[x]) > self.BinData[x]:
                 result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
                                  self.BinData[x] * log(self.Exposure * rate_partials[x]))
@@ -547,7 +547,7 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
                 result += 2.0 * (self.BinData[x] + log(factorial(self.BinData[x])) -
                                  self.BinData[x] * log(self.BinData[x]))
 
-            
+
         return result
 
     def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
@@ -585,17 +585,13 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
                     if (self.Exposure * rate_partials[x]) > self.BinData[x]:
-                        background = 0.0
-                    else:
-                        background = self.BinData[x] - self.Exposure * rate_partials[x]
-
-                    self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
+                        self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
                                 args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
                                 epsrel=PRECISSION, epsabs=0)[0]
 
-                    result[x, v_dummy] = (2.0 * ((self.Exposure * rate_partials[x] + background - self.BinData[x]) /
-                            rate_partials[x] + background / self.Exposure) * self.curly_H_tab[x, v_dummy])
-                    self.Q_contrib[x, v_dummy] = result[x, v_dummy]
+                        result[x, v_dummy] = (2.0 * ((self.Exposure * rate_partials[x] - self.BinData[x]) /
+                            rate_partials[x]) * self.curly_H_tab[x, v_dummy])
+                        self.Q_contrib[x, v_dummy] = result[x, v_dummy]
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
                              F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
             f_handle = open(file, 'wb')   # clear the file first

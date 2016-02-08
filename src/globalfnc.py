@@ -250,7 +250,7 @@ def Output_file_name(exper_name, scattering_type, mPhi, mx, fp, fn, delta, HALO_
         output_file_no_extension += "_q" + str(quenching)
     print(output_file_no_extension)
     return output_file_no_extension
-    
+
 
 def MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
                      filename_tail, OUTPUT_MAIN_DIR, quenching=None):
@@ -270,7 +270,7 @@ def MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp,
             DM mass split.
         confidence_levels: list
             List of confidence levels.
-        
+
         filename_tail: string
             Tag to be added to the file name.
         OUTPUT_MAIN_DIR: string
@@ -283,7 +283,7 @@ def MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp,
     for x in range(0, multiexper_input.size):
          output_file_no_extension += multiexper_input[x]
 
- 
+
     output_file_no_extension += "_mx_" + str(mx) + "GeV"
 
     output_file_no_extension += FileNameTail(fp, fn, mPhi) + filename_tail

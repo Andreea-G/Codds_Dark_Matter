@@ -29,13 +29,14 @@ from scipy import interpolate
 from scipy.optimize import brentq, minimize, brute
 from basinhopping import *
 from globalfnc import *
+from custom_minimizer import CustomMinimize
 import matplotlib.pyplot as plt
 import os   # for speaking
 import parallel_map as par
 
 DEBUG = T
 DEBUG_FULL = F
-USE_BASINHOPPING = T
+USE_BASINHOPPING = F
 ADAPT_KWARGS = F
 ALLOW_MOVE = T
 
@@ -323,7 +324,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         if vminStar is None:
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
-        result = self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum()
+        result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
 
         if np.any(self.mu_BKG_i + mu_i < 0):
             raise ValueError
@@ -559,8 +560,8 @@ class Experiment_EHI(Experiment_HaloIndep):
                 Guess for the value of log(eta) in the minimization procedure.
         """
         self.ImportResponseTables(output_file_CDMS, plot=False)
-       
-        
+
+
         vmin_list = np.sort(self.vmin_sorted_list)
 
         vars_guess = np.append(vmin_list,
@@ -575,7 +576,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             constraints = np.concatenate([x[:x.size/2], vmin_max - x[:x.size/2],
                                           -x[x.size/2:],
                                           np.diff(x[:x.size/2]), np.diff(-x[x.size/2:])])
-            
+
             is_not_close = np.logical_not(
                 np.isclose(constraints, np.zeros_like(constraints), atol=1e-3))
             is_not_close[:3 * (x.size/2)] = T
@@ -593,57 +594,60 @@ class Experiment_EHI(Experiment_HaloIndep):
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
                         minimizer_kwargs=minimizer_kwargs, niter=30, stepsize=.2)
         else:
-            optimum_log_likelihood = minimize(self.MultiExperimentMinusLogLikelihood,
-                            vars_guess, args=(multiexper_input, class_name, mx, fp,
-                                            fn, delta, constr_func), method='SLSQP',
-                                            constraints=constr,
-                                            options = {'ftol': 1e-7, 'maxiter': 100})                                         
+
+            optimum_log_likelihood = CustomMinimize.Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
+#            optimum_log_likelihood = minimize(self.MultiExperimentMinusLogLikelihood,
+#                            vars_guess, args=(multiexper_input, class_name, mx, fp,
+#                                            fn, delta, constr_func), method='SLSQP',
+#                                            constraints=constr,
+#                                            options = {'ftol': 1e-7, 'maxiter': 100})
 
         print(optimum_log_likelihood)
-        print("MinusLogLikelihood =", (self._MinusLogLikelihood(optimum_log_likelihood.x) +
-                                            sum([class_name[y]._MinusLogLikelihood(optimum_log_likelihood.x,
+        fun_val = (self._MinusLogLikelihood(optimum_log_likelihood) +
+                                            sum([class_name[y]._MinusLogLikelihood(optimum_log_likelihood,
                                                  mx, fp, fn, delta)
-                                            for y in range(1, expernum)])))
+                                            for y in range(1, expernum)]))
+        print("MinusLogLikelihood =", )
         print("vars_guess =", repr(vars_guess))
         file = output_file_tail + "_GloballyOptimalLikelihood.dat"
         print(file)
-        np.savetxt(file, np.append([optimum_log_likelihood.fun],
-                                   optimum_log_likelihood.x))
+        np.savetxt(file, np.append([fun_val],
+                                   optimum_log_likelihood))
         os.system("say 'Finished finding optimum'")
         return
 
     def PlotQ_KKT_Multi(self, class_name, mx, fp, fn, delta, output_file, plot=False):
-        
+
         vminlist = class_name[0].optimal_vmin
         logetalist = class_name[0].optimal_logeta
         optimum_steps = np.concatenate((vminlist, logetalist), axis=1)
         print('optimum_steps', optimum_steps)
         explen = len(class_name)
-        if plot:   
+        if plot:
             Q_contrib = [None] * (explen)
             for x in range (1, explen):
                 Q_contrib[x] = class_name[x].KKT_Condition_Q(optimum_steps, mx, fp, fn, delta)
             class_name[0]._MinusLogLikelihood(optimum_steps)  # to get self.gamma_i
             xi_interp = unif.interp1d(class_name[0].vmin_linspace, class_name[0].xi_tab)
             h_sum_tab = np.sum([class_name[0].curly_H_tab[i] / class_name[0].gamma_i[i]
-                                     for i in range(self.ERecoilList.size)], axis=0)         
+                                     for i in range(self.ERecoilList.size)], axis=0)
             print('gamma',class_name[0].gamma_i[0],class_name[0].gamma_i[1],class_name[0].gamma_i[2])
             q_sum = [None] * 1001
             q_sum[0] = 0.0
-            
-               
+
+
             for x in range(0, 1000):
                 for y in range(1, explen):
                     q_sum[x+1] = Q_contrib[y][:,x].sum()
-                           
-            q_tab = 2.0 * (class_name[0].xi_tab - h_sum_tab) + q_sum 
-#            for x in range(0,1001):            
+
+            q_tab = 2.0 * (class_name[0].xi_tab - h_sum_tab) + q_sum
+#            for x in range(0,1001):
 #                print(h_sum_tab[x], ',')
             file = output_file + "KKT_Q.dat"
             f_handle = open(file, 'wb')   # clear the file first
             np.savetxt(f_handle, q_tab)
             f_handle.close()
-            
+
             self.q_interp = unif.interp1d(self.vmin_linspace, q_tab)
             self.h_sum_interp = unif.interp1d(self.vmin_linspace, h_sum_tab)
             self.PlotTable(xi_interp, dimension=0, plot_show=False)
@@ -653,7 +657,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.PlotTable(self.q_interp, dimension=0,
                            xlim=[0, 2000], ylim=[-2e24, 5e26],
                            title='q', show_zero_axis=True)
-            
+
         return
 
     def ImportMultiOptimalLikelihood(self, output_file_tail, output_file_CDMS, plot=False):
@@ -1076,8 +1080,9 @@ class Experiment_EHI(Experiment_HaloIndep):
                                      stepsize=0.05)
                 else:
                     constr_optimum_log_likelihood = \
-                        minimize(self.MultiExperimentMinusLogLikelihood, vars_guess,
-                                 args=args, constraints=constr, method=self.method)
+                        CustomMinimize.Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
+#                        minimize(self.MultiExperimentMinusLogLikelihood, vars_guess,
+#                                 args=args, constraints=constr, method=self.method)
                 constraints = constr_func(constr_optimum_log_likelihood.x)
                 is_not_close = np.logical_not(np.isclose(constraints,
                                                          np.zeros_like(constraints)))

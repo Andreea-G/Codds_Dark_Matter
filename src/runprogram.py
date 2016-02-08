@@ -872,9 +872,9 @@ class RunProgram_Multiexperiment:
                     class_name[0].ImportResponseTables(output_file_CDMS,
                                                     plot=False)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
-                    
+
                     class_name[0].PlotQ_KKT_Multi(class_name, mx, fp, fn, delta, output_file, True)
-                    
+
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
                     (vminStar, logetaStar) = (500, -26.5)

@@ -35,7 +35,7 @@ def main():
 
     EHI_METHOD = {}
     # EHI_METHOD['ResponseTables'] = T
-    EHI_METHOD['OptimalLikelihood'] = T
+    # EHI_METHOD['OptimalLikelihood'] = T
     EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
     # EHI_METHOD['VminLogetaSamplingTable'] = T
