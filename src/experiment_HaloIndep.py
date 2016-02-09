@@ -580,7 +580,7 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
 
         result = np.zeros((self.BinData.size, 1001))
         # TODO parallelize this section of the code
-        calculate_Q = True
+        calculate_Q = False
         if calculate_Q:
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
