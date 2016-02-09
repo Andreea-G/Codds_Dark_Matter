@@ -1026,6 +1026,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         attempts = 3
         np.random.seed(1)
         random_variation = 1e-5
+        expernum = multiexper_input.size
 
         if USE_BASINHOPPING:
             class TakeStep(object):
@@ -1084,9 +1085,13 @@ class Experiment_EHI(Experiment_HaloIndep):
                         CustomMinimize.Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
 #                        minimize(self.MultiExperimentMinusLogLikelihood, vars_guess,
 #                                 args=args, constraints=constr, method=self.method)
-                        
-                        likelihood_min = MultiExperimentMinusLogLikelihood(constr_optimum_log_likelihood, 
-                                        multiexper_input, class_name, mx, fp, fn, delta)
+                    
+                    likelihood_min = (self._MinusLogLikelihood(constr_optimum_log_likelihood, vminStar=vminStar,
+                                            logetaStar=logetaStar, vminStar_index=vminStar_index) +
+                                            sum([class_name[x]._MinusLogLikelihood(constr_optimum_log_likelihood,
+                                            mx, fp, fn, delta)
+                                            for x in range(1, expernum)]))
+                    
                     constraints = constr_func(constr_optimum_log_likelihood)
                 is_not_close = np.logical_not(np.isclose(constraints,
                                                          np.zeros_like(constraints)))
@@ -1219,14 +1224,14 @@ class Experiment_EHI(Experiment_HaloIndep):
 #                logetaStar_rand = constr_optimum_log_likelihood.minimizer.kwargs['args'][2]
                 constr_func = ConstraintsFunction(vminStar_rand, logetaStar_rand,
                                                   vminStar_index)
-                constraints = constr_func(constr_optimum_log_likelihood.[0])
+                constraints = constr_func(constr_optimum_log_likelihood[0])
                 is_not_close = np.logical_not(np.isclose(constraints,
                                                          np.zeros_like(constraints)))
                 constr_not_valid = np.logical_and(constraints < 0, is_not_close)
                 sol_not_found = np.any(constr_not_valid)
                 print("random vminStar =", vminStar_rand)
                 print("random logetaStar =", logetaStar_rand)
-                print("x =", constr_optimum_log_likelihood.[0])
+                print("x =", constr_optimum_log_likelihood[0])
                 print("constraints =", constraints)
                 print("is_not_close =", is_not_close)
                 print("constr_not_valid =", constr_not_valid)
