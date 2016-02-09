@@ -1158,8 +1158,8 @@ class Experiment_EHI(Experiment_HaloIndep):
             optim_logL = 10**6
             pass
         else:
-            optim_logL = likelihood_min[1]
-            original_optimum = constr_optimum_log_likelihood
+            optim_logL = constr_optimum_log_likelihood[1]
+            original_optimum = constr_optimum_log_likelihood[0]
 
         vminStar_index_original = vminStar_index
         index = vminStar_index
