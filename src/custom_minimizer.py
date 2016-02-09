@@ -181,7 +181,7 @@ class CustomMinimize():
                 logeta_list = logeta_list_new
             ni += 1
 
-        return np.concatenate([vmin_list, logeta_list])
+        return np.concatenate([vmin_list_new, logeta_list_new])
 
 
 
