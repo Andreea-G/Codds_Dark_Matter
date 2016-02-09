@@ -129,6 +129,7 @@ class Experiment_HaloIndep(Experiment):
             branches = [1, -1]
         r_list_sum = 0
         for sign in branches:
+            
             ER = ERecoilBranch(vmin, self.mT, mx, delta, sign)
             q = self.QuenchingFactor(ER)
             qER = q * ER

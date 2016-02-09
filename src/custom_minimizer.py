@@ -29,7 +29,7 @@ from basinhopping import *
 from scipy.optimize import brentq, minimize
 import collections
 
-__all__ = ['Custom_SelfConsistent_Minimization']
+
 
 
 
@@ -48,20 +48,19 @@ TODO Generalize to: more than 2 experiments, different likelihood functions, lar
 
 
 
-class CustomMinimize():
-    def __init__(self, class_names):
-        self.class_names = class_names
+#class CustomMinimize():
+#    def __init__(self, class_names):
+#        self.class_names = class_names
 
-    def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
+def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
                                            bh_iter = 15, vmin_err = 7.0, logeta_err = 0.01,
                                            vmin_step = 15.0):
 
-
+        
         vmin_list = x0[:3]
         logeta_list = x0[3:]
         vmin_listw0 = np.insert(vmin_list, 0, 0)
         rate_partials = [None] * (class_name[1].BinEdges_left.size)
-
         script_N_a = class_name[0].IntegratedResponseTable(vmin_listw0)
         script_M_a = class_name[0].VminIntegratedResponseTable(vmin_listw0)
 
@@ -102,6 +101,7 @@ class CustomMinimize():
 
         constr = ({'type': 'ineq', 'fun': constr_func_logeta})
         constr_vmin = ({'type': 'ineq', 'fun': constr_func_vmin})
+
 
         def optimize_logeta(logeta_list, class_name, script_N_a, script_M_a,
                     rate_partials):

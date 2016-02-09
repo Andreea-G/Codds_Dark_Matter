@@ -37,9 +37,9 @@ def main():
     # EHI_METHOD['ResponseTables'] = T
     # EHI_METHOD['OptimalLikelihood'] = T
     # EHI_METHOD['ImportOptimalLikelihood'] = T
-    EHI_METHOD['ConstrainedOptimalLikelihood'] = T
-    # EHI_METHOD['VminLogetaSamplingTable'] = T
-    # EHI_METHOD['LogLikelihoodList'] = T
+    # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
+    EHI_METHOD['VminLogetaSamplingTable'] = T
+    EHI_METHOD['LogLikelihoodList'] = T
     # EHI_METHOD['ConfidenceBand'] = T
     # EHI_METHOD['ConfidenceBandPlot'] = T
 

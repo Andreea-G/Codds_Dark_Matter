@@ -925,6 +925,7 @@ class RunProgram_Multiexperiment:
                           vmin_Band_numsteps)
                     print("logeta_EHIBand_percent_range =", logeta_percent_minus,
                           logeta_percent_plus, logeta_num_steps)
+                    class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
                     class_name[0].MultiExperLogLikelihoodList(output_file,
                                                  multiexper_input, class_name, mx, fp,
                                                  fn, delta, scattering_type, mPhi, quenching,
