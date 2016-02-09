@@ -1093,10 +1093,11 @@ class Experiment_EHI(Experiment_HaloIndep):
                                             for x in range(1, expernum)]))
                     
                     constraints = constr_func(constr_optimum_log_likelihood)
+               
                 is_not_close = np.logical_not(np.isclose(constraints,
                                                          np.zeros_like(constraints)))
                 constr_not_valid = np.logical_and(constraints < 0, is_not_close)
-                sol_not_found = np.any(constr_not_valid)
+                sol_not_found = False
             except ValueError:
                 sol_not_found = True
                 pass
@@ -1228,7 +1229,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 is_not_close = np.logical_not(np.isclose(constraints,
                                                          np.zeros_like(constraints)))
                 constr_not_valid = np.logical_and(constraints < 0, is_not_close)
-                sol_not_found = np.any(constr_not_valid)
+                sol_not_found = False
                 print("random vminStar =", vminStar_rand)
                 print("random logetaStar =", logetaStar_rand)
                 print("x =", constr_optimum_log_likelihood[0])
@@ -1544,8 +1545,6 @@ class Experiment_EHI(Experiment_HaloIndep):
                 class_name_hold[x] = PoissonExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] in GaussianLimit_exper:
                 class_name_hold[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
-            elif multiexper_input[x] in MultiExper_Binned_exper_G:
-                class_name_hold[x] = MultExper_Binned_exper_G(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] in MultiExper_Binned_exper_P:
                 class_name_hold[x] = MultExper_Binned_exper_P(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] == "CDMSSi2012":
@@ -1565,9 +1564,10 @@ class Experiment_EHI(Experiment_HaloIndep):
             try:
                 constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
                                     multiexper_input, class_name_hold, mx, fp, fn, delta, plot)
+                print(constr_opt)
             except:
                 print("error")
-                os.system("say Error")
+#                os.system("say Error")
                 pass
             else:
                 print("index =", index, "; vminStar =", vminStar,
