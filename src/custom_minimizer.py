@@ -57,8 +57,8 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
                                            vmin_step = 15.0):
 
         
-        vmin_list = x0[:3]
-        logeta_list = x0[3:]
+        vmin_list = x0[: len(x0)/2]
+        logeta_list = x0[len(x0)/2 :]
         vmin_listw0 = np.insert(vmin_list, 0, 0)
         rate_partials = [None] * (class_name[1].BinEdges_left.size)
         script_N_a = class_name[0].IntegratedResponseTable(vmin_listw0)

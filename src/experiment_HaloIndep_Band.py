@@ -1019,106 +1019,26 @@ class Experiment_EHI(Experiment_HaloIndep):
         logeta_guess = np.append(logeta_guess_left, logeta_guess_right)
         vars_guess = np.append(vmin_guess, logeta_guess)
 
-        constr_func = ConstraintsFunction(vminStar, logetaStar, vminStar_index)
-        constr = ({'type': 'ineq', 'fun': constr_func})
-        args = (multiexper_input, class_name, mx, fp, fn, delta, constr_func,
-                vminStar, logetaStar, vminStar_index)
+#        constr_func = ConstraintsFunction(vminStar, logetaStar, vminStar_index)
 
-        sol_not_found = True
-        attempts = 3
-        np.random.seed(1)
-        random_variation = 1e-5
-        expernum = multiexper_input.size
-        
-        if USE_BASINHOPPING:
-            class TakeStep(object):
-                def __init__(self, stepsize=0.1):
-                    pass
-                    self.stepsize = stepsize
 
-                def __call__(self, x):
-                    x[:x.size/2] += np.random.uniform(-5. * self.stepsize,
-                                                      5. * self.stepsize,
-                                                      x[x.size/2:].shape)
-                    x[x.size/2:] += np.random.uniform(-self.stepsize,
-                                                      self.stepsize, x[x.size/2:].shape)
-                    return x
-            take_step = TakeStep()
-
-            class AdaptiveKwargs(object):
-                def __init__(self, kwargs, random_variation=random_variation):
-                    self.kwargs = kwargs
-                    self.random_variation = random_variation
-
-                def __call__(self):
-                    new_kwargs = {}
-                    random_factor_vminStar = \
-                        (1 + self.random_variation * np.random.uniform(-1, 1))
-                    random_factor_logetaStar = \
-                        (1 + self.random_variation * np.random.uniform(-1, 1))
-                    constr_func_args = (self.kwargs['args'][1] * random_factor_vminStar,
-                                        self.kwargs['args'][2] * random_factor_logetaStar,
-                                        self.kwargs['args'][3])
-                    constr_func = ConstraintsFunction(*constr_func_args)
-                    new_kwargs['args'] = (constr_func,) + constr_func_args
-                    new_kwargs['constraints'] = ({'type': 'ineq', 'fun': constr_func})
-                    if 'method' in self.kwargs:
-                        new_kwargs['method'] = self.kwargs['method']
-                    return new_kwargs
-
-            minimizer_kwargs = {"constraints": constr, "args": args, "method": self.method}
-            if ADAPT_KWARGS:
-                adapt_kwargs = AdaptiveKwargs(minimizer_kwargs, random_variation)
-            else:
-                adapt_kwargs = None
-
-        while sol_not_found and attempts > 0:
-            constr_optimum_log_likelihood = \
+        constr_optimum_log_likelihood = \
                         Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
-#                        CustomMinimize.Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
-                       
-            
-
+        expernum = multiexper_input.size
+        likelihood_min = (self._MinusLogLikelihood(constr_optimum_log_likelihood, vminStar,
+                                            logetaStar, vminStar_index) +
+                                            sum([class_name[x]._MinusLogLikelihood(constr_optimum_log_likelihood,
+                                            mx, fp, fn, delta, vminStar,
+                                            logetaStar, vminStar_index)
+                                            for x in range(1, expernum)]))
                 
-#                    likelihood_min = (self._MinusLogLikelihood(constr_optimum_log_likelihood, vminStar,
-#                                            logetaStar, vminStar_index) +
-#                                            sum([class_name[x]._MinusLogLikelihood(constr_optimum_log_likelihood,
-#                                            mx, fp, fn, delta)
-#                                            for x in range(1, expernum)]))
-                
-                   
-               
-
-#                sol_not_found = False
-#            except ValueError:
-#                sol_not_found = True
-#                pass
-
-            attempts -= 1
-            args = (constr_func,
-                    vminStar * (1 + random_variation * np.random.uniform(-1, 1)),
-                    logetaStar * (1 + random_variation * np.random.uniform(-1, 1)),
-                    vminStar_index)
-            if USE_BASINHOPPING:
-                minimizer_kwargs = {"constraints": constr, "args": args}
-
-            if DEBUG and sol_not_found:
-                print(attempts, "attempts left! ####################################" +
-                      "################################################################")
-                print("sol_not_found =", sol_not_found)
-
-        if sol_not_found:
-            if DEBUG:
-                print("ValueError: sol not found")
-            raise ValueError
-
         if DEBUG:
             print(constr_optimum_log_likelihood)
 #            print("kwargs =", constr_optimum_log_likelihood.minimizer.kwargs)
 #            print("args =", constr_optimum_log_likelihood.minimizer.kwargs['args'])
             print("optimum_logL =", self.optimal_logL)
-            print("constraints=", repr(constraints))
-            print("constr_not_valid =", repr(constr_not_valid))
+#            print("constraints=", repr(constraints))
+#            print("constr_not_valid =", repr(constr_not_valid))
             print("vars_guess =", repr(vars_guess))
             print("optimum_logL =", self.optimal_logL)
             print("vminStar_index =", vminStar_index)
@@ -1231,10 +1151,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 print("random vminStar =", vminStar_rand)
                 print("random logetaStar =", logetaStar_rand)
                 print("x =", constr_optimum_log_likelihood[0])
-                print("constraints =", constraints)
-                print("is_not_close =", is_not_close)
-                print("constr_not_valid =", constr_not_valid)
-                print("sol_not_found =", sol_not_found)
+
             except:
                 print("Error")
                 pass
