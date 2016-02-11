@@ -23,7 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import division, print_function, absolute_import
 
 import numpy as np
-from numpy import cos, sin
 from math import factorial, log
 from basinhopping import *
 from scipy.optimize import brentq, minimize
@@ -48,22 +47,34 @@ TODO Generalize to: more than 2 experiments, different likelihood functions, lar
 
 
 
-#class CustomMinimize():
-#    def __init__(self, class_names):
-#        self.class_names = class_names
 
-def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
-                                           bh_iter = 15, vmin_err = 7.0, logeta_err = 0.01,
+
+def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminStar=None, logetaStar=None,
+                                          index=None, bh_iter = 15, vmin_err = 7.0, logeta_err = 0.01,
                                            vmin_step = 15.0):
 
+ 
         
-        vmin_list = x0[: len(x0)/2]
-        logeta_list = x0[len(x0)/2 :]
+        if vminStar is not None:
+            vmin_list_reduced = x0[: len(x0)/2]
+            vmin_list = np.sort(np.append(vmin_list_reduced, vminStar))
+            
+            index_hold = np.argwhere(vmin_list == vminStar)[0,0]
+            logeta_list_reduced = x0[len(x0)/2 :]
+            logeta_list = np.insert(logeta_list_reduced, index_hold, logetaStar)
+        else:    
+            vmin_list = x0[: len(x0)/2]
+            logeta_list = x0[len(x0)/2 :]
+            logeta_list_reduced = logeta_list
+            vmin_list_reduced = vmin_list
+            index_hold = None
+        
         vmin_listw0 = np.insert(vmin_list, 0, 0)
         rate_partials = [None] * (class_name[1].BinEdges_left.size)
         script_N_a = class_name[0].IntegratedResponseTable(vmin_listw0)
         script_M_a = class_name[0].VminIntegratedResponseTable(vmin_listw0)
 
+        
 
         for x in range(0, class_name[1].BinEdges_left.size):
             resp_integr = class_name[1].IntegratedResponseTable(vmin_listw0,
@@ -72,7 +83,10 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
             rate_partials[x] = resp_integr
 
         def constr_func_logeta(x):
-
+            
+            if logetaStar is not None:
+                x = np.insert(x, index_hold, logetaStar)
+                        
             constraints = np.concatenate([-x, np.diff(-x)])
 
             is_not_close = np.logical_not(
@@ -86,7 +100,10 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
             return constr
 
         def constr_func_vmin(x):
-
+            
+            if vminStar is not None:
+                x = np.insert(x, index_hold, vminStar)
+                
             constraints = np.concatenate([x, np.diff(x)])
 
             is_not_close = np.logical_not(
@@ -104,7 +121,11 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
 
 
         def optimize_logeta(logeta_list, class_name, script_N_a, script_M_a,
-                    rate_partials):
+                    rate_partials, logetaStar=None, index_hold=None):
+            
+            if logetaStar is not None:
+                logeta_list = np.insert(logeta_list, index_hold, logetaStar)
+
 
             optimize_func = (2.0 * (class_name[0].NBKG + class_name[0].Exposure * np.dot(10**logeta_list, script_N_a) -
                 np.log(class_name[0].mu_BKG_i + class_name[0].Exposure * np.dot(script_M_a, 10**logeta_list)).sum()))
@@ -120,11 +141,15 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
 
             return optimize_func
 
-        def minimize_over_vmin(vmin_list, logeta_list, class_name, mx, fp, fn, delta):
+        def minimize_over_vmin(vmin_list, logeta_list, class_name, mx, fp, fn, delta, vminStar=None):
 
+            if vminStar is not None:
+                vmin_list = np.sort(np.append(vmin_list, vminStar))
+                
             vmin_listw0 = np.insert(vmin_list, 0, 0)
             rate_partials = [None] * (class_name[1].BinEdges_left.size)
-
+            
+            
             script_N_a = class_name[0].IntegratedResponseTable(vmin_listw0)
             script_M_a = class_name[0].VminIntegratedResponseTable(vmin_listw0)
 
@@ -147,21 +172,47 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
 
         ni = 0
         check = False
+        logeta_bnd = (-35.0, -24.0)
+        bnd = [logeta_bnd] * vmin_list_reduced.size
 
-        while ni < 15 and not check:
-            mloglike_min = minimize(optimize_logeta, logeta_list, args=(class_name, script_N_a, script_M_a,
-                                rate_partials), method = 'SLSQP',
-                                bounds = [(-35.0, -24.0),(-35.0, -24.0),(-35.0, -24.0)], constraints=constr)
-            logeta_list_new = mloglike_min.x
+        vmin_bnd = (0, 700)
+        bnd_vmin = [vmin_bnd] * vmin_list_reduced.size
+        
+        while ni < 8 and not check:
+            mloglike_min = minimize(optimize_logeta, logeta_list_reduced, args=(class_name, script_N_a, script_M_a,
+                                rate_partials, logetaStar, index_hold), method = 'SLSQP',
+                                bounds = bnd, constraints=constr)
+            logeta_list_new_reduced = mloglike_min.x
+            
+            if logetaStar is not None:
+                logeta_list_new = np.insert(logeta_list_new_reduced, index_hold, logetaStar)
+            else:
+                logeta_list_new = logeta_list_new_reduced
 
-            minimizer_kwargs = {"method": "SLSQP", "constraints": constr_vmin,
-                            "args": (logeta_list_new, class_name, mx, fp, fn, delta),
+            minimizer_kwargs = {"method": "SLSQP", "bounds": bnd_vmin, "constraints": constr_vmin,
+                            "args": (logeta_list_new, class_name, mx, fp, fn, delta, vminStar),
                             "options": {'ftol': 1.0}}
-            vminloglike_min = basinhopping(minimize_over_vmin, vmin_list,
-                        minimizer_kwargs=minimizer_kwargs, niter=bh_iter, stepsize=vmin_step)
-
-            vmin_list_new = vminloglike_min.x
-
+            
+#            vminloglike_min = basinhopping(minimize_over_vmin, vmin_list_reduced,
+#                       minimizer_kwargs=minimizer_kwargs, niter=bh_iter, stepsize=vmin_step)
+            vminloglike_min = minimize(minimize_over_vmin, vmin_list_reduced, args=(logeta_list_new, class_name, mx, fp, fn, delta, vminStar),
+                                method = 'SLSQP', bounds = bnd_vmin, constraints=constr_vmin)
+            vmin_list_new_reduced = vminloglike_min.x
+            
+            if vminStar is not None:
+                vmin_list_new = np.sort(np.append(vmin_list_new_reduced, vminStar))
+            else:
+                vmin_list_new = vmin_list_new_reduced
+            
+            vmin_listw0_new = np.insert(vmin_list_new, 0, 0)
+            script_N_a = class_name[0].IntegratedResponseTable(vmin_listw0_new)
+            script_M_a = class_name[0].VminIntegratedResponseTable(vmin_listw0_new)
+            for x in range(0, class_name[1].BinEdges_left.size):
+                resp_integr = class_name[1].IntegratedResponseTable(vmin_listw0_new,
+                          class_name[1].BinEdges_left[x], class_name[1].BinEdges_right[x], mx, fp, fn, delta)
+                rate_partials[x] = resp_integr
+                
+          
             vmin_check = np.abs(np.asarray(vmin_list_new) - np.asarray(vmin_list))
             logeta_check = np.abs(np.asarray(logeta_list_new) - np.asarray(logeta_list))
 
@@ -180,6 +231,9 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
                 vmin_list = vmin_list_new
                 logeta_list = logeta_list_new
             ni += 1
+        
+        if not check:
+            print('Potential issue with convergence...')
 
         return [np.concatenate([vmin_list_new, logeta_list_new]), vminloglike_min.fun]
 
