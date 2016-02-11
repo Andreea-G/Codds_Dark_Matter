@@ -181,7 +181,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta,
                 logeta_list = logeta_list_new
             ni += 1
 
-        return np.concatenate([vmin_list_new, logeta_list_new])
+        return [np.concatenate([vmin_list_new, logeta_list_new]), vminloglike_min.fun]
 
 
 
