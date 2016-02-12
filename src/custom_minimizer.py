@@ -103,6 +103,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             
             if vminStar is not None:
                 x = np.insert(x, index_hold, vminStar)
+#                x = np.sort(np.append(x, vminStar))
                 
             constraints = np.concatenate([x, np.diff(x)])
 
@@ -189,9 +190,9 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             else:
                 logeta_list_new = logeta_list_new_reduced
 
-            minimizer_kwargs = {"method": "SLSQP", "bounds": bnd_vmin, "constraints": constr_vmin,
-                            "args": (logeta_list_new, class_name, mx, fp, fn, delta, vminStar),
-                            "options": {'ftol': 1.0}}
+#            minimizer_kwargs = {"method": "SLSQP", "bounds": bnd_vmin, "constraints": constr_vmin,
+#                            "args": (logeta_list_new, class_name, mx, fp, fn, delta, vminStar),
+#                            "options": {'ftol': 1.0}}
             
 #            vminloglike_min = basinhopping(minimize_over_vmin, vmin_list_reduced,
 #                       minimizer_kwargs=minimizer_kwargs, niter=bh_iter, stepsize=vmin_step)

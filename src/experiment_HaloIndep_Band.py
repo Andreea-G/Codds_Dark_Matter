@@ -205,7 +205,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         file = output_file_tail + "_XiTable.dat"
         print(file)
         np.savetxt(file, self.xi_tab)
-        os.system("say Finished response tables.")
+#        os.system("say Finished response tables.")
         return
 
     def PlotTable(self, func, dimension=0, xlim=None, ylim=None,
@@ -424,7 +424,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         print(file)
         np.savetxt(file, np.append([optimum_log_likelihood.fun],
                                    optimum_log_likelihood.x))
-        os.system("say 'Finished finding optimum'")
+#        os.system("say 'Finished finding optimum'")
         return
 
     def ImportOptimalLikelihood(self, output_file_tail, plot=False):
@@ -608,7 +608,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         print(file)
         np.savetxt(file, np.append([fun_val],
                                    optimum_log_likelihood))
-        os.system("say 'Finished finding optimum'")
+#        os.system("say 'Finished finding optimum'")
         return
 
     def PlotQ_KKT_Multi(self, class_name, mx, fp, fn, delta, output_file, plot=False):
@@ -902,7 +902,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 pass
             else:
                 if new_optimum.fun < optim_logL:
-                    os.system("say Moved left")
+#                    os.system("say Moved left")
                     print("Moved left, index is now", index)
                     print("############################################################" +
                           "############################################################")
@@ -919,7 +919,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 pass
             else:
                 if new_optimum.fun < optim_logL:
-                    os.system("say Moved right")
+#                    os.system("say Moved right")
                     print("Moved right, index is now", index)
                     print("############################################################" +
                           "############################################################")
@@ -970,16 +970,17 @@ class Experiment_EHI(Experiment_HaloIndep):
             except:
                 print("Error")
                 pass
-            os.system("say 'Finished plot'")
-            self.PlotConstrainedOptimum(vminStar_rand, logetaStar_rand, vminStar_index,
-                                        xlim_percentage=(0., 1.1),
-                                        ylim_percentage=(1.2, 0.8))
+#            os.system("say 'Finished plot'")
+#            self.PlotConstrainedOptimum(vminStar_rand, logetaStar_rand, vminStar_index,
+#                                        xlim_percentage=(0., 1.1),
+#                                        ylim_percentage=(1.2, 0.8))
         return self.constr_optimal_logl
 
 
 
     def _MultiExperConstrainedOptimalLikelihood(self, vminStar, logetaStar, vminStar_index,
-                                                multiexper_input, class_name, mx, fp, fn, delta):
+                                                multiexper_input, class_name,
+                                                mx, fp, fn, delta):
         """ Finds the constrained minimum MinusLogLikelihood for given vminStar,
         logetaStar and vminStar_index.
         Input:
@@ -1070,7 +1071,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                                             multiexper_input, class_name, mx, fp, fn, delta)
 
             if new_optimum[1] < optim_logL:
-                    os.system("say Moved left")
+#                    os.system("say Moved left")
                     print("Moved left, index is now", index)
                     print("############################################################" +
                           "############################################################")
@@ -1084,7 +1085,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                                            index, multiexper_input, class_name, mx, fp, fn, delta)
 
             if new_optimum[1] < optim_logL:
-                    os.system("say Moved right")
+#                    os.system("say Moved right")
                     print("Moved right, index is now", index)
                     print("############################################################" +
                           "############################################################")
@@ -1383,7 +1384,8 @@ class Experiment_EHI(Experiment_HaloIndep):
         return
 
     def GetLikelihoodTableMultiExper(self, index, output_file_tail, logeta_index_range, extra_tail,
-                            multiexper_input, class_name, mx, fp, fn, delta, scattering_type,
+                            multiexper_input, #class_name,
+                            mx, fp, fn, delta, scattering_type,
                             mPhi, quenching):
         """ Prints to file lists of the form [logetaStar_ij, logL_ij] needed for
         1D interpolation, where i is the index corresponding to vminStar_i and j is
@@ -1403,7 +1405,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         
         print('index =', index)
         print('output_file_tail =', output_file_tail)
-        
+
         
         vminStar = self.vmin_logeta_sampling_table[index, 0, 0]
         logetaStar_list = self.vmin_logeta_sampling_table[index, :, 1]
@@ -1419,7 +1421,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         for logetaStar in logetaStar_list:
             constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
-                                    multiexper_input, class_name, mx, fp, fn, delta, plot)
+                                    multiexper_input, self.class_name, mx, fp, fn, delta, plot)
                 
             print("index =", index, "; vminStar =", vminStar,
                       "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
@@ -1499,6 +1501,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             except TypeError:
                 vmin_index_list = range(vmin_index_list,
                                         self.vmin_logeta_sampling_table.shape[0])
+        self.class_name = class_name
         print("vmin_index_list =", vmin_index_list)
         print("logeta_index_range =", logeta_index_range)
         kwargs = ({'index': index,
@@ -1506,7 +1509,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                    'logeta_index_range': logeta_index_range,
                    'extra_tail': extra_tail,
                    'multiexper_input': multiexper_input,
-                   'class_name': class_name,
+#                   'class_name': class_name,
                    'scattering_type': scattering_type,
                    'mPhi': mPhi,
                    'quenching': quenching,
@@ -1516,11 +1519,11 @@ class Experiment_EHI(Experiment_HaloIndep):
                    'delta': delta}
                   for index in vmin_index_list)
 
-#        par.parmap(self.GetLikelihoodTableMultiExper, kwargs, processes)
-        for y in vmin_index_list:     
-            self.GetLikelihoodTableMultiExper(y, output_file_tail, logeta_index_range,
-                            extra_tail, multiexper_input, class_name, mx, fp, fn, delta,
-                            scattering_type, mPhi, quenching,)
+        par.parmap(self.GetLikelihoodTableMultiExper, kwargs, processes)
+#        for y in vmin_index_list:     
+#            self.GetLikelihoodTableMultiExper(y, output_file_tail, logeta_index_range,
+#                            extra_tail, multiexper_input, class_name, mx, fp, fn, delta,
+#                            scattering_type, mPhi, quenching,)
         return
 
     def _logL_interp(vars_list, constraints):
