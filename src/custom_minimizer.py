@@ -36,7 +36,7 @@ import collections
 """
 The general idea here is this:
 Can I create a minimization procedure that is more efficient than that standard basinhopping (and finds the actual minimium).
-To do this, I plan on picking my value of vmin, minimizing wrt to the value of eta, then basinhopping at a fixed
+To do this, I plan on picking my value of vmin, minimizing wrt to the value of eta, then minimizing at a fixed
 eta across different vmin, then reminimize wrt to eta, etc.
 
 Do this procedure until a self consistent minimum is found. I will start by writing this code for CDMS-Si and 1 other
@@ -50,8 +50,7 @@ TODO Generalize to: more than 2 experiments, different likelihood functions, lar
 
 
 def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminStar=None, logetaStar=None,
-                                          index=None, bh_iter = 15, vmin_err = 7.0, logeta_err = 0.01,
-                                           vmin_step = 15.0):
+                                          index=None, vmin_err = 7.0, logeta_err = 0.01):
 
  
         
@@ -90,7 +89,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             constraints = np.concatenate([-x, np.diff(-x)])
 
             is_not_close = np.logical_not(
-                np.isclose(constraints, np.zeros_like(constraints), atol=1e-3))
+                np.isclose(constraints, np.zeros_like(constraints), atol=1e-4))
             is_not_close[x.size] = True
             constr = np.where(is_not_close, constraints, np.abs(constraints))
 
@@ -103,12 +102,12 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             
             if vminStar is not None:
                 x = np.insert(x, index_hold, vminStar)
-#                x = np.sort(np.append(x, vminStar))
                 
             constraints = np.concatenate([x, np.diff(x)])
+           
 
             is_not_close = np.logical_not(
-                np.isclose(constraints, np.zeros_like(constraints), atol=1e-3))
+                np.isclose(constraints, np.zeros_like(constraints), atol=1e-4))
             is_not_close[x.size] = True
             constr = np.where(is_not_close, constraints, np.abs(constraints))
 
@@ -176,10 +175,10 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
         logeta_bnd = (-35.0, -24.0)
         bnd = [logeta_bnd] * vmin_list_reduced.size
 
-        vmin_bnd = (0, 700)
+        vmin_bnd = (0, 1000)
         bnd_vmin = [vmin_bnd] * vmin_list_reduced.size
         
-        while ni < 8 and not check:
+        while ni < 15 and not check:
             mloglike_min = minimize(optimize_logeta, logeta_list_reduced, args=(class_name, script_N_a, script_M_a,
                                 rate_partials, logetaStar, index_hold), method = 'SLSQP',
                                 bounds = bnd, constraints=constr)
@@ -190,12 +189,6 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             else:
                 logeta_list_new = logeta_list_new_reduced
 
-#            minimizer_kwargs = {"method": "SLSQP", "bounds": bnd_vmin, "constraints": constr_vmin,
-#                            "args": (logeta_list_new, class_name, mx, fp, fn, delta, vminStar),
-#                            "options": {'ftol': 1.0}}
-            
-#            vminloglike_min = basinhopping(minimize_over_vmin, vmin_list_reduced,
-#                       minimizer_kwargs=minimizer_kwargs, niter=bh_iter, stepsize=vmin_step)
             vminloglike_min = minimize(minimize_over_vmin, vmin_list_reduced, args=(logeta_list_new, class_name, mx, fp, fn, delta, vminStar),
                                 method = 'SLSQP', bounds = bnd_vmin, constraints=constr_vmin)
             vmin_list_new_reduced = vminloglike_min.x

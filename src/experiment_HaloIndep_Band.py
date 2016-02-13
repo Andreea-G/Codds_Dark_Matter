@@ -1024,8 +1024,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         
         constr_optimum_log_likelihood = \
                         Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta,
-                        vminStar, logetaStar, vminStar_index, bh_iter = 5, vmin_err = 8.0, logeta_err = 0.02,
-                                           vmin_step = 10.0)
+                        vminStar, logetaStar, vminStar_index, vmin_err = 9.0, logeta_err = 0.02)
 
         if DEBUG:
             print(constr_optimum_log_likelihood)
@@ -1102,7 +1101,7 @@ class Experiment_EHI(Experiment_HaloIndep):
  
         print("vminStar =", vminStar)
         print("logetaStar =", logetaStar)
-        print("vminStar_index =", vminStar_index)
+#        print("vminStar_index =", vminStar_index)
         print("original:", original_optimum)
         print("new:", constr_optimum_log_likelihood)
 
@@ -1418,21 +1417,24 @@ class Experiment_EHI(Experiment_HaloIndep):
         print("vminStar =", vminStar)
         table = np.empty((0, 2))
 
+        temp_file = output_file_tail + "_" + str(index) + \
+                "_LogetaStarLogLikelihoodList" + extra_tail + ".dat"
 
-        for logetaStar in logetaStar_list:
-            constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+        if os.path.exists(temp_file):
+            pass
+        else:
+            for logetaStar in logetaStar_list:
+                constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
                                     multiexper_input, self.class_name, mx, fp, fn, delta, plot)
                 
-            print("index =", index, "; vminStar =", vminStar,
+                print("index =", index, "; vminStar =", vminStar,
                       "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
-            table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+                table = np.append(table, [[logetaStar, constr_opt]], axis=0)
 #                table = np.append(table, [logetaStar])
-        print("vminStar =", vminStar, "; table =", table)
-        if True:
-            temp_file = output_file_tail + "_" + str(index) + \
-                "_LogetaStarLogLikelihoodList" + extra_tail + ".dat"
-            print(temp_file)
-            np.savetxt(temp_file, table)
+                print("vminStar =", vminStar, "; table =", table)
+                
+                print(temp_file)
+                np.savetxt(temp_file, table)
         return
 
 
@@ -1509,7 +1511,6 @@ class Experiment_EHI(Experiment_HaloIndep):
                    'logeta_index_range': logeta_index_range,
                    'extra_tail': extra_tail,
                    'multiexper_input': multiexper_input,
-#                   'class_name': class_name,
                    'scattering_type': scattering_type,
                    'mPhi': mPhi,
                    'quenching': quenching,
