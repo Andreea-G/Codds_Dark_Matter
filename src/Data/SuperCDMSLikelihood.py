@@ -92,4 +92,6 @@ BinEdges_left = np.array([1.64])
 BinEdges_right = np.array([10.0])
 BinData = np.array([11])
 BinError = np.array([1.0])
-BinBkgr = []
+BinBkgr = np.array([6.56]) # +/- (1.39, 1.17)
+BinExposure=np.array([577.])
+Expected_limit = 1.76

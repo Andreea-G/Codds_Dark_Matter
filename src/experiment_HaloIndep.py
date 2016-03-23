@@ -288,6 +288,9 @@ class PoissonExperiment_HaloIndep(Experiment_HaloIndep):
 
 
 
+
+
+
 class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
     """ Class for experiments with Gaussian analysis.
     Input:
@@ -478,28 +481,42 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         self.BinEdges_left = module.BinEdges_left
         self.BinEdges_right = module.BinEdges_right
         self.BinData = module.BinData
-        self.BinError = module.BinError
         self.BinSize = module.BinSize
+        self.BinBkgr = module.BinBkgr
+        self.BinExposure=module.BinExposure
 
-#        If you want to calculate the limit as is done in fig 2 of arxiv 1409.5446v2
-#        self.BinData = module.BinData/module.Exposure
-#        self.chiSquared = chi_squared(self.BinData.size)
-#        self.Expected_limit = module.Expected_limit * self.BinSize
-
-
-#        self.bkgr = module.BinBkgr
-#       if quenching_factor is not None:
-#            self.QuenchingFactor = lambda e: quenching_factor
-
+        self.Expected_limit = module.Expected_limit / self.BinExposure 
 
         self.mT_avg = np.sum(module.target_nuclide_AZC_list[:,2] * module.target_nuclide_mass_list)
 
         print('BinData', self.BinData)
 
-    def Vmin_Sorted_List(self, mx, delta):
-        BinCenter = 0.5 * (self.BinEdges_left + self.BinEdges_right)
-        self.vmin_sorted_list = np.sort(VMin(self.BinEdges_left, self.mT_avg, mx, delta))
-        return self.vmin_sorted_list
+
+    def UpperLimit(self, mx, fp, fn, delta, vmin_min, vmin_max, vmin_step,
+                   output_file, processes=None, **unused_kwargs):
+        vmin_list = np.linspace(vmin_min, vmin_max, (vmin_max - vmin_min)/vmin_step + 1)
+        kwargs = ({'vmin': vmin, 'mx': mx, 'fp': fp, 'fn': fn, 'delta': delta}
+                  for vmin in vmin_list)
+        upper_limit = np.array(par.parmap(self._PoissonUpperBound, kwargs, processes))
+        upper_limit = upper_limit[upper_limit[:, 1] != np.inf]
+        print("upper_limit = ", upper_limit)
+        with open(output_file, 'ab') as f_handle:
+            np.savetxt(f_handle, upper_limit)
+        return upper_limit
+        
+    def _PoissonUpperBound(self, vmin, mx, fp, fn, delta):
+        int_response = \
+            np.array(list(map(lambda i, j:
+                              self.IntegratedResponse(0, vmin, i, j, mx, fp, fn, delta),
+                              self.BinEdges_left, self.BinEdges_right)))
+        result = [i for i in self.Expected_limit / int_response if i > 0]
+        result = np.min(result)
+        if result > 0:
+            result = np.log10(result)
+        else:
+            result = np.inf
+        print("(vmin, result) =", (vmin, result))
+        return [vmin, result]
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
                             vminStar=None, logetaStar=None, vminStar_index=None):
@@ -540,15 +557,9 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
             self.Response = self._Response_Finite
 
         for x in range(0, self.BinData.size):
-
-            if (self.Exposure * rate_partials[x]) > self.BinData[x]:
-                result += 2.0 * (self.Exposure * rate_partials[x] + log(factorial(self.BinData[x])) -
-                                 self.BinData[x] * log(self.Exposure * rate_partials[x]))
-            elif self.BinData[x] > (self.Exposure * rate_partials[x]):
-                result += 2.0 * (self.BinData[x] + log(factorial(self.BinData[x])) -
-                                 self.BinData[x] * log(self.BinData[x]))
-
-
+            result += 2.0 * (self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] + log(factorial(self.BinData[x])) -
+                                 self.BinData[x] * log(self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x]))
+            
         return result
 
     def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
@@ -585,14 +596,14 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         if calculate_Q:
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
-                    if (self.Exposure * rate_partials[x]) > self.BinData[x]:
                         self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
                                 args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
                                 epsrel=PRECISSION, epsabs=0)[0]
 
-                        result[x, v_dummy] = (2.0 * ((self.Exposure * rate_partials[x] - self.BinData[x]) /
-                            rate_partials[x]) * self.curly_H_tab[x, v_dummy])
+                        result[x, v_dummy] = (2.0 * ((self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] - self.BinData[x]) /
+                           ( rate_partials[x] + self.BinBkgr[x] / self.BinExposure[x])) * self.curly_H_tab[x, v_dummy])
                         self.Q_contrib[x, v_dummy] = result[x, v_dummy]
+                        print(self.Q_contrib[x, v_dummy])
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
                              F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
             f_handle = open(file, 'wb')   # clear the file first

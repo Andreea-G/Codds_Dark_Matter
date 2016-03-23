@@ -320,6 +320,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         vmin_resp_integr = self.VminIntegratedResponseTable(vmin_list_w0)
         resp_integr = self.IntegratedResponseTable(vmin_list_w0)
         mu_i = self.Exposure * np.dot(vmin_resp_integr, 10**logeta_list)
+
         Nsignal = self.Exposure * np.dot(10**logeta_list, resp_integr)
         if vminStar is None:
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
@@ -586,7 +587,8 @@ class Experiment_EHI(Experiment_HaloIndep):
                 print("tf =", repr(constr < 0))
             return constr
         constr = ({'type': 'ineq', 'fun': constr_func})
-
+        
+        
         np.random.seed(0)
         if USE_BASINHOPPING:
             minimizer_kwargs = {"method": "SLSQP", "constraints": constr, "args": (multiexper_input, class_name,
@@ -602,7 +604,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                                             sum([class_name[y]._MinusLogLikelihood(optimum_log_likelihood,
                                                  mx, fp, fn, delta)
                                             for y in range(1, expernum)]))
-        print("MinusLogLikelihood =", )
+        print("MinusLogLikelihood =", fun_val)
         print("vars_guess =", repr(vars_guess))
         file = output_file_tail + "_GloballyOptimalLikelihood.dat"
         print(file)
@@ -615,7 +617,8 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         vminlist = class_name[0].optimal_vmin
         logetalist = class_name[0].optimal_logeta
-        optimum_steps = np.concatenate((vminlist, logetalist), axis=1)
+        print(vminlist, logetalist)
+        optimum_steps = np.concatenate((vminlist, logetalist))
         print('optimum_steps', optimum_steps)
         explen = len(class_name)
         if plot:
@@ -1027,7 +1030,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                         vminStar, logetaStar, vminStar_index, vmin_err = 9.0, logeta_err = 0.02)
 
         if DEBUG:
-            print(constr_optimum_log_likelihood)
+            print(constr_optimum_log_likelihood[0])
             print("optimum_logL =", self.optimal_logL)
             print("vminStar_index =", vminStar_index)
 

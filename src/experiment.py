@@ -21,8 +21,8 @@ from globalfnc import *
 from formfactors_eft import *
 import numpy as np
 from numpy import pi
-from math import factorial
-from scipy.special import gamma, gammaincc
+from math import factorial, log10
+from scipy.special import gamma, gammaincc, gammainc
 from scipy import integrate, interpolate
 from scipy.optimize import fsolve, minimize
 # from scipy.special import lambertw
@@ -437,6 +437,101 @@ class PoissonExperiment(Experiment):
         return result
 
 
+class PoissonLikelihood(Experiment):
+    """ Class for experiments with Poisson analysis.
+    Input:
+        exper_name: string
+            Name of experiment.
+        scattering_type: string
+            Type of scattering.
+        mPhi: float, optional
+            Mass of the mediator.
+        quenching_factor: float, optional
+            Quenching factor. If not given, the default used is specified in the data
+            modules.
+    """
+    def __init__(self, exper_name, scattering_type, mPhi=mPhiRef, quenching_factor=None):
+        super().__init__(exper_name, scattering_type, mPhi)
+        module = import_file(INPUT_DIR + exper_name + ".py")
+        self.BinEdges_left = module.BinEdges_left
+        self.BinEdges_right = module.BinEdges_right
+        self.BinData = module.BinData
+        self.BinSize = module.BinSize
+        self.BinBkgr = module.BinBkgr
+        self.chiSquared = chi_squared(self.BinData.size)
+    
+    def _MinusLogLikelihood(self, mx, fp, fn, delta):
+        """
+
+        """
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+
+        resp_integr = self.Exposure * conversion_factor / mx * self.IntegratedResponseSHM(
+                            self.BinEdges_left[0], self.BinEdges_right[0], mx, fp, fn, delta)
+        rate_partials[0] = resp_integr
+
+        result = 0
+
+# Likelihood Analysis for SuperCDMS less T5
+        result = fsolve(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
+                        self.BinBkgr[0] + log(factorial(self.BinData[0])) - self.BinData[0] *
+                        log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0]))
+                        - self.chiSquared - 2.0 *(self.BinBkgr[0] + log(factorial(self.BinData[0]))
+                        - self.BinData[0] * log(self.BinBkgr[0])), 36.0)
+
+
+        
+        startpt = -log10(10.0 / rate_partials[0])
+        
+        search_range = np.linspace(startpt, 46.0, num=1000)
+        
+        search_list = []
+        for x in search_range:
+            search_list.append((x, func1(rate_partials, x)))
+                                   
+        search_list = np.array(search_list)
+        result_ind = search_list[:,1].argmin()
+        result = search_list[result_ind,0]
+        
+        print(result)
+        return result
+
+    def UpperLimit(self, fp, fn, delta, mx_min, mx_max, num_steps, output_file,
+                   processes=None):
+        """ Computes the upper limit in cross-section as a function of DM mass mx.
+        Input:
+            fp, fn: float
+                Couplings to proton and neutron.
+            delta: float
+                DM mass split.
+            mx_min, mx_max: float
+                Minimum and maximum DM mass.
+            num_steps: int
+                Number of steps in the range of DM mass values.
+            output_file: string
+                Name of output file where the result will be printed.
+        Returns:
+            upperlimit: ndarray
+                Table with the first row giving the base-10 log of the DM mass, and
+                the second row giving the base-10 log of the upper limit in cross-section.
+        """
+        mx_list = np.logspace(np.log10(mx_min), np.log10(mx_max), num_steps)
+        kwargs = ({'mx': mx,
+                   'fp': fp,
+                   'fn': fn,
+                   'delta': delta}
+                  for mx in mx_list)
+
+        upper_limit = np.array(par.parmap(self._MinusLogLikelihood, kwargs, processes)).flatten()
+        print("mx_list = ", mx_list)
+        print("upper_limit = ", upper_limit)
+        result = np.log10(np.transpose([mx_list, 10.0**-upper_limit]))
+        result = result[result[:, 1] != np.inf]
+        with open(output_file, 'ab') as f_handle:
+            np.savetxt(f_handle, result)
+        return result
+
 
 class GaussianExperiment(Experiment):
     """ Class for experiments with Gaussian analysis.
@@ -525,7 +620,9 @@ class MaxGapExperiment(Experiment):
         print("mx = ", mx)
         xtable = np.array([self.IntegratedResponseSHM(i, j, mx, fp, fn, delta)
                            for i, j in zip(self.ElistMaxGap[:-1], self.ElistMaxGap[1:])])
+
         mu_scaled = xtable.sum()
+
         x_scaled = np.max(xtable)
         if x_scaled == 0:
             mu_over_x = np.inf
@@ -551,6 +648,13 @@ class MaxGapExperiment(Experiment):
         """ Computes the upper limit in cross-section as a function of DM mass mx.
         """
         mx_list = np.logspace(np.log10(mx_min), np.log10(mx_max), num_steps)
+#        mx_list= np.array([2.891, 3.029, 3.175, 3.327, 3.486, 3.654, 3.829, 4.012, 4.205, 4.406, \
+#            4.617, 4.839, 5.071, 5.314, 5.569, 5.836, 6.116, 6.409, 6.716, 7.038, \
+#            7.376, 7.729, 8.1, 8.488, 8.895, 9.322, 9.769, 10.237, 10.728, \
+#                11.242, 11.781, 12.346, 12.938, 13.558, 14.208, 14.89, 15.603, \
+#                16.352, 17.136, 17.957, 18.818, 19.72, 20.666, 21.657, 22.695, \
+#                23.783, 24.924, 26.119, 27.371, 28.683, 30.058, 31.5, 33.01, 34.593, \
+#                36.251, 37.989, 39.811])
         kwargs = ({'mx': mx,
                    'fp': fp,
                    'fn': fn,

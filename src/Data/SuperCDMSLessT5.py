@@ -73,23 +73,26 @@ def Efficiency(e, er):
 def Efficiency_ER(e):
     return Efficiency_interp(e) if Ethreshold <= e < Emaximum else np.array(0.)
 
-Exposure = 577.
-ERecoilList = np.array([1.7, 1.8, 1.9, 1.9, 2.3, 2.7, 3.0, 5.8, 7.0, 7.8, 9.4])
+Exposure = 577.0 * (5./7.)
+ERecoilList = np.array([1.7, 1.8, 1.9, 2.7])
 
 
 
-#BinSize = 1.05
-#BinEdges_left = np.array([1.6, 2.65, 3.7, 4.75, 5.8, 6.85, 7.9, 8.95])
-#BinEdges_right = np.array([2.65, 3.7, 4.75, 5.8, 6.85, 7.9, 8.95, 10.0])
-#BinData = np.array([5, 2, 0, 1, 0, 2, 0, 1])
-#BinError = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-#BinBkgr = []
 
-#Expected_limit = BinData + np.sqrt(chi_squared1(ConfidenceLevel)) * BinError # Testing limit
 
-BinSize = 8.4
+#BinBkgr = np.array([0.03, 1.4, 1.8, 0.4, 1.7])
+#BinEdges_left = np.array([1.64,1.64,1.64,1.64,1.64])
+#BinEdges_right = np.array([10.0,10.0,10.0,10.0,10.0])
+#BinSize = 8.4
+#BinData = np.array([0, 2, 2, 0, 0])
+#BinExposure = np.array([577./7.,577./7.,577./7.,577./7.,577./7.])
+
+BinBkgr = np.array([5.33])
 BinEdges_left = np.array([1.64])
 BinEdges_right = np.array([10.0])
-BinData = np.array([11])
-BinError = np.array([1.0])
-BinBkgr = []
+BinSize = 8.4
+BinData = np.array([4])
+BinExposure = np.array([577.*5./7.])
+
+Expected_limit = 0.68
+

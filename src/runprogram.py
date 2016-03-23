@@ -287,6 +287,8 @@ class RunProgram:
                 class_name = DAMAExperimentCombined
             elif exper_name in DAMALimit_exper:
                 class_name = DAMATotalRateExperiment
+            elif exper_name in Poisson_likelihood:
+                class_name = PoissonLikelihood
             else:
                 print("NotImplementedError: This experiment was not implemented!")
                 return
@@ -873,7 +875,7 @@ class RunProgram_Multiexperiment:
                                                     plot=False)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
 
-                    class_name[0].PlotQ_KKT_Multi(class_name, mx, fp, fn, delta, output_file, True)
+                    class_name[0].PlotQ_KKT_Multi(class_name, mx, fp, fn, delta, output_file, False)
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:

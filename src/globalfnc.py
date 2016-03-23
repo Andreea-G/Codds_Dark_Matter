@@ -53,8 +53,8 @@ if False:   # alternative velocities; kept for reference
 
 """ List of experiment names corresponding to each type of statistical analysis.
 """
-MaximumGapLimit_exper = ["SuperCDMS",
-                         "LUX2013zero", "LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
+MaximumGapLimit_exper = ["SuperCDMS", "SuperCDMSLessT5",
+                         "LUX2013zero","LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
                          "XENON10", "XENON100", "CDMSlite2013CoGeNTQ", "CDMSSi2012"]
 GaussianLimit_exper = ["KIMS2012", "PICASSO"]
 BinnedSignal_exper = ["DAMA2010Na", "DAMA2010I"]
@@ -63,8 +63,8 @@ DAMALimit_exper = ["DAMA2010Na_TotRateLimit"]
 Poisson_exper = ["SIMPLEModeStage2"]
 EHImethod_exper = ["CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif"]
 SHM_line = ["SHM_eta0", "SHM_eta1"]
-MultiExper_Binned_exper_P = ["SuperCDMS", "LUX2013zero", "LUX2013one", "LUX2013three",
-                           "LUX2013five", "LUX2013many"]
+MultiExper_Binned_exper_P = ["SuperCDMSLessT5"]
+Poisson_likelihood = ["SuperCDMSLessT5"]
 
 """ Colors for plotting.
 """
@@ -79,7 +79,7 @@ Color = {"SuperCDMS": 'peru',
          "DAMA2010Na": 'green',
          "DAMA2010I": 'green',
          "SIMPLEModeStage2": 'saddlebrown',
-         "SHM_eta0": 'gray', "SHM_eta1": 'gray'
+         "SHM_eta0": 'gray', "SHM_eta1": 'gray' , "SuperCDMSLessT5": 'peru'
          }
 """ Linestyles get cicled through for each experiment name.
 """
@@ -88,7 +88,7 @@ linestyles = ['-', '--', '-.', ':']
 """
 line_dashes = {"LUX2013zero": (3, 4), "LUX2013one": (8, 4, 3, 4, 3, 4),
                "LUX2013three": (8, 4, 3, 4), "LUX2013five": (8, 4), "LUX2013many": None,
-               "SHM_eta0": (8, 4), "SHM_eta1": (3, 4)
+               "SHM_eta0": (8, 4), "SHM_eta1": (3, 4), "SuperCDMSLessT5": (3, 4)
                }
 """ Legend names, in order of appearence in the legend for the corresponding experiments
 that appear in the plot.

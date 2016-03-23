@@ -50,7 +50,7 @@ TODO Generalize to: more than 2 experiments, different likelihood functions, lar
 
 
 def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminStar=None, logetaStar=None,
-                                          index=None, vmin_err = 7.0, logeta_err = 0.01):
+                                          index=None, vmin_err = 8.0, logeta_err = 0.01):
 
  
         
@@ -126,19 +126,16 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             if logetaStar is not None:
                 logeta_list = np.insert(logeta_list, index_hold, logetaStar)
 
-
-            optimize_func = (2.0 * (class_name[0].NBKG + class_name[0].Exposure * np.dot(10**logeta_list, script_N_a) -
-                np.log(class_name[0].mu_BKG_i + class_name[0].Exposure * np.dot(script_M_a, 10**logeta_list)).sum()))
-
+# CDMS-Si Likelihood
+            optimize_func = (2.0 * (class_name[0].NBKG + class_name[0].Exposure * np.dot(10**logeta_list, script_N_a) +
+                log(factorial(len(class_name[0].ERecoilList))) - np.log(class_name[0].mu_BKG_i + class_name[0].Exposure *
+                np.dot(script_M_a, 10**logeta_list)).sum()))
+# Add in other likelihoods            
             for x in range(0, class_name[1].BinData.size):
-
-                if (class_name[1].Exposure * np.dot(10**logeta_list, rate_partials[x])) > class_name[1].BinData[x]:
-                    optimize_func += 2.0 * (class_name[1].Exposure * np.dot(10**logeta_list, rate_partials[x]) + log(factorial(class_name[1].BinData[x])) -
-                                 class_name[1].BinData[x] * log(class_name[1].Exposure * np.dot(10**logeta_list, rate_partials[x])))
-                elif class_name[1].BinData[x] > (class_name[1].Exposure * np.dot(10**logeta_list, rate_partials[x])):
-                        optimize_func += 2.0 * (class_name[1].BinData[x] + log(factorial(class_name[1].BinData[x])) -
-                                       class_name[1].BinData[x] * log(class_name[1].BinData[x]))
-
+                optimize_func += 2.0 * (class_name[1].BinExposure[x] * np.dot(10**logeta_list, rate_partials[x]) + class_name[1].BinBkgr[x] +
+                    log(factorial(class_name[1].BinData[x])) - class_name[1].BinData[x] * log(class_name[1].BinExposure[x] * 
+                    np.dot(10**logeta_list, rate_partials[x]) + class_name[1].BinBkgr[x]))
+               
             return optimize_func
 
         def minimize_over_vmin(vmin_list, logeta_list, class_name, mx, fp, fn, delta, vminStar=None):
@@ -152,27 +149,25 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             
             script_N_a = class_name[0].IntegratedResponseTable(vmin_listw0)
             script_M_a = class_name[0].VminIntegratedResponseTable(vmin_listw0)
-
-            optimize_func = (2.0 * (class_name[0].NBKG + class_name[0].Exposure * np.dot(10**logeta_list, script_N_a) -
+# CDMS-Si Likelihood
+            optimize_func = (2.0 * (class_name[0].NBKG + class_name[0].Exposure * np.dot(10**logeta_list, script_N_a) +
+                log(factorial(len(class_name[0].ERecoilList))) -
                 np.log(class_name[0].mu_BKG_i + class_name[0].Exposure * np.dot(script_M_a, 10**logeta_list)).sum()))
-
+            
             for x in range(0, class_name[1].BinEdges_left.size):
                 resp_integr = class_name[1].IntegratedResponseTable(vmin_listw0,
                           class_name[1].BinEdges_left[x], class_name[1].BinEdges_right[x], mx, fp, fn, delta)
                 rate_partials[x] = resp_integr
-
-                if (class_name[1].Exposure * np.dot(10**logeta_list, rate_partials[x])) > class_name[1].BinData[x]:
-                        optimize_func += 2.0 * (class_name[1].Exposure * np.dot(10**logeta_list, rate_partials[x]) + log(factorial(class_name[1].BinData[x])) -
-                                 class_name[1].BinData[x] * log(class_name[1].Exposure * np.dot(10**logeta_list, rate_partials[x])))
-                elif class_name[1].BinData[x] > (class_name[1].Exposure * np.dot(10**logeta_list, rate_partials[x])):
-                        optimize_func += 2.0 * (class_name[1].BinData[x] + log(factorial(class_name[1].BinData[x])) -
-                                       class_name[1].BinData[x] * log(class_name[1].BinData[x]))
+                #Add other likelihoods
+                optimize_func += 2.0 * (class_name[1].BinExposure[x] * np.dot(10**logeta_list, rate_partials[x]) + class_name[1].BinBkgr[x] +
+                    log(factorial(class_name[1].BinData[x])) - class_name[1].BinData[x] * log(class_name[1].BinExposure[x] * 
+                    np.dot(10**logeta_list, rate_partials[x]) + class_name[1].BinBkgr[x]))
 
             return optimize_func
 
         ni = 0
         check = False
-        logeta_bnd = (-35.0, -24.0)
+        logeta_bnd = (-40.0, -18.0)
         bnd = [logeta_bnd] * vmin_list_reduced.size
 
         vmin_bnd = (0, 1000)
