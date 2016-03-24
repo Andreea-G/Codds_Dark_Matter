@@ -44,6 +44,28 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                             (50, 1000.): (20, 100, num_steps),
                             (100, 1000.): (30, 100, num_steps),
                             }
+    elif "SuperCDMSLessT5" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (5, 100, num_steps),
+#        mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (4, 130, num_steps),
+                            (-30, 1000.): (2.3, 100, num_steps),
+                            (-30, 0.): (2, 100, num_steps),
+                            (-50, 1000.): (1.8, 50, num_steps),
+                            (50, 1000.): (20, 100, num_steps),
+                            (100, 1000.): (30, 100, num_steps),
+                            }
+    elif "SuperCDMSLikelihood" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (5, 100, num_steps),
+#        mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (4, 130, num_steps),
+                            (-30, 1000.): (2.3, 100, num_steps),
+                            (-30, 0.): (2, 100, num_steps),
+                            (-50, 1000.): (1.8, 50, num_steps),
+                            (50, 1000.): (20, 100, num_steps),
+                            (100, 1000.): (30, 100, num_steps),
+                            }
     elif "LUX" in exper_name:
         num_steps = 30
         mx_range_options = {(0, 1000.): (5.85, 100, num_steps),
@@ -158,7 +180,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
 
 """ List of input values of the form (fn, delta, mPhi).
 """
-scattering = 'SDAV'
+scattering = 'SI'
 if scattering == 'SI':
     input_list = [(1, 0, 1000.), (1, -50, 1000.), (1, -200, 1000.), (1, -500, 1000.),  # 0 - 3
                   (-0.8, 0, 1000.), (-0.8, -50, 1000.), (-0.8, -200, 1000.), (-0.8, -500, 1000.),  # 4 - 7

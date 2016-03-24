@@ -26,10 +26,10 @@ def main():
         ["SuperCDMS",  # 0
          "LUX2013zero", "LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",  # 1 - 5
          "SIMPLEModeStage2", "PICASSO", "KIMS2012", "XENON10", "XENON100",  # 6 - 10
-         "DAMA2010Na", "DAMA2010I", "DAMA2010Na_TotRateLimit",  # 11 - 13
+         "DAMA2010Na", "DAMA2010I", "DAMA2010Nas_TotRateLimit",  # 11 - 13
          "DAMA2010Na DAMA2010I", "DAMA2010I DAMA2010Na",  # 14 - 15
          "CDMSlite2013CoGeNTQ", "CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif",  # 16 - 19
-         "SHM_eta0", "SHM_eta1"]  # 20 - 21
+         "SHM_eta0", "SHM_eta1","SuperCDMSLessT5", "SuperCDMSLikelihood"]  # 20 - 23
 
     # Give input parameters
 
@@ -39,18 +39,18 @@ def main():
     # EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
     # EHI_METHOD['VminLogetaSamplingTable'] = T
-    EHI_METHOD['LogLikelihoodList'] = T
+    # EHI_METHOD['LogLikelihoodList'] = T
     # EHI_METHOD['ConfidenceBand'] = T
     # EHI_METHOD['ConfidenceBandPlot'] = T
 
     HALO_DEP = F
-    MULTI_EXPER = T  # To be used for multi experiment EHI method
+    MULTI_EXPER = F  # To be used for multi experiment EHI method
     plot_dots = F
-    RUN_PROGRAM = T
-    MAKE_LIMITS = F
+    RUN_PROGRAM = F
+    MAKE_LIMITS = T
     MAKE_REGIONS = F
     MAKE_CROSSES = F
-    MAKE_PLOT = F
+    MAKE_PLOT = T
     EXPORT_PLOT = F
 
 
@@ -58,9 +58,11 @@ def main():
     # indices of input_list which can be found in input files
     input_indices = [0]
     # indices of implemented_exper_list
-    multiexper_input_indices = [17, 0]
+    exper_indices = [0, 22, 23]    
     # indices to be used in multiexperiment EHI anlysis
-    exper_indices = []
+    multiexper_input_indices = []
+    
+    
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]
     extra_tail = ""
@@ -84,8 +86,8 @@ def main():
 
     try:
         plt.close()
-        xlim = [0, 1000]
-        # ylim = None
+        xlim = None
+        # ylim = [-43,-40]
         ylim = [-30, -22]
         inp.RunProgram(EXPORT_PLOT=EXPORT_PLOT, xlim=xlim, ylim=ylim)
         if MAKE_PLOT or EHI_METHOD.get('ConfidenceBandPlot', F):

@@ -307,6 +307,8 @@ class RunProgram:
                 class_name = Crosses_HaloIndep
             elif exper_name.split()[0] in Crosses_exper and MAKE_CROSSES:
                 class_name = Crosses_HaloIndep_Combined
+            elif exper_name in MultiExper_Binned_exper_P and MAKE_LIMITS:
+                class_name = MultExper_Binned_exper_P
             elif exper_name in SHM_line:
                 class_name = Standard_Halo_Model
             else:
@@ -333,6 +335,7 @@ class RunProgram:
         f_handle.close()
 
         if HALO_DEP:
+            
             (mx_min, mx_max, num_steps) = mx_range
             upper_limit = self.exper.UpperLimit(fp, fn, delta, mx_min, mx_max, num_steps,
                                                 output_file)
@@ -902,7 +905,9 @@ class RunProgram_Multiexperiment:
                                                     steepness_vmin, steepness_vmin_center,
                                                     MULTI_EXPER,
                                                     plot=not np.any(EHI_METHOD[5:]))
-
+                        print('logeta percent minus:',logeta_percent_minus)
+                        print('logeta percent plus:',logeta_percent_plus)
+                        print('logeta number of steps:',logeta_num_steps)
                         class_name[0].VminLogetaSamplingTable(output_file,
                                                            logeta_percent_minus,
                                                            logeta_percent_plus,
@@ -916,6 +921,7 @@ class RunProgram_Multiexperiment:
                                                     vmin_Band_numsteps,
                                                     MULTI_EXPER,
                                                     plot=not np.any(EHI_METHOD[5:]))
+                        
                         class_name[0].VminLogetaSamplingTable(output_file,
                                                            logeta_percent_minus,
                                                            logeta_percent_plus,

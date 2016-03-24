@@ -458,7 +458,8 @@ class PoissonLikelihood(Experiment):
         self.BinData = module.BinData
         self.BinSize = module.BinSize
         self.BinBkgr = module.BinBkgr
-        self.chiSquared = chi_squared(self.BinData.size)
+        self.chiSquared = chi_squared(1)
+        self.BinExposure = module.BinExposure
     
     def _MinusLogLikelihood(self, mx, fp, fn, delta):
         """
@@ -467,32 +468,22 @@ class PoissonLikelihood(Experiment):
         rate_partials = [None] * (self.BinEdges_left.size)
 
 
-        resp_integr = self.Exposure * conversion_factor / mx * self.IntegratedResponseSHM(
+        resp_integr = self.BinExposure[0] * conversion_factor / mx * self.IntegratedResponseSHM(
                             self.BinEdges_left[0], self.BinEdges_right[0], mx, fp, fn, delta)
         rate_partials[0] = resp_integr
 
         result = 0
-
+        
+        likemin = minimize(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
+                        self.BinBkgr[0] + log(factorial(self.BinData[0])) - self.BinData[0] *
+                        log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0])), 40., 
+                        method = 'SLSQP', bounds = [(20., 100.)])
+        
 # Likelihood Analysis for SuperCDMS less T5
         result = fsolve(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
                         self.BinBkgr[0] + log(factorial(self.BinData[0])) - self.BinData[0] *
                         log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0]))
-                        - self.chiSquared - 2.0 *(self.BinBkgr[0] + log(factorial(self.BinData[0]))
-                        - self.BinData[0] * log(self.BinBkgr[0])), 36.0)
-
-
-        
-        startpt = -log10(10.0 / rate_partials[0])
-        
-        search_range = np.linspace(startpt, 46.0, num=1000)
-        
-        search_list = []
-        for x in search_range:
-            search_list.append((x, func1(rate_partials, x)))
-                                   
-        search_list = np.array(search_list)
-        result_ind = search_list[:,1].argmin()
-        result = search_list[result_ind,0]
+                        - self.chiSquared - likemin.fun, 36.0)
         
         print(result)
         return result

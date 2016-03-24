@@ -94,5 +94,5 @@ BinSize = 8.4
 BinData = np.array([4])
 BinExposure = np.array([577.*5./7.])
 
-Expected_limit = 0.68
+Expected_limit = 4.25
 

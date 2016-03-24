@@ -1362,6 +1362,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             logetaStar_list = \
                 logetaStar_list[logeta_index_range[0]: logeta_index_range[1]]
             plot = True
+
         print("vminStar =", vminStar)
         table = np.empty((0, 2))
         for logetaStar in logetaStar_list:
