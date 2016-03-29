@@ -271,7 +271,7 @@ class RunProgram:
         """Select which experiment class we must use, depending on what statistical
         analysis we need, and initialize the experiment.
         """
-
+        self.exper_name = exper_name
         print('name = ', exper_name)
         if HALO_DEP:
             print('Halo Dependent')
@@ -317,12 +317,13 @@ class RunProgram:
             # if delta > 0 we have to use the integration in recoil energy ER
             if delta > 0:
                 class_name.__bases__ = (Experiment_HaloIndep_ER,)
-
+        
         if exper_name in SHM_line:
             self.exper = class_name(exper_name, log_sigma_p)
         else:
             self.exper = class_name(exper_name, scattering_type, mPhi, quenching)
-
+        
+        
     def compute_data(self, mx, fp, fn, delta, mx_range, vmin_range, initial_energy_bin,
                      logeta_guess, HALO_DEP, MAKE_CROSSES, MAKE_LIMITS, EHI_METHOD,
                      vmin_EHIBand_range, logeta_EHIBand_percent_range, steepness,
@@ -341,7 +342,7 @@ class RunProgram:
                                                 output_file)
         else:
             (vmin_min, vmin_max, vmin_step) = vmin_range
-            if not np.any(EHI_METHOD):
+            if self.exper_name != "CDMSSi2012" or not np.any(EHI_METHOD):
                 if MAKE_LIMITS:
                     upper_limit = \
                         self.exper.UpperLimit(mx, fp, fn, delta, vmin_min, vmin_max,
@@ -354,7 +355,7 @@ class RunProgram:
                                               vmin_step, output_file,
                                               initial_energy_bin=initial_energy_bin)
 
-            else:
+            elif np.any(EHI_METHOD) and self.exper_name == "CDMSSi2012":
                 if EHI_METHOD.ResponseTables:
                     self.exper.ResponseTables(vmin_min, vmin_max, vmin_step, mx, fp, fn,
                                               delta, self.output_file_no_extension)
@@ -530,7 +531,7 @@ class RunProgram:
     def __call__(self, exper_name, scattering_type, mPhi, fp, fn, delta,
                  confidence_levels,
                  HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MAKE_CROSSES, MULTI_EXPER,
-                 MAKE_PLOT, EHI_METHOD, MAKE_LIMITS,
+                 MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, multiexper_input=None,
                  mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
                  vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
                  steepness=None, logeta_guess=None,
@@ -698,13 +699,12 @@ class RunProgram_Multiexperiment:
         crosses = np.loadtxt(output_file)
         plot_data.plot_crosses(crosses, alpha=alpha, plot_show=False)
 
-    def plot_EHI_band(self, multiexper_input, class_name, confidence_levels, HALO_DEP, extra_tail,
-                      plot_dots):
-        output_file = MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
-                     filename_tail, OUTPUT_MAIN_DIR, quenching=None)
-        class_name[0].ImportOptimalLikelihood(output_file)
+    def plot_EHI_band(self, multiexper_input, class_name, confidence_levels, HALO_DEP, extra_tail, output_file,
+                      output_file_CDMS, plot_dots):
+        
+        class_name[0].ImportMultiOptimalLikelihood(output_file,output_file_CDMS)
         interp_kind = 'linear'
-#        plot_limits = PlotData(multiexper_input[0], HALO_DEP, plot_close=False)
+        plot_limits = PlotData(multiexper_input[0], HALO_DEP, plot_close=False)
 
 #        self.exper.PlotSamplingTable(self.output_file_no_extension,
 #                                plot_close=False, plot_show=False, plot_optimum=False)
@@ -714,6 +714,8 @@ class RunProgram_Multiexperiment:
             PlotData.count[multiexper_input[0]] = -1
             class_name[0].ImportConfidenceBand(output_file, d_logL,
                                             extra_tail=extra_tail)
+            print('ddadadada')
+            print(class_name[0].vmin_logeta_band_low)
             first_vmin_low = class_name[0].vmin_logeta_band_low[0, 0]
             first_vmin_up = class_name[0].vmin_logeta_band_up[0, 0]
             last_eta_up = class_name[0].vmin_logeta_band_up[-1, 1]
@@ -730,15 +732,15 @@ class RunProgram_Multiexperiment:
             plot_limits(class_name[0].vmin_logeta_band_up,
                         lower_limit=class_name[0].vmin_logeta_band_low, kind=interp_kind,
                         fill=True, alpha=0.2, plot_dots=plot_dots, plot_show=False)
-
+        
         class_name[0].PlotOptimum(ylim_percentage=(1.2, 0.8),
-                               color=Color[exper_name + '_EHI'],
+                               color=Color[multiexper_input[0] + '_EHI'],
                                linewidth=3, plot_close=False,  plot_show=False)
 
     def __call__(self, multiexper_input, scattering_type, mPhi, fp, fn, delta,
                  confidence_levels,
                  HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MULTI_EXPER,
-                 MAKE_CROSSES, MAKE_PLOT, EHI_METHOD, MAKE_LIMITS,
+                 MAKE_CROSSES, MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, exper_name=None,
                  mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
                  vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
                  steepness=None, logeta_guess=None,
@@ -882,7 +884,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (500, -27.0)
+                    (vminStar, logetaStar) = (25., -29.)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -940,7 +942,7 @@ class RunProgram_Multiexperiment:
                                                  extra_tail=extra_tail,
                                                  vmin_index_list=vmin_index_list,
                                                  logeta_index_range=logeta_index_range)
-            exit()
+            
             if EHI_METHOD.ConfidenceBand:
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS)
                     interpolation_order = 2
@@ -958,5 +960,5 @@ class RunProgram_Multiexperiment:
 
         # make band plot
         if EHI_METHOD.ConfidenceBandPlot:
-            self.plot_EHI_band(multiexper_input, class_name, confidence_levels, HALO_DEP, extra_tail,
-                               plot_dots)
+            self.plot_EHI_band(multiexper_input, class_name, confidence_levels, HALO_DEP, extra_tail, output_file,
+                               output_file_CDMS, plot_dots)

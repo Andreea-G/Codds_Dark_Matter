@@ -432,7 +432,7 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
 
         result = np.zeros((self.BinData.size, 1001))
         # TODO parallelize this section of the code
-        calculate_Q = True
+        calculate_Q = False
         if calculate_Q:
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
@@ -603,7 +603,7 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
                         result[x, v_dummy] = (2.0 * ((self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] - self.BinData[x]) /
                            ( rate_partials[x] + self.BinBkgr[x] / self.BinExposure[x])) * self.curly_H_tab[x, v_dummy])
                         self.Q_contrib[x, v_dummy] = result[x, v_dummy]
-                        print(self.Q_contrib[x, v_dummy])
+                        
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
                              F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
             f_handle = open(file, 'wb')   # clear the file first
@@ -749,12 +749,17 @@ class Crosses_HaloIndep(Experiment_HaloIndep):
         mT_avg = np.sum(self.mT * self.mass_fraction) / np.sum(self.mass_fraction)
         print("mT_avg =", mT_avg)
         print('vmax =', vmax)
-        kwargs = ({'Eee1': Eee1, 'Eee2': Eee2, 'mT_avg': mT_avg,
+        arraybox = np.array([])
+        for Eee1, Eee2 in zip(self.BinEdges_left, self.BinEdges_right):
+            kwargs = {'Eee1': Eee1, 'Eee2': Eee2, 'mT_avg': mT_avg,
                    'mx': mx, 'fp': fp, 'fn': fn, 'delta': delta, 'vmax': vmax,
                    'output_file': output_file}
-                  for Eee1, Eee2 in zip(self.BinEdges_left, self.BinEdges_right))
-
-        return np.array(par.parmap(self._Box, kwargs, processes))
+            if Eee1 == self.BinEdges_left[0]:
+                arraybox = np.append(arraybox, self._Box(**kwargs))
+            else:
+                arraybox = np.column_stack((arraybox, np.array(self._Box(**kwargs))))
+            
+        return arraybox
 
     def _Rebin(self, index=9):
         self.BinEdges = np.append(self.BinEdges[:index + 1],  self.BinEdges[-1])
@@ -773,11 +778,11 @@ class Crosses_HaloIndep(Experiment_HaloIndep):
             self._Rebin()
 
         box_table = self._Boxes(mx, fp, fn, delta, vmax=vmin_max, processes=processes)
-
-        int_resp_list = box_table[:, 0]
-        vmin_center_list = box_table[:, 1]
-        vmin_error_left_list = box_table[:, 2]
-        vmin_error_right_list = box_table[:, 3]
+        
+        int_resp_list = box_table[0,:]
+        vmin_center_list = box_table[1,:]
+        vmin_error_left_list = box_table[2,:]
+        vmin_error_right_list = box_table[3,:]
         eta_list = self.BinData / int_resp_list
         eta_error_list = self.BinError / int_resp_list
         print('Bin Data', self.BinData)

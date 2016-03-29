@@ -199,7 +199,7 @@ class Input:
                                           self.delta, mPhi=self.mPhi,
                                           quenching=self.quenching[0],
                                           EHI_METHOD=np.any(self.EHI_METHOD))
-                    if np.any(self.EHI_METHOD):
+                    if np.any(self.EHI_METHOD) and self.exper_name == "CDMSSi2012":
                         self.vmin_EHIBand_range = \
                             module.Vmin_EHIBand_range(self.exper_name.split()[0],
                                                       self.mx, self.delta, self.mPhi)

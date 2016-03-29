@@ -596,14 +596,13 @@ class Experiment_EHI(Experiment_HaloIndep):
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
                         minimizer_kwargs=minimizer_kwargs, niter=30, stepsize=.2)
         else:
-            optimum_log_likelihood = Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)[0]
-
+            optimum_log_likelihood, fun_val = Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
 
         print(optimum_log_likelihood)
-        fun_val = (self._MinusLogLikelihood(optimum_log_likelihood) +
-                                            sum([class_name[y]._MinusLogLikelihood(optimum_log_likelihood,
-                                                 mx, fp, fn, delta)
-                                            for y in range(1, expernum)]))
+#        fun_val = (self._MinusLogLikelihood(optimum_log_likelihood) +
+#                                            sum([class_name[y]._MinusLogLikelihood(optimum_log_likelihood,
+#                                                 mx, fp, fn, delta)
+#                                            for y in range(1, expernum)]))
         print("MinusLogLikelihood =", fun_val)
         print("vars_guess =", repr(vars_guess))
         file = output_file_tail + "_GloballyOptimalLikelihood.dat"
@@ -1031,7 +1030,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         if DEBUG:
             print(constr_optimum_log_likelihood[0])
-            print("optimum_logL =", self.optimal_logL)
+            print("Constrained optimum_logL =", constr_optimum_log_likelihood[1])
             print("vminStar_index =", vminStar_index)
 
         return constr_optimum_log_likelihood
@@ -1577,7 +1576,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             x = table[:, 0]   # this is logeta
             y = table[:, 1]   # this is logL
             logL_interp = interpolate.interp1d(x, y, kind='cubic')
-
+            
             def _logL_interp(vars_list, constraints):
                 constr_not_valid = constraints(vars_list)[:-1] < 0
                 if np.any(constr_not_valid):
@@ -1617,17 +1616,24 @@ class Experiment_EHI(Experiment_HaloIndep):
                 plt.show()
 
             error = F
+            
             try:
                 if y[0] > self.optimal_logL + delta_logL and \
-                        logeta_minimLogL < self.optimal_logL + delta_logL:
+                        abs(logeta_minimLogL) < self.optimal_logL + delta_logL: 
                     sol = brentq(lambda logeta: logL_interp(logeta) - self.optimal_logL -
                                  delta_logL,
                                  table[0, 0], logeta_minimLogL)
+                    
                     self.vmin_logeta_band_low += \
                         [[self.vmin_sampling_list[index], sol]]
+                else:
+                    self.vmin_logeta_band_low += \
+                        [[self.vmin_sampling_list[index], -40.]]
             except ValueError:
                 print("ValueError: Error in calculating vmin_logeta_band_low")
                 error = T
+                
+                
             try:
                 if y[-1] > self.optimal_logL + delta_logL and \
                         logeta_minimLogL < self.optimal_logL + delta_logL:
@@ -1636,6 +1642,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                                  logeta_minimLogL, table[-1, 0])
                     self.vmin_logeta_band_up += \
                         [[self.vmin_sampling_list[index], sol]]
+                    
             except ValueError:
                 print("ValueError: Error in calculating vmin_logeta_band_hi")
                 error = T

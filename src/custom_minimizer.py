@@ -130,12 +130,13 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             optimize_func = (2.0 * (class_name[0].NBKG + class_name[0].Exposure * np.dot(10**logeta_list, script_N_a) +
                 log(factorial(len(class_name[0].ERecoilList))) - np.log(class_name[0].mu_BKG_i + class_name[0].Exposure *
                 np.dot(script_M_a, 10**logeta_list)).sum()))
+
 # Add in other likelihoods            
             for x in range(0, class_name[1].BinData.size):
                 optimize_func += 2.0 * (class_name[1].BinExposure[x] * np.dot(10**logeta_list, rate_partials[x]) + class_name[1].BinBkgr[x] +
                     log(factorial(class_name[1].BinData[x])) - class_name[1].BinData[x] * log(class_name[1].BinExposure[x] * 
                     np.dot(10**logeta_list, rate_partials[x]) + class_name[1].BinBkgr[x]))
-               
+
             return optimize_func
 
         def minimize_over_vmin(vmin_list, logeta_list, class_name, mx, fp, fn, delta, vminStar=None):
@@ -154,6 +155,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
                 log(factorial(len(class_name[0].ERecoilList))) -
                 np.log(class_name[0].mu_BKG_i + class_name[0].Exposure * np.dot(script_M_a, 10**logeta_list)).sum()))
             
+            
             for x in range(0, class_name[1].BinEdges_left.size):
                 resp_integr = class_name[1].IntegratedResponseTable(vmin_listw0,
                           class_name[1].BinEdges_left[x], class_name[1].BinEdges_right[x], mx, fp, fn, delta)
@@ -162,7 +164,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
                 optimize_func += 2.0 * (class_name[1].BinExposure[x] * np.dot(10**logeta_list, rate_partials[x]) + class_name[1].BinBkgr[x] +
                     log(factorial(class_name[1].BinData[x])) - class_name[1].BinData[x] * log(class_name[1].BinExposure[x] * 
                     np.dot(10**logeta_list, rate_partials[x]) + class_name[1].BinBkgr[x]))
-
+            
             return optimize_func
 
         ni = 0
@@ -188,6 +190,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
                                 method = 'SLSQP', bounds = bnd_vmin, constraints=constr_vmin)
             vmin_list_new_reduced = vminloglike_min.x
             
+            
             if vminStar is not None:
                 vmin_list_new = np.sort(np.append(vmin_list_new_reduced, vminStar))
             else:
@@ -208,6 +211,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             if np.amax(vmin_check) < vmin_err and np.amax(logeta_check) < logeta_err:
                 print('n_iter', ni)
                 print('Minimum Found')
+                loglikeval = vminloglike_min.fun
                 check = True
             else:
                 print('n_iter', ni)
@@ -224,7 +228,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
         if not check:
             print('Potential issue with convergence...')
 
-        return [np.concatenate([vmin_list_new, logeta_list_new]), vminloglike_min.fun]
+        return np.concatenate([vmin_list_new, logeta_list_new]), loglikeval
 
 
 
