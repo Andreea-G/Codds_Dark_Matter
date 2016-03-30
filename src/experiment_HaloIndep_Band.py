@@ -569,7 +569,6 @@ class Experiment_EHI(Experiment_HaloIndep):
                                logeta_guess * np.ones(vmin_list.size))
         print("vars_guess =", vars_guess)
         vmin_max = self.vmin_linspace[-1]
-        expernum = multiexper_input.size
         def constr_func(x, vmin_max=vmin_max):
             """ 0 -  8: bounds: 3 * (x.size/2) constraints = 9 for x.size/2 = 3
                 9 - 12: sorted array: 2 * (x.size/2 - 1) constraints = 4 for x.size/2 = 3

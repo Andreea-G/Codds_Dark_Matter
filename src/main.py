@@ -38,19 +38,19 @@ def main():
     # EHI_METHOD['OptimalLikelihood'] = T
     # EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
-    # EHI_METHOD['VminLogetaSamplingTable'] = T
-    # EHI_METHOD['LogLikelihoodList'] = T
+    EHI_METHOD['VminLogetaSamplingTable'] = T
+    EHI_METHOD['LogLikelihoodList'] = T
     # EHI_METHOD['ConfidenceBand'] = T
     # EHI_METHOD['ConfidenceBandPlot'] = T
 
     HALO_DEP = F
-    MULTI_EXPER = F  # To be used for multi experiment EHI method
+    MULTI_EXPER = T  # To be used for multi experiment EHI method
     plot_dots = F
-    RUN_PROGRAM = F
-    MAKE_LIMITS = T
+    RUN_PROGRAM = T
+    MAKE_LIMITS = F
     MAKE_REGIONS = F
     MAKE_CROSSES = F
-    MAKE_PLOT = T
+    MAKE_PLOT = F
     EXPORT_PLOT = F
 
 
@@ -58,9 +58,9 @@ def main():
     # indices of input_list which can be found in input files
     input_indices = [0]
     # indices of implemented_exper_list
-    exper_indices = [0, 22, 23]    
+    exper_indices = []    
     # indices to be used in multiexperiment EHI anlysis
-    multiexper_input_indices = []
+    multiexper_input_indices = [17, 23]
     
     
     OUTPUT_MAIN_DIR = "../Output_Band/"
@@ -80,9 +80,9 @@ def main():
     # Add or override additional parameters that will be passed to run_program as
     # member variables of the inp class
 
-    inp.initial_energy_bin = [2, 2.5]  # For combined DAMA halo-indep analysis -- Need to choose appropriate mass and Q s.t. energy bins selected appropriately. See arxiv 1502.07682
+    # inp.initial_energy_bin = [2, 2.5]  # For combined DAMA halo-indep analysis -- Need to choose appropriate mass and Q s.t. energy bins selected appropriately. See arxiv 1502.07682
     # inp.confidence_levels.extend([confidence_level(s) for s in [3, 5]])
-    inp.qDAMANa_list = [0.3]
+    # inp.qDAMANa_list = [0.3]
 
     try:
         plt.close()
