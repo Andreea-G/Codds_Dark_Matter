@@ -539,6 +539,7 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
                                      vminStar_index, vminStar)
             logeta_list = np.insert(vars_list[vars_list.size/2:],
                                     vminStar_index, logetaStar)
+        
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
         rate_partials = [None] * (self.BinEdges_left.size)
@@ -572,6 +573,11 @@ class MultExper_Binned_exper_P(Experiment_HaloIndep):
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
             logeta_list = vars_list[vars_list.size/2:]
+        else:
+            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+                                     vminStar_index, vminStar)
+            logeta_list = np.insert(vars_list[vars_list.size/2:],
+                                    vminStar_index, logetaStar)
 
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
