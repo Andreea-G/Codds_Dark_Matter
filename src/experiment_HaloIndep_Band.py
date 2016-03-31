@@ -1424,7 +1424,8 @@ class Experiment_EHI(Experiment_HaloIndep):
         if size_of_file >= 30:
             pass
         else:
-            table = np.loadtxt(temp_file)
+            if os.path.exists(temp_file):
+                table = np.loadtxt(temp_file)
             for logetaStar in logetaStar_list:
                 if logetaStar > table[-1,0]:
                     constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
