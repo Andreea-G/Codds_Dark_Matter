@@ -1398,6 +1398,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             fileexists = True
         else:
             size_of_file = 0
+            fileexists = False
         if size_of_file >= 30:
             pass
         else:
