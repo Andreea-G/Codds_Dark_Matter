@@ -1419,12 +1419,13 @@ class Experiment_EHI(Experiment_HaloIndep):
         
         if os.path.exists(temp_file):
             size_of_file = len(np.loadtxt(temp_file))
+            fileexists = True
         else:
             size_of_file = 0
         if size_of_file >= 30:
             pass
         else:
-            if os.path.exists(temp_file):               
+            if fileexists and size_of_file > 0:               
                 table = np.loadtxt(temp_file)
                 for logetaStar in logetaStar_list:
                     if logetaStar > table[-1,0]:
