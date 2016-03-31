@@ -598,17 +598,13 @@ class Experiment_EHI(Experiment_HaloIndep):
             optimum_log_likelihood, fun_val = Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
 
         print(optimum_log_likelihood)
-#        fun_val = (self._MinusLogLikelihood(optimum_log_likelihood) +
-#                                            sum([class_name[y]._MinusLogLikelihood(optimum_log_likelihood,
-#                                                 mx, fp, fn, delta)
-#                                            for y in range(1, expernum)]))
         print("MinusLogLikelihood =", fun_val)
         print("vars_guess =", repr(vars_guess))
         file = output_file_tail + "_GloballyOptimalLikelihood.dat"
         print(file)
         np.savetxt(file, np.append([fun_val],
                                    optimum_log_likelihood))
-#        os.system("say 'Finished finding optimum'")
+
         return
 
     def PlotQ_KKT_Multi(self, class_name, mx, fp, fn, delta, output_file, plot=False):
@@ -637,8 +633,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                     q_sum[x+1] = Q_contrib[y][:,x].sum()
 
             q_tab = 2.0 * (class_name[0].xi_tab - h_sum_tab) + q_sum
-#            for x in range(0,1001):
-#                print(h_sum_tab[x], ',')
+
             file = output_file + "KKT_Q.dat"
             f_handle = open(file, 'wb')   # clear the file first
             np.savetxt(f_handle, q_tab)
@@ -1421,22 +1416,28 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         temp_file = output_file_tail + "_" + str(index) + \
                 "_LogetaStarLogLikelihoodList" + extra_tail + ".dat"
-
+        
         if os.path.exists(temp_file):
+            size_of_file = len(np.loadtxt(temp_file))
+        else:
+            size_of_file = 0
+        if size_of_file >= 30:
             pass
         else:
+            table = np.loadtxt(temp_file)
             for logetaStar in logetaStar_list:
-                constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+                if logetaStar > table[-1,0]:
+                    constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
                                     multiexper_input, self.class_name, mx, fp, fn, delta, plot)
                 
-                print("index =", index, "; vminStar =", vminStar,
-                      "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
-                table = np.append(table, [[logetaStar, constr_opt]], axis=0)
-#                table = np.append(table, [logetaStar])
-                print("vminStar =", vminStar, "; table =", table)
+                    print("index =", index, "; vminStar =", vminStar,
+                          "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                    table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+#                   table = np.append(table, [logetaStar])
+                    print("vminStar =", vminStar, "; table =", table)
                 
-                print(temp_file)
-                np.savetxt(temp_file, table)
+                    print(temp_file)
+                    np.savetxt(temp_file, table)
         return
 
 

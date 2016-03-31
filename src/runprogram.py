@@ -307,8 +307,8 @@ class RunProgram:
                 class_name = Crosses_HaloIndep
             elif exper_name.split()[0] in Crosses_exper and MAKE_CROSSES:
                 class_name = Crosses_HaloIndep_Combined
-            elif exper_name in MultiExper_Binned_exper_P and MAKE_LIMITS:
-                class_name = MultExper_Binned_exper_P
+            elif exper_name in Poisson_Like and MAKE_LIMITS:
+                class_name = Poisson_Likelihood
             elif exper_name in SHM_line:
                 class_name = Standard_Halo_Model
             else:
@@ -839,9 +839,9 @@ class RunProgram_Multiexperiment:
             elif multiexper_input[x] in GaussianLimit_exper:
                 print('GaussianExperiment')
                 class_name[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
-            elif multiexper_input[x] in MultiExper_Binned_exper_P:
+            elif multiexper_input[x] in Poisson_Like:
                 print('Poisson Binned Likelihood')
-                class_name[x] = MultExper_Binned_exper_P(multiexper_input[x], scattering_type, mPhi, quenching)
+                class_name[x] = Poisson_Likelihood(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] == "CDMSSi2012":
                 class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
             else:
@@ -884,7 +884,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (25., -29.)
+                    (vminStar, logetaStar) = (400., -28.)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -952,11 +952,6 @@ class RunProgram_Multiexperiment:
                                                   interpolation_order,
                                                   extra_tail=extra_tail,
                                                   multiplot=False)
-
-
-
-
-        # TODO fix below
 
         # make band plot
         if EHI_METHOD.ConfidenceBandPlot:

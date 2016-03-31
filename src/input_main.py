@@ -180,7 +180,9 @@ class Input:
             self.log_sigma_p = None
 
             for self.exper_name in self.exper_list:
-                if self.exper_name == "CDMSSi2012" and np.any(self.EHI_METHOD):
+                if (self.exper_name == "CDMSSi2012" and np.any(self.EHI_METHOD)
+                    and self.multiexper_input.size == 0):
+
                     self.vmin_EHIBand_range = \
                         module.Vmin_EHIBand_range(self.exper_name, self.mx,
                                                   self.delta, self.mPhi)

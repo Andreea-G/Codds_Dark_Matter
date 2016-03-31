@@ -63,7 +63,7 @@ DAMALimit_exper = ["DAMA2010Na_TotRateLimit"]
 Poisson_exper = ["SIMPLEModeStage2"]
 EHImethod_exper = ["CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif"]
 SHM_line = ["SHM_eta0", "SHM_eta1"]
-MultiExper_Binned_exper_P = ["SuperCDMSLessT5", "SuperCDMSLikelihood"]
+Poisson_Like = ["SuperCDMSLessT5", "SuperCDMSLikelihood"]
 Poisson_likelihood = ["SuperCDMSLessT5", "SuperCDMSLikelihood"]
 
 """ Colors for plotting.

@@ -462,7 +462,7 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
 
 
 
-class MultExper_Binned_exper_P(Experiment_HaloIndep):
+class Poisson_Likelihood(Experiment_HaloIndep):
     """ Class for multi EHI method experiments with binned possoin analysis.
     Input:
         exper_name: string
