@@ -460,7 +460,7 @@ class PoissonLikelihood(Experiment):
         self.BinBkgr = module.BinBkgr
         self.chiSquared = chi_squared(1)
         self.BinExposure = module.BinExposure
-    
+
     def _MinusLogLikelihood(self, mx, fp, fn, delta):
         """
 
@@ -473,18 +473,18 @@ class PoissonLikelihood(Experiment):
         rate_partials[0] = resp_integr
 
         result = 0
-        
+
         likemin = minimize(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
                         self.BinBkgr[0] + log(factorial(self.BinData[0])) - self.BinData[0] *
-                        log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0])), 40., 
+                        log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0])), 40.,
                         method = 'SLSQP', bounds = [(20., 100.)])
-        
+
 # Likelihood Analysis for SuperCDMS less T5
         result = fsolve(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
                         self.BinBkgr[0] + log(factorial(self.BinData[0])) - self.BinData[0] *
                         log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0]))
                         - self.chiSquared - likemin.fun, 36.0)
-        
+
         print(result)
         return result
 

@@ -53,8 +53,8 @@ if False:   # alternative velocities; kept for reference
 
 """ List of experiment names corresponding to each type of statistical analysis.
 """
-MaximumGapLimit_exper = ["SuperCDMS", 
-                         "LUX2013zero","LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
+MaximumGapLimit_exper = ["SuperCDMS",
+                         "LUX2013zero", "LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
                          "XENON10", "XENON100", "CDMSlite2013CoGeNTQ", "CDMSSi2012"]
 GaussianLimit_exper = ["KIMS2012", "PICASSO"]
 BinnedSignal_exper = ["DAMA2010Na", "DAMA2010I"]
@@ -79,7 +79,7 @@ Color = {"SuperCDMS": 'peru',
          "DAMA2010Na": 'green',
          "DAMA2010I": 'green',
          "SIMPLEModeStage2": 'saddlebrown',
-         "SHM_eta0": 'gray', "SHM_eta1": 'gray' , "SuperCDMSLessT5": 'peru',
+         "SHM_eta0": 'gray', "SHM_eta1": 'gray', "SuperCDMSLessT5": 'peru',
          "SuperCDMSLikelihood": 'peru'
          }
 """ Linestyles get cicled through for each experiment name.
@@ -90,7 +90,7 @@ linestyles = ['-', '--', '-.', ':']
 line_dashes = {"LUX2013zero": (3, 4), "LUX2013one": (8, 4, 3, 4, 3, 4),
                "LUX2013three": (8, 4, 3, 4), "LUX2013five": (8, 4), "LUX2013many": None,
                "SHM_eta0": (8, 4), "SHM_eta1": (3, 4), "SuperCDMSLessT5": (3, 4),
-               "SuperCDMSLikelihood": (8, 4, 3, 4, 3, 4) 
+               "SuperCDMSLikelihood": (8, 4, 3, 4, 3, 4)
                }
 """ Legend names, in order of appearence in the legend for the corresponding experiments
 that appear in the plot.
@@ -255,7 +255,7 @@ def Output_file_name(exper_name, scattering_type, mPhi, mx, fp, fn, delta, HALO_
 
 
 def MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
-                     filename_tail, OUTPUT_MAIN_DIR, quenching=None):
+                                filename_tail, OUTPUT_MAIN_DIR, quenching=None):
     """ Gives the name of the output file name for the given input parameters.
     Input:
         multiexper_input: string
@@ -283,8 +283,7 @@ def MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp,
     output_dir = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
     output_file_no_extension = "./" + output_dir + "MultiExperiment_EHI_"
     for x in range(0, multiexper_input.size):
-         output_file_no_extension += multiexper_input[x]
-
+        output_file_no_extension += multiexper_input[x]
 
     output_file_no_extension += "_mx_" + str(mx) + "GeV"
 
@@ -493,7 +492,7 @@ def dERecoildVmin(vmin, mT, mx, delta, sign):
     muT = mx * mT / (mx + mT)
     if vmin != 0:
         sqrt_factor = np.sqrt(1. - 2.*delta / (muT * vmin**2) * SpeedOfLight**2 * 1.e-6)
-    elif vmin ==0 and delta == 0:
+    elif vmin == 0 and delta == 0:
         sqrt_factor = np.sqrt(1.)
     return sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
 

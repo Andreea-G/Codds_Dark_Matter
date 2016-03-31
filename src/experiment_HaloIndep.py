@@ -129,7 +129,7 @@ class Experiment_HaloIndep(Experiment):
             branches = [1, -1]
         r_list_sum = 0
         for sign in branches:
-            
+
             ER = ERecoilBranch(vmin, self.mT, mx, delta, sign)
             q = self.QuenchingFactor(ER)
             qER = q * ER
@@ -287,10 +287,6 @@ class PoissonExperiment_HaloIndep(Experiment_HaloIndep):
         return upper_limit
 
 
-
-
-
-
 class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
     """ Class for experiments with Gaussian analysis.
     Input:
@@ -320,13 +316,10 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         print('BinData', self.BinData)
         print('BinError', self.BinError)
 
-
 #        If you want to calculate the limit as is done in fig 2 of arxiv 1409.5446v2
 #        self.BinData = module.BinData/module.Exposure
 #        self.chiSquared = chi_squared(self.BinData.size)
 #        self.Expected_limit = module.Expected_limit * self.BinSize
-
-
 
     def _GaussianUpperBound(self, vmin, mx, fp, fn, delta):
         int_response = \
@@ -381,7 +374,9 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
 
         for x in range(0, self.BinEdges_left.size):
             resp_integr = self.IntegratedResponseTable(vmin_list_w0,
-                            self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
+                                                       self.BinEdges_left[x],
+                                                       self.BinEdges_right[x],
+                                                       mx, fp, fn, delta)
 
             rate_partials[x] = np.dot(10**logeta_list, resp_integr)
 
@@ -392,13 +387,10 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         else:
             self.Response = self._Response_Finite
 
-
         for x in range(0, self.BinData.size):
                 if self.BinData[x] != 0:
                     result += ((rate_partials[x] - self.BinData[x] / self.Exposure) ** 2.0 /
-                        (self.BinError[x] ** 2.0))
-
-
+                               (self.BinError[x] ** 2.0))
 
         return result
 
@@ -407,7 +399,6 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         """This is intended to calculate the contribution to q(vmin) from a particular experiment.
         It may currently have issues, has not been tested.
         """
-
 
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
@@ -421,7 +412,9 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
 
         for x in range(0, self.BinEdges_left.size):
             resp_integr = self.IntegratedResponseTable(vmin_list_w0,
-                            self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
+                                                       self.BinEdges_left[x],
+                                                       self.BinEdges_right[x],
+                                                       mx, fp, fn, delta)
 
             rate_partials[x] = np.dot(10**logeta_list, resp_integr)
 
@@ -436,22 +429,22 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         if calculate_Q:
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
-                    self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
-                                args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
-                                epsrel=PRECISSION, epsabs=0)[0]
+                    self.curly_H_tab[x, v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
+                                                                  args=(self.BinEdges_left[x], self.BinEdges_right[x], mx,
+                                                                        fp, fn, delta), epsrel=PRECISSION, epsabs=0)[0]
                     if self.BinData[x] != 0:
                             result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
-                                        self.BinError[x] ** 2.0) * self.curly_H_tab[x, v_dummy])
+                                                         self.BinError[x] ** 2.0) * self.curly_H_tab[x, v_dummy])
 
                     self.Q_contrib[x, v_dummy] = result[x, v_dummy]
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
-                             F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+                                    F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
             f_handle = open(file, 'wb')   # clear the file first
             np.savetxt(f_handle, self.Q_contrib)
             f_handle.close()
         else:
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
-                             F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+                                    F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
             f_handle = open(file, 'rb')
             self.Q_contrib = np.loadtxt(f_handle)
             f_handle.close()
@@ -459,7 +452,6 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         print('Obtained Variational of Likelihood')
 
         return self.Q_contrib
-
 
 
 class Poisson_Likelihood(Experiment_HaloIndep):
@@ -483,14 +475,13 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         self.BinData = module.BinData
         self.BinSize = module.BinSize
         self.BinBkgr = module.BinBkgr
-        self.BinExposure=module.BinExposure
+        self.BinExposure = module.BinExposure
 
-        self.Expected_limit = module.Expected_limit / self.BinExposure 
+        self.Expected_limit = module.Expected_limit / self.BinExposure
 
-        self.mT_avg = np.sum(module.target_nuclide_AZC_list[:,2] * module.target_nuclide_mass_list)
+        self.mT_avg = np.sum(module.target_nuclide_AZC_list[:, 2] * module.target_nuclide_mass_list)
 
         print('BinData', self.BinData)
-
 
     def UpperLimit(self, mx, fp, fn, delta, vmin_min, vmin_max, vmin_step,
                    output_file, processes=None, **unused_kwargs):
@@ -503,7 +494,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         with open(output_file, 'ab') as f_handle:
             np.savetxt(f_handle, upper_limit)
         return upper_limit
-        
+
     def _PoissonUpperBound(self, vmin, mx, fp, fn, delta):
         int_response = \
             np.array(list(map(lambda i, j:
@@ -539,14 +530,16 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                                      vminStar_index, vminStar)
             logeta_list = np.insert(vars_list[vars_list.size/2:],
                                     vminStar_index, logetaStar)
-        
+
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
         rate_partials = [None] * (self.BinEdges_left.size)
 
         for x in range(0, self.BinEdges_left.size):
             resp_integr = self.IntegratedResponseTable(vmin_list_w0,
-                            self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
+                                                       self.BinEdges_left[x],
+                                                       self.BinEdges_right[x],
+                                                       mx, fp, fn, delta)
 
             rate_partials[x] = np.dot(10**logeta_list, resp_integr)
 
@@ -559,8 +552,8 @@ class Poisson_Likelihood(Experiment_HaloIndep):
 
         for x in range(0, self.BinData.size):
             result += 2.0 * (self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] + log(factorial(self.BinData[x])) -
-                                 self.BinData[x] * log(self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x]))
-            
+                             self.BinData[x] * log(self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x]))
+
         return result
 
     def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
@@ -568,7 +561,6 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         """This is intended to calculate the contribution to q(vmin) from a particular experiment.
         It may currently have issues, has not been tested.
         """
-
 
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
@@ -587,7 +579,9 @@ class Poisson_Likelihood(Experiment_HaloIndep):
 
         for x in range(0, self.BinEdges_left.size):
             resp_integr = self.IntegratedResponseTable(vmin_list_w0,
-                            self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta)
+                                                       self.BinEdges_left[x],
+                                                       self.BinEdges_right[x],
+                                                       mx, fp, fn, delta)
 
             rate_partials[x] = np.dot(10**logeta_list, resp_integr)
 
@@ -602,22 +596,23 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         if calculate_Q:
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
-                        self.curly_H_tab[x,v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
-                                args=(self.BinEdges_left[x], self.BinEdges_right[x], mx, fp, fn, delta),
-                                epsrel=PRECISSION, epsabs=0)[0]
+                        self.curly_H_tab[x, v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
+                                                                      args=(self.BinEdges_left[x], self.BinEdges_right[x], mx,
+                                                                            fp, fn, delta), epsrel=PRECISSION, epsabs=0)[0]
 
                         result[x, v_dummy] = (2.0 * ((self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] - self.BinData[x]) /
-                           ( rate_partials[x] + self.BinBkgr[x] / self.BinExposure[x])) * self.curly_H_tab[x, v_dummy])
+                                                     (rate_partials[x] + self.BinBkgr[x] / self.BinExposure[x])) *
+                                              self.curly_H_tab[x, v_dummy])
                         self.Q_contrib[x, v_dummy] = result[x, v_dummy]
-                        
+
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
-                             F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+                                    F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
             f_handle = open(file, 'wb')   # clear the file first
             np.savetxt(f_handle, self.Q_contrib)
             f_handle.close()
         else:
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
-                             F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+                                    F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
             f_handle = open(file, 'rb')
             self.Q_contrib = np.loadtxt(f_handle)
             f_handle.close()
@@ -625,7 +620,6 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         print('Obtained Variational of Likelihood')
 
         return self.Q_contrib
-
 
 
 class Crosses_HaloIndep(Experiment_HaloIndep):
@@ -758,13 +752,13 @@ class Crosses_HaloIndep(Experiment_HaloIndep):
         arraybox = np.array([])
         for Eee1, Eee2 in zip(self.BinEdges_left, self.BinEdges_right):
             kwargs = {'Eee1': Eee1, 'Eee2': Eee2, 'mT_avg': mT_avg,
-                   'mx': mx, 'fp': fp, 'fn': fn, 'delta': delta, 'vmax': vmax,
-                   'output_file': output_file}
+                      'mx': mx, 'fp': fp, 'fn': fn, 'delta': delta, 'vmax': vmax,
+                      'output_file': output_file}
             if Eee1 == self.BinEdges_left[0]:
                 arraybox = np.append(arraybox, self._Box(**kwargs))
             else:
                 arraybox = np.column_stack((arraybox, np.array(self._Box(**kwargs))))
-            
+
         return arraybox
 
     def _Rebin(self, index=9):
@@ -784,11 +778,11 @@ class Crosses_HaloIndep(Experiment_HaloIndep):
             self._Rebin()
 
         box_table = self._Boxes(mx, fp, fn, delta, vmax=vmin_max, processes=processes)
-        
-        int_resp_list = box_table[0,:]
-        vmin_center_list = box_table[1,:]
-        vmin_error_left_list = box_table[2,:]
-        vmin_error_right_list = box_table[3,:]
+
+        int_resp_list = box_table[0, :]
+        vmin_center_list = box_table[1, :]
+        vmin_error_left_list = box_table[2, :]
+        vmin_error_right_list = box_table[3, :]
         eta_list = self.BinData / int_resp_list
         eta_error_list = self.BinError / int_resp_list
         print('Bin Data', self.BinData)

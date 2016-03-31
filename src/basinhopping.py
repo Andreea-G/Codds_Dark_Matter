@@ -285,17 +285,18 @@ class AdaptiveStepsize(object):
         old_stepsize = self.takestep.stepsize
         accept_rate = float(self.naccept) / self.nstep
         if accept_rate > self.target_accept_rate:
-            #We're accepting too many steps.  This generally means we're
-            #trapped in a basin.  Take bigger steps
+            # We're accepting too many steps.  This generally means we're
+            # trapped in a basin.  Take bigger steps
             self.takestep.stepsize /= self.factor
         else:
-            #We're not accepting enough steps.  Take smaller steps
+            # We're not accepting enough steps.  Take smaller steps
             self.takestep.stepsize *= self.factor
         if self.verbose:
             print("adaptive stepsize: acceptance rate %f target %f new "
                   "stepsize %g old stepsize %g" % (accept_rate,
-                  self.target_accept_rate, self.takestep.stepsize,
-                  old_stepsize))
+                                                   self.target_accept_rate,
+                                                   self.takestep.stepsize,
+                                                   old_stepsize))
 
     def take_step(self, x):
         self.nstep += 1
@@ -309,6 +310,7 @@ class AdaptiveStepsize(object):
         if accept:
             self.naccept += 1
 
+
 class AdaptiveKwargs(object):
     """
     Class to implement adaptive minimizer kwargs.
@@ -318,10 +320,13 @@ class AdaptiveKwargs(object):
     a better global minimum.
     It is called immediately after the take_step function in the algorithm.
     """
+
     def __init__(self, kwargs):
         self.kwargs = kwargs
+
     def __call__(self):
         return self.kwargs
+
 
 class RandomDisplacement(object):
     """
@@ -374,7 +379,7 @@ class Metropolis(object):
 
 
 def basinhopping(func, x0, niter=100, T=1.0, stepsize=0.5,
-                 minimizer_kwargs=None, take_step=None, adapt_kwargs = None,
+                 minimizer_kwargs=None, take_step=None, adapt_kwargs=None,
                  accept_test=None, callback=None, interval=50, disp=False,
                  niter_success=None):
     """
@@ -729,8 +734,8 @@ def basinhopping(func, x0, niter=100, T=1.0, stepsize=0.5,
 
 
 def _test_func2d_nograd(x):
-    f = (cos(14.5 * x[0] - 0.3) + (x[1] + 0.2) * x[1] + (x[0] + 0.2) * x[0]
-         + 1.010876184442655)
+    f = (cos(14.5 * x[0] - 0.3) + (x[1] + 0.2) * x[1] + (x[0] + 0.2) * x[0] +
+         1.010876184442655)
     return f
 
 

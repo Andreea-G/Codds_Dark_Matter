@@ -36,7 +36,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
     if exper_name == "SuperCDMS":
         num_steps = 60
         mx_range_options = {(0, 1000.): (5, 100, num_steps),
-#        mx_range_options = {(0, 1000.): (7, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7, 100, num_steps),
                             (0, 0.): (4, 130, num_steps),
                             (-30, 1000.): (2.3, 100, num_steps),
                             (-30, 0.): (2, 100, num_steps),
@@ -47,7 +47,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
     elif "SuperCDMSLessT5" in exper_name:
         num_steps = 60
         mx_range_options = {(0, 1000.): (5, 100, num_steps),
-#        mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
                             (0, 0.): (4, 130, num_steps),
                             (-30, 1000.): (2.3, 100, num_steps),
                             (-30, 0.): (2, 100, num_steps),
@@ -58,7 +58,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
     elif "SuperCDMSLikelihood" in exper_name:
         num_steps = 60
         mx_range_options = {(0, 1000.): (5, 100, num_steps),
-#        mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
                             (0, 0.): (4, 130, num_steps),
                             (-30, 1000.): (2.3, 100, num_steps),
                             (-30, 0.): (2, 100, num_steps),
@@ -69,7 +69,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
     elif "LUX" in exper_name:
         num_steps = 30
         mx_range_options = {(0, 1000.): (5.85, 100, num_steps),
-#        mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
                             (0, 0.): (5.80, 130, num_steps),
                             (-30, 1000.): (3.95, 100, num_steps),
                             (-30, 0.): (3.95, 100, num_steps),
@@ -104,7 +104,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
         num_steps = 60
         if quenching == 0.4:
             mx_range_options = {(0, 1000.): (5, 25, num_steps),
-#            mx_range_options = {(0, 1000.): (8, 15, num_steps),
+                                # mx_range_options = {(0, 1000.): (8, 15, num_steps),
                                 (0, 0.): (5.5, 25, num_steps),
                                 (-30, 1000.): (2, 4, num_steps),
                                 (-30, 0.): (2, 3, num_steps),
@@ -112,8 +112,8 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                                 }
         else:
             mx_range_options = {(0, 1000.): (6, 30, num_steps),
-#            mx_range_options = {(0, 1000.): (10, 25, num_steps),
-#                                (0, 0.): (7, 22, num_steps),
+                                # mx_range_options = {(0, 1000.): (10, 25, num_steps),
+                                # (0, 0.): (7, 22, num_steps),
                                 (0, 0.): (7, 29, num_steps),
                                 (-30, 1000.): (3, 5, num_steps),
                                 (-30, 0.): (2.5, 4, num_steps),
@@ -123,8 +123,8 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
         num_steps = 80
         if quenching == 0.06:
             mx_range_options = {(0, 1000.): (30, 100, num_steps),
-#            mx_range_options = {(0, 1000.): (55, 85, num_steps),
-#                                (0, 0.): (22, 130, num_steps),
+                                # mx_range_options = {(0, 1000.): (55, 85, num_steps),
+                                # (0, 0.): (22, 130, num_steps),
                                 (0, 0.): (22, 100, num_steps),
                                 (-30, 1000.): (25, 100, num_steps),
                                 (-30, 0.): (40, 100, num_steps),
@@ -133,12 +133,12 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                                 (50, 0.): (55, 100, num_steps),
                                 (100, 1000.): (45, 100, num_steps),
                                 (100, 0.): (50, 500, num_steps),
-#                                (100, 0.): (50, 90, num_steps),
+                                # (100, 0.): (50, 90, num_steps),
                                 }
         else:
             mx_range_options = {(0, 1000.): (22, 80, num_steps),
-#            mx_range_options = {(0, 1000.): (40, 65, num_steps),
-#                                (0, 0.): (29, 90, num_steps),
+                                # mx_range_options = {(0, 1000.): (40, 65, num_steps),
+                                # (0, 0.): (29, 90, num_steps),
                                 (0, 0.): (22, 100, num_steps),
                                 (-30, 1000.): (20, 80, num_steps),
                                 (-30, 0.): (30, 100, num_steps),
@@ -147,11 +147,11 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                                 (50, 0.): (40, 100, num_steps),
                                 (100, 1000.): (41, 100, num_steps),
                                 (100, 0.): (30, 300, num_steps),
-#                                (100, 0.): (42, 65, num_steps),
+                                # (100, 0.): (42, 65, num_steps),
                                 }
     elif exper_name == "DAMA2010Na_TotRateLimit":
         num_steps = 60
-#        mx_range_options = {(0, 1000.): (3, 15, num_steps),
+        # mx_range_options = {(0, 1000.): (3, 15, num_steps),
         mx_range_options = {(0, 1000.): (3, 20, num_steps),
                             (0, 0.): (3, 15, num_steps),
                             (-30, 1000.): (1, 10, num_steps),

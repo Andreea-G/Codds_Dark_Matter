@@ -29,34 +29,27 @@ from scipy.optimize import minimize
 """
 The general idea here is this:
 Can I create a minimization procedure that is more efficient than that standard basinhopping (and finds the actual minimium).
-To do this, I plan on picking my value of vmin, minimizing wrt to the value of eta, then minimizing at a fixed
+To do this, I plan on picking my value of vmin, minimizing wrt to the value of eta (this can be done very quickly,
+this is the advantage of this method), then minimizing at a fixed
 eta across different vmin, then reminimize wrt to eta, etc.
 
-Do this procedure until a self consistent minimum is found. I will start by writing this code for CDMS-Si and 1 other
-poisson binned experiment, but I'd like to generalize at some point in the future.
-
-TODO Generalize to: more than 2 experiments, different likelihood functions, larger N_o -- also clean up and write neater code
+Currently this only functions for a single extended likelihood (CDMS-Si) and experiments capable of utilizing a poisson likelihood
 """
 
 
-
-
-
 def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminStar=None, logetaStar=None,
-                                          index=None, vmin_err = 8.0, logeta_err = 0.01):
-
-
+                                       index=None, vmin_err=8.0, logeta_err=0.01):
 
         if vminStar is not None:
             vmin_list_reduced = x0[: len(x0)/2]
             vmin_list = np.sort(np.append(vmin_list_reduced, vminStar))
 
-            index_hold = np.argwhere(vmin_list == vminStar)[0,0]
-            logeta_list_reduced = x0[len(x0)/2 :]
+            index_hold = np.argwhere(vmin_list == vminStar)[0, 0]
+            logeta_list_reduced = x0[len(x0)/2:]
             logeta_list = np.insert(logeta_list_reduced, index_hold, logetaStar)
         else:
             vmin_list = x0[: len(x0)/2]
-            logeta_list = x0[len(x0)/2 :]
+            logeta_list = x0[len(x0)/2:]
             logeta_list_reduced = logeta_list
             vmin_list_reduced = vmin_list
             index_hold = None
@@ -73,9 +66,6 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             is_not_close[x.size] = True
             constr = np.where(is_not_close, constraints, np.abs(constraints))
 
-#            print("***constr =", repr(constr))
-#            print("tf =", repr(constr < 0))
-
             return constr
 
         def constr_func_vmin(x):
@@ -85,46 +75,41 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
 
             constraints = np.concatenate([x, np.diff(x)])
 
-
             is_not_close = np.logical_not(
                 np.isclose(constraints, np.zeros_like(constraints), atol=1e-4))
             is_not_close[x.size] = True
             constr = np.where(is_not_close, constraints, np.abs(constraints))
-
-#            print("***constr =", repr(constr))
-#            print("tf =", repr(constr < 0))
 
             return constr
 
         constr = ({'type': 'ineq', 'fun': constr_func_logeta})
         constr_vmin = ({'type': 'ineq', 'fun': constr_func_vmin})
 
-
         def optimize_logeta(logeta_list, vmin_list, class_name, mx, fp, fn, delta,
                             vminStar=None, logetaStar=None, index_hold=None):
 
-# CDMS-Si Likelihood
+            # CDMS-Si Likelihood
             optimize_func = class_name[0]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
-                            vminStar, logetaStar, index_hold)
+                                                              vminStar, logetaStar, index_hold)
 
-# Add in other likelihoods
+            # Add in other likelihoods
             for i in range(1, len(class_name)):
                 optimize_func += class_name[i]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
-                                mx, fp, fn, delta, vminStar, logetaStar, index_hold)
-            
+                                                                   mx, fp, fn, delta, vminStar, logetaStar, index_hold)
+
             return optimize_func
 
         def minimize_over_vmin(vmin_list, logeta_list, class_name, mx, fp, fn, delta, vminStar=None,
                                logetaStar=None, index_hold=None):
 
-# CDMS-Si Likelihood
+            # CDMS-Si Likelihood
             optimize_func = class_name[0]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
-                            vminStar, logetaStar, index_hold)
+                                                              vminStar, logetaStar, index_hold)
 
-# Add in other likelihoods
+            # Add in other likelihoods
             for i in range(1, len(class_name)):
                 optimize_func += class_name[i]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
-                                mx, fp, fn, delta, vminStar, logetaStar, index_hold)
+                                                                   mx, fp, fn, delta, vminStar, logetaStar, index_hold)
 
             return optimize_func
 
@@ -138,8 +123,8 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
 
         while ni < 15 and not check:
             mloglike_min = minimize(optimize_logeta, logeta_list_reduced, args=(vmin_list_reduced, class_name, mx,
-                          fp, fn, delta, vminStar, logetaStar, index_hold), method = 'SLSQP',
-                                bounds = bnd, constraints=constr)
+                                    fp, fn, delta, vminStar, logetaStar, index_hold), method='SLSQP',
+                                    bounds=bnd, constraints=constr)
             logeta_list_reduced = mloglike_min.x
 
             if logetaStar is not None:
@@ -148,10 +133,9 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
                 logeta_list_new = logeta_list_reduced
 
             vminloglike_min = minimize(minimize_over_vmin, vmin_list_reduced, args=(logeta_list_reduced, class_name,
-                                mx, fp, fn, delta, vminStar, logetaStar, index_hold),
-                                method = 'SLSQP', bounds = bnd_vmin, constraints=constr_vmin)
+                                       mx, fp, fn, delta, vminStar, logetaStar, index_hold),
+                                       method='SLSQP', bounds=bnd_vmin, constraints=constr_vmin)
             vmin_list_reduced = vminloglike_min.x
-
 
             if vminStar is not None:
                 vmin_list_new = np.sort(np.append(vmin_list_reduced, vminStar))
@@ -183,7 +167,3 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
             print('Potential issue with convergence...')
 
         return np.concatenate([vmin_list_new, logeta_list_new]), loglikeval
-
-
-
-

@@ -29,6 +29,7 @@ modulated = False
 
 energy_resolution_type = "Dirac"
 
+
 def EnergyResolution(e):
     return np.ones_like(e)
 
@@ -50,6 +51,7 @@ target_nuclide_mass_list = np.array([65.134, 66.995, 67.9278, 68.8571, 70.7203])
 
 num_target_nuclides = target_nuclide_mass_list.size
 
+
 def QuenchingFactor(e):
     return np.ones_like(e)
 
@@ -67,8 +69,10 @@ Efficiency_interp = \
                        0.43731, 0.44819, 0.459066, 0.506, 0.514216, 0.543101, 0.544292,
                        0.529854, 0.532668]))
 
+
 def Efficiency(e, er):
     return np.ones_like(er)
+
 
 def Efficiency_ER(e):
     return Efficiency_interp(e) if Ethreshold <= e < Emaximum else np.array(0.)
@@ -76,23 +80,18 @@ def Efficiency_ER(e):
 Exposure = 577.0 * (5./7.)
 ERecoilList = np.array([1.7, 1.8, 1.9, 2.7])
 
-
-
-
-
-#BinBkgr = np.array([0.03, 1.4, 1.8, 0.4, 1.7])
-#BinEdges_left = np.array([1.64,1.64,1.64,1.64,1.64])
-#BinEdges_right = np.array([10.0,10.0,10.0,10.0,10.0])
-#BinSize = 8.4
-#BinData = np.array([0, 2, 2, 0, 0])
-#BinExposure = np.array([577./7.,577./7.,577./7.,577./7.,577./7.])
+# BinBkgr = np.array([0.03, 1.4, 1.8, 0.4, 1.7])
+# BinEdges_left = np.array([1.64,1.64,1.64,1.64,1.64])
+# BinEdges_right = np.array([10.0,10.0,10.0,10.0,10.0])
+# BinSize = 8.4
+# BinData = np.array([0, 2, 2, 0, 0])
+# BinExposure = np.array([577./7.,577./7.,577./7.,577./7.,577./7.])
 
 BinBkgr = np.array([5.33])
 BinEdges_left = np.array([1.64])
 BinEdges_right = np.array([10.0])
 BinSize = 8.4
 BinData = np.array([4])
-BinExposure = np.array([577.*5./7.])
+BinExposure = np.array([577. * 5. / 7.])
 
 Expected_limit = 4.25
-
