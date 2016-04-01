@@ -1387,7 +1387,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             logetaStar_list = \
                 logetaStar_list[logeta_index_range[0]: logeta_index_range[1]]
             plot = False
-        print("vminStar =", vminStar)
+        # print("vminStar =", vminStar)
         table = np.empty((0, 2))
 
         temp_file = output_file_tail + "_" + str(index) + \
@@ -1406,6 +1406,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 table = np.loadtxt(temp_file)
                 for logetaStar in logetaStar_list:
                     if logetaStar > table[-1, 0]:
+                        print('V* =', vminStar, 'log(eta)* =', logetaStar)
                         constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
                                                                                  multiexper_input,
                                                                                  self.class_name, mx,
@@ -1421,6 +1422,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                         np.savetxt(temp_file, table)
             else:
                 for logetaStar in logetaStar_list:
+                    print('V* =', vminStar, 'log(eta)* =', logetaStar)
                     constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
                                                                              multiexper_input,
                                                                              self.class_name, mx,
