@@ -329,7 +329,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             mu_i[0] = 0.0
         if mu_i[1] < 0:
             mu_i[1] = 0.0
-        if mu_i[2] = 0.0
+        if mu_i[2] < 0.0
             mu_i[2] = 0.0
         
         result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
