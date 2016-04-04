@@ -325,10 +325,11 @@ class Experiment_EHI(Experiment_HaloIndep):
         if vminStar is None:
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
+        if mu_i < 0:
+            mu_i = 0.0
+        
         result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
 
-        if np.any(self.mu_BKG_i + mu_i < 0):
-            raise ValueError
         return result
 
     def MinusLogLikelihood(self, vars_list, constr_func=None, vminStar=None,
@@ -1402,7 +1403,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         if size_of_file >= 30:
             pass
         else:
-            if fileexists and size_of_file > 0:
+            if fileexists and size_of_file > 1 and np.loadtxt(temp_file).ndim == 2:
                 table = np.loadtxt(temp_file)
                 for logetaStar in logetaStar_list:
                     if logetaStar > table[-1, 0]:

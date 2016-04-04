@@ -540,8 +540,10 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                                                        self.BinEdges_left[x],
                                                        self.BinEdges_right[x],
                                                        mx, fp, fn, delta)
-
-            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+            if resp_integr < 0:
+                rate_partials[x] = 0.0
+            else:    
+                rate_partials[x] = np.dot(10**logeta_list, resp_integr)
 
         result = 0
 
@@ -549,7 +551,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
             self.Response = self._Response_Dirac
         else:
             self.Response = self._Response_Finite
-
+        
         for x in range(0, self.BinData.size):
             result += 2.0 * (self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] + log(factorial(self.BinData[x])) -
                              self.BinData[x] * log(self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x]))

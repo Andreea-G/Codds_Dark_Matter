@@ -470,7 +470,10 @@ class PoissonLikelihood(Experiment):
 
         resp_integr = self.BinExposure[0] * conversion_factor / mx * self.IntegratedResponseSHM(
                             self.BinEdges_left[0], self.BinEdges_right[0], mx, fp, fn, delta)
-        rate_partials[0] = resp_integr
+        if resp_integr < 0.0:
+            rate_partials[0] = 0.0
+        else:
+            rate_partials[0] = resp_integr
 
         result = 0
 
