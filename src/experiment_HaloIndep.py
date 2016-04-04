@@ -540,10 +540,10 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                                                        self.BinEdges_left[x],
                                                        self.BinEdges_right[x],
                                                        mx, fp, fn, delta)
-            if resp_integr < 0:
+    
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+            if rate_partials[x] < 0:
                 rate_partials[x] = 0.0
-            else:    
-                rate_partials[x] = np.dot(10**logeta_list, resp_integr)
 
         result = 0
 
