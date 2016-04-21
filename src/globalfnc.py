@@ -494,10 +494,9 @@ def dERecoildVmin(vmin, mT, mx, delta, sign):
         sqrt_factor = np.sqrt(1. - 2.*delta / (muT * vmin**2) * SpeedOfLight**2 * 1.e-6)
         ret = sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
     elif vmin == 0 and delta == 0:
-        sqrt_factor = np.sqrt(1.)
-        ret = sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
+        ret = 0.
     else:
-        ret = np.sqrt(- 2.0 * delta / muT) * muT**2. / mT 
+        ret = sign * (- delta * muT) / (np.sqrt(- 2.0 * delta * SpeedOfLight**2 * 1.e-6 / muT) * mT) 
     return ret
 
 
