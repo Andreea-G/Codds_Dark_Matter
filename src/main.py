@@ -32,6 +32,11 @@ def main():
          "SHM_eta0", "SHM_eta1", "SuperCDMSLessT5", "SuperCDMSLikelihood"]  # 20 - 23
 
     # Give input parameters
+    
+    # Setting EHI_METHOD parameters to T can run either CDMSSi eta_BF/Confidence Band
+    # or the multi-experiment global likelihood eta_BF/Confidence BAND. For this to
+    # work in the case of the latter, CDMSSi must be the first entry in the 
+    # multiexper_input_indices list
 
     EHI_METHOD = {}
     # EHI_METHOD['ResponseTables'] = T
@@ -39,12 +44,16 @@ def main():
     EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
     # EHI_METHOD['VminLogetaSamplingTable'] = T
-    EHI_METHOD['LogLikelihoodList'] = T
-    # EHI_METHOD['ConfidenceBand'] = T
+    # EHI_METHOD['LogLikelihoodList'] = T
+    EHI_METHOD['ConfidenceBand'] = T
     # EHI_METHOD['ConfidenceBandPlot'] = T
+    
+    # Calc constrained loglike list for non EHI experiments in multi_exper 
+    # Only works for 22,23 at this moment
+    MULTI_LOGLIKELIST = F 
 
     HALO_DEP = F
-    MULTI_EXPER = T  # Set to True if EHI_Method should be applied to multiexper_input_indices
+    MULTI_EXPER = T  # Set to True iff EHI_Method should be applied to multiexper_input_indices
     plot_dots = F
     RUN_PROGRAM = T
     MAKE_LIMITS = F
@@ -59,7 +68,8 @@ def main():
     # indices of implemented_exper_list
     exper_indices = []
     # indices to be used in multiexperiment EHI anlysis
-    multiexper_input_indices = [17, 22]
+    # make sure experiments being used have functioning likelihood subroutine
+    multiexper_input_indices = [17, 23]
 
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]
@@ -71,7 +81,8 @@ def main():
                 scattering_types=scattering_types,
                 RUN_PROGRAM=RUN_PROGRAM, MAKE_REGIONS=MAKE_REGIONS, MULTI_EXPER=MULTI_EXPER,
                 MAKE_CROSSES=MAKE_CROSSES, MAKE_LIMITS=MAKE_LIMITS, MAKE_PLOT=MAKE_PLOT,
-                EHI_METHOD=EHI_METHOD, OUTPUT_MAIN_DIR=OUTPUT_MAIN_DIR,
+                EHI_METHOD=EHI_METHOD, MULTI_LOGLIKELIST=MULTI_LOGLIKELIST,
+                OUTPUT_MAIN_DIR=OUTPUT_MAIN_DIR,
                 filename_tail_list=filename_tail_list, extra_tail=extra_tail,
                 plot_dots=plot_dots)
 

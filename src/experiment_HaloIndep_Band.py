@@ -1383,7 +1383,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         print('index =', index)
         print('output_file_tail =', output_file_tail)
-
+        
         vminStar = self.vmin_logeta_sampling_table[index, 0, 0]
         logetaStar_list = self.vmin_logeta_sampling_table[index, :, 1]
         plot = False
@@ -1416,15 +1416,17 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                                                  multiexper_input,
                                                                                  self.class_name, mx,
                                                                                  fp, fn, delta, plot)
+                        if constr_opt < 0.:
+                            pass
+                        else:                                                             
+                            print("index =", index, "; vminStar =", vminStar,
+                                  "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                            table = np.append(table, [[logetaStar, constr_opt]], axis=0)
 
-                        print("index =", index, "; vminStar =", vminStar,
-                              "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
-                        table = np.append(table, [[logetaStar, constr_opt]], axis=0)
-#                       table = np.append(table, [logetaStar])
-                        print("vminStar =", vminStar, "; table =", table)
+                            print("vminStar =", vminStar, "; table =", table)
 
-                        print(temp_file)
-                        np.savetxt(temp_file, table)
+                            print(temp_file)
+                            np.savetxt(temp_file, table)
             else:
                 for logetaStar in logetaStar_list:
                     print('V* =', vminStar, 'log(eta)* =', logetaStar)
@@ -1432,15 +1434,17 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                                              multiexper_input,
                                                                              self.class_name, mx,
                                                                              fp, fn, delta, plot)
+                    if constr_opt < 0.:
+                        pass
+                    else:
+                        print("index =", index, "; vminStar =", vminStar,
+                              "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                        table = np.append(table, [[logetaStar, constr_opt]], axis=0)
 
-                    print("index =", index, "; vminStar =", vminStar,
-                          "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
-                    table = np.append(table, [[logetaStar, constr_opt]], axis=0)
-#                   table = np.append(table, [logetaStar])
-                    print("vminStar =", vminStar, "; table =", table)
+                        print("vminStar =", vminStar, "; table =", table)
 
-                    print(temp_file)
-                    np.savetxt(temp_file, table)
+                        print(temp_file)
+                        np.savetxt(temp_file, table)
         return
 
     def LogLikelihoodList(self, output_file_tail, extra_tail="", processes=None,

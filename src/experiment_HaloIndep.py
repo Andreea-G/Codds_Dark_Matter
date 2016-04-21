@@ -622,6 +622,129 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         print('Obtained Variational of Likelihood')
 
         return self.Q_contrib
+        
+
+    def Constrained_likelihood(self, mx, fp, fn, delta, vminStar, logetaStar):
+                    
+        vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+        
+        if vminStar > vmin_low:
+            mu_max = np.inf
+            mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(0., vminStar, self.BinEdges_left,
+                                                                        self.BinEdges_right, mx, fp, 
+                                                                        fn, delta)
+            
+        else:
+            mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(0., 1000., self.BinEdges_left,
+                                                                        self.BinEdges_right, mx, fp, 
+                                                                        fn, delta)
+            mu_min = 0.
+            
+            
+        
+        if self.BinData > self.BinBkgr:
+            optimal_mu = (self.BinData - self.BinBkgr) 
+            
+            if mu_min < optimal_mu < mu_max:
+                mu = optimal_mu
+            elif optimal_mu <= mu_min:
+                mu = mu_min
+            else:
+                mu = mu_max            
+        else:
+            optimal_mu = 0.
+            if mu_min > optimal_mu:
+                mu = mu_min
+            else:
+                mu = optimal_mu
+        
+        mloglike = 2.0 * (mu + self.BinBkgr + np.log(factorial(self.BinData)) - self.BinData *
+                   np.log(mu + self.BinBkgr))  
+       
+        return mloglike[0]
+        
+    def GetLikelihoodTable(self, index, output_file_loc, mx, fp, fn, delta):
+
+        
+        print('index =', index)
+        
+        vminStar = self.call_table.vmin_logeta_sampling_table[index, 0, 0]
+        logetaStar_list = self.call_table.vmin_logeta_sampling_table[index, :, 1]
+        
+        print("vminStar =", vminStar)
+        
+                                
+        temp_file = output_file_loc + str(self.name) + "_" + str(index) + \
+                    "_mx_" + str(mx) + "GeV_" + "fpfn" + str(fp) + "_" + str(fn) + \
+                    "_ConstrainedLogLikelihoodList" + ".dat"
+        table = np.empty((0, 2))
+        
+        if os.path.exists(temp_file):
+            size_of_file = len(np.loadtxt(temp_file))
+            fileexists = True
+        else:
+            size_of_file = 0
+            fileexists = False
+        if size_of_file >= 30:
+            pass
+        else:
+            if fileexists and size_of_file > 1 and np.loadtxt(temp_file).ndim == 2:
+                table = np.loadtxt(temp_file)
+                for logetaStar in logetaStar_list:
+                    if logetaStar > table[-1, 0]:
+                        print('V* =', vminStar, 'log(eta)* =', logetaStar)
+                        
+                        constr_opt = self.Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
+                        if constr_opt < 0.:
+                            pass
+                        else:
+                            print("index =", index, "; vminStar =", vminStar,
+                                  "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                        
+                            table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+
+                            print("vminStar =", vminStar, "; table =", table)
+                            print(temp_file)
+                            np.savetxt(temp_file, table)
+            else:
+                for logetaStar in logetaStar_list:
+                    print('V* =', vminStar, 'log(eta)* =', logetaStar)
+                    
+                    constr_opt = self.Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
+                    if constr_opt < 0.:
+                        pass
+                    else:
+                        print("index =", index, "; vminStar =", vminStar,
+                              "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                    
+                        table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+
+                        print("vminStar =", vminStar, "; table =", table)
+                        print(temp_file)
+                        np.savetxt(temp_file, table)
+        
+        return
+        
+        
+    def ConstrainedLikelihoodList(self, class_name, output_file_loc, mx, fp, fn, delta, processes=None):
+        
+        
+        vmin_index_list = range(0, class_name[0].vmin_logeta_sampling_table.shape[0])
+        
+        print("vmin_index_list =", vmin_index_list)
+        self.call_table = class_name[0]
+        kwargs = ({'index': index,
+                   'mx': mx,
+                   'fp': fp,
+                   'fn': fn,
+                   'delta': delta,
+                   'output_file_loc': output_file_loc
+                   }
+                  for index in vmin_index_list)
+        
+        par.parmap(self.GetLikelihoodTable, kwargs, processes)
+
+        return
 
 
 class Crosses_HaloIndep(Experiment_HaloIndep):

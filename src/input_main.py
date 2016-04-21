@@ -82,7 +82,7 @@ class Input:
                  scattering_types='SI',
                  RUN_PROGRAM=False, MAKE_REGIONS=False, MULTI_EXPER=False,
                  MAKE_CROSSES=False,
-                 MAKE_LIMITS=False, MAKE_PLOT=False, EHI_METHOD={},
+                 MAKE_LIMITS=False, MAKE_PLOT=False, EHI_METHOD={}, MULTI_LOGLIKELIST=False,
                  OUTPUT_MAIN_DIR="../Output/", filename_tail_list=[""], extra_tail="",
                  plot_dots=False,
                  CL_list=[0.9], sigma_dev_list=[1]):
@@ -110,6 +110,7 @@ class Input:
         self.HALO_DEP = HALO_DEP
         self.EHI_METHOD = EHIBools(**EHI_METHOD)
         self.MULTI_EXPER = MULTI_EXPER
+        self.MULTI_LOGLIKELIST = MULTI_LOGLIKELIST
 
         self.qKIMS_list = [0.1, 0.05]
         self.qDAMANa_list = [0.4, 0.3]
@@ -178,7 +179,7 @@ class Input:
             self.log_sigma_p = None
 
             for self.exper_name in self.exper_list:
-                if (self.exper_name == "CDMSSi2012" and np.any(self.EHI_METHOD) and self.multiexper_input.size == 0):
+                if (self.exper_name == "CDMSSi2012" and np.any(self.EHI_METHOD) and not self.MULTI_EXPER):
 
                     self.vmin_EHIBand_range = \
                         module.Vmin_EHIBand_range(self.exper_name, self.mx,

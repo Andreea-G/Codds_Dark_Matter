@@ -190,7 +190,7 @@ class PlotData:
             return x1, interp(x1)
 
     def plot_crosses(self, crosses, linewidth=3, plot_show=True, alpha=1):
-        int_resp = crosses[0]
+#        int_resp = crosses[0]
 
         def xy_points(indices):
             x = crosses[indices[0]]
@@ -430,7 +430,7 @@ class RunProgram:
                     interpolation_order = 2
                     delta_logL = [chi_squared1(c) for c in confidence_levels]
                     for d_logL in delta_logL:
-                        multiplot = (d_logL == delta_logL[0])
+#                        multiplot = (d_logL == delta_logL[0])
                         self.exper.ConfidenceBand(self.output_file_no_extension, d_logL,
                                                   interpolation_order,
                                                   extra_tail=extra_tail,
@@ -492,7 +492,7 @@ class RunProgram:
 
     def plot_EHI_band(self, exper_name, confidence_levels, HALO_DEP, extra_tail,
                       plot_dots):
-        output_file = self.output_file_no_extension + ".dat"
+#        output_file = self.output_file_no_extension + ".dat"
         self.exper.ImportOptimalLikelihood(self.output_file_no_extension)
         interp_kind = 'linear'
         plot_limits = PlotData(exper_name, HALO_DEP, plot_close=False)
@@ -529,7 +529,7 @@ class RunProgram:
     def __call__(self, exper_name, scattering_type, mPhi, fp, fn, delta,
                  confidence_levels,
                  HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MAKE_CROSSES, MULTI_EXPER,
-                 MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, multiexper_input=None,
+                 MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, MULTI_LOGLIKELIST, multiexper_input=None,
                  mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
                  vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
                  steepness=None, logeta_guess=None,
@@ -736,7 +736,8 @@ class RunProgram_Multiexperiment:
     def __call__(self, multiexper_input, scattering_type, mPhi, fp, fn, delta,
                  confidence_levels,
                  HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MULTI_EXPER,
-                 MAKE_CROSSES, MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, exper_name=None,
+                 MAKE_CROSSES, MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, MULTI_LOGLIKELIST,
+                 exper_name=None,
                  mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
                  vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
                  steepness=None, logeta_guess=None,
@@ -901,7 +902,7 @@ class RunProgram_Multiexperiment:
                                                        vmin_Band_numsteps,
                                                        steepness_vmin, steepness_vmin_center,
                                                        MULTI_EXPER,
-                                                       plot=not np.any(EHI_METHOD[5:]))
+                                                       plot=False)
                         print('logeta percent minus:', logeta_percent_minus)
                         print('logeta percent plus:', logeta_percent_plus)
                         print('logeta number of steps:', logeta_num_steps)
@@ -910,7 +911,7 @@ class RunProgram_Multiexperiment:
                                                               logeta_percent_plus,
                                                               logeta_num_steps,
                                                               steepness_logeta,
-                                                              plot=not np.any(EHI_METHOD[5:]))
+                                                              plot=False)
                 else:
                         print("Steepness: Default")
                         class_name[0].VminSamplingList(output_file, output_file_CDMS,
@@ -924,7 +925,12 @@ class RunProgram_Multiexperiment:
                                                               logeta_percent_plus,
                                                               logeta_num_steps,
                                                               plot=not np.any(EHI_METHOD[5:]))
-
+                                                                
+            if MULTI_LOGLIKELIST:
+                output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)  
+                for i in range(1, len(multiexper_input)):
+                    class_name[1].ConstrainedLikelihoodList(class_name, output_file_loc, mx, fp, fn, delta)
+                
             if EHI_METHOD.LogLikelihoodList:
                     print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max,
                           vmin_Band_numsteps)
