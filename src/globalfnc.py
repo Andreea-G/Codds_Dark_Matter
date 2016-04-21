@@ -492,9 +492,13 @@ def dERecoildVmin(vmin, mT, mx, delta, sign):
     muT = mx * mT / (mx + mT)
     if vmin != 0:
         sqrt_factor = np.sqrt(1. - 2.*delta / (muT * vmin**2) * SpeedOfLight**2 * 1.e-6)
+        ret = sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
     elif vmin == 0 and delta == 0:
         sqrt_factor = np.sqrt(1.)
-    return sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
+        ret = sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
+    else:
+        ret = np.sqrt(- 2.0 * delta / muT) * muT**2. / mT 
+    return ret
 
 
 def eta0Maxwellian(vmin, vobs, v0bar, vesc):
