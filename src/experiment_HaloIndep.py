@@ -524,7 +524,8 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         return Nsignal
         
     def Simulate_Events(self, Nexpected, class_name, mx, fp, fn, delta):
-        Nevents = poisson.rvs(Nexpected)        
+        Totexpected = Nexpected + self.BinBkgr[0] 
+        Nevents = poisson.rvs(Totexpected)        
         vmin_list_w0 = class_name[0].optimal_vmin
         logeta_list = class_name[0].optimal_logeta
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
@@ -547,7 +548,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
             Nevents = 0
             Nexpected = 0
             
-        print('Events expected: ', Nexpected, 'Events Simulated: ', Nevents)
+        print('Events expected: ', Totexpected, 'Events Simulated: ', Nevents)
         print('Events: ', Q)
         
         return Q
