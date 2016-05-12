@@ -30,7 +30,6 @@ from scipy.optimize import brentq, minimize, brute
 from basinhopping import *
 from globalfnc import *
 from custom_minimizer import *
-from semi_analytic_minimization import *
 import matplotlib.pyplot as plt
 import os   # for speaking
 import parallel_map as par
@@ -641,11 +640,27 @@ class Experiment_EHI(Experiment_HaloIndep):
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
                                                   minimizer_kwargs=minimizer_kwargs, niter=30, stepsize=.2)
         else:
-            optimum_log_likelihood, fun_val = Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
-#            print('Going in...')
-#            tet = semi_analytic_minimization(class_name, vmin_list, mx, fp, fn, delta)
-#            print('Survived...', tet)
-#            exit()
+            finish = 0
+            while finish != 1:
+                
+                print('Length of events: ', vars_guess.size / 2.)
+                optimum_log_likelihood, fun_val = \
+                    Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
+
+                full_eta = optimum_log_likelihood[optimum_log_likelihood.size/2 :]
+                check_const1 = np.all(np.diff(np.abs(full_eta))>0.)
+                full_vmin = optimum_log_likelihood[: optimum_log_likelihood.size/2]
+                check_const2 = np.all(np.diff(full_vmin)>0.)
+                
+                if not check_const1 or not check_const2:
+                    vars_guess = np.delete(vars_guess,0)
+                    vars_guess = np.delete(vars_guess,-1)
+                    print('Try again with less steps...')
+                elif check_const1 and check_const2:
+                    finish = 1
+
+                    
+#            optimum_log_likelihood, fun_val = Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
             
         print(optimum_log_likelihood)
         print("MinusLogLikelihood =", fun_val)

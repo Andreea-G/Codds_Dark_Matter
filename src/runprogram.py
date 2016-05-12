@@ -968,8 +968,8 @@ class RunProgram_Multiexperiment:
                 
                 if os.path.exists(file_name):
                     hold = np.loadtxt(file_name)
-                    hold = np.append(hold, MC_run)
-                    np.savetxt(file_name, np.transpose(MC_run))
+                    with open(file_name,"w") as f:
+                        f.write("\n".join(" ".join(map(str, x)) for x in (hold,MC_run)))
                 else:
                     np.savetxt(file_name, np.transpose(MC_run))
 
