@@ -81,7 +81,7 @@ class Input:
                  input_indices=slice(None), multiexper_input_indices=slice(None),
                  scattering_types='SI',
                  RUN_PROGRAM=False, MAKE_REGIONS=False, MULTI_EXPER=False,
-                 MAKE_CROSSES=False,
+                 MAKE_CROSSES=False, GENERATE_MC=False,
                  MAKE_LIMITS=False, MAKE_PLOT=False, EHI_METHOD={}, MULTI_LOGLIKELIST=False,
                  OUTPUT_MAIN_DIR="../Output/", filename_tail_list=[""], extra_tail="",
                  plot_dots=False,
@@ -111,7 +111,7 @@ class Input:
         self.EHI_METHOD = EHIBools(**EHI_METHOD)
         self.MULTI_EXPER = MULTI_EXPER
         self.MULTI_LOGLIKELIST = MULTI_LOGLIKELIST
-
+        self.GENERATE_MC = GENERATE_MC
         self.qKIMS_list = [0.1, 0.05]
         self.qDAMANa_list = [0.4, 0.3]
         self.qDAMAI_list = [0.09, 0.06]

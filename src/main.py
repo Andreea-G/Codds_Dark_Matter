@@ -45,13 +45,16 @@ def main():
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
     # EHI_METHOD['VminLogetaSamplingTable'] = T
     # EHI_METHOD['LogLikelihoodList'] = T
-    EHI_METHOD['ConfidenceBand'] = T
+    # EHI_METHOD['ConfidenceBand'] = T
     # EHI_METHOD['ConfidenceBandPlot'] = T
     
-    # Calc constrained loglike list for non EHI experiments in multi_exper 
-    # Only works for 22,23 at this moment
-    MULTI_LOGLIKELIST = F 
+    # Calc constrained loglike list for experiments in multi_exper 
+    # Only works for 22,23 at this moment 
+    # Generate MC can be used for calculation of TS
+    MULTI_LOGLIKELIST = F
+    GENERATE_MC = T 
 
+    # General Commands
     HALO_DEP = F
     MULTI_EXPER = T  # Set to True iff EHI_Method should be applied to multiexper_input_indices
     plot_dots = F
@@ -69,7 +72,7 @@ def main():
     exper_indices = []
     # indices to be used in multiexperiment EHI anlysis
     # make sure experiments being used have functioning likelihood subroutine
-    multiexper_input_indices = [17, 23]
+    multiexper_input_indices = [17,22]
 
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]
@@ -82,7 +85,7 @@ def main():
                 RUN_PROGRAM=RUN_PROGRAM, MAKE_REGIONS=MAKE_REGIONS, MULTI_EXPER=MULTI_EXPER,
                 MAKE_CROSSES=MAKE_CROSSES, MAKE_LIMITS=MAKE_LIMITS, MAKE_PLOT=MAKE_PLOT,
                 EHI_METHOD=EHI_METHOD, MULTI_LOGLIKELIST=MULTI_LOGLIKELIST,
-                OUTPUT_MAIN_DIR=OUTPUT_MAIN_DIR,
+                OUTPUT_MAIN_DIR=OUTPUT_MAIN_DIR, GENERATE_MC=GENERATE_MC,
                 filename_tail_list=filename_tail_list, extra_tail=extra_tail,
                 plot_dots=plot_dots)
 

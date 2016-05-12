@@ -24,6 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FixedLocator, ScalarFormatter, FuncFormatter
 from matplotlib import rc, rcParams
+import os
 rcParams['text.usetex'] = True  # needed to use LaTeX for labels and legends
 rcParams['text.latex.preamble'] = [r'\boldmath']  # needed for bold labels and legends
 
@@ -529,7 +530,8 @@ class RunProgram:
     def __call__(self, exper_name, scattering_type, mPhi, fp, fn, delta,
                  confidence_levels,
                  HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MAKE_CROSSES, MULTI_EXPER,
-                 MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, MULTI_LOGLIKELIST, multiexper_input=None,
+                 MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, MULTI_LOGLIKELIST, GENERATE_MC,
+                 multiexper_input=None,
                  mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
                  vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
                  steepness=None, logeta_guess=None,
@@ -735,7 +737,7 @@ class RunProgram_Multiexperiment:
 
     def __call__(self, multiexper_input, scattering_type, mPhi, fp, fn, delta,
                  confidence_levels,
-                 HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MULTI_EXPER,
+                 HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MULTI_EXPER, GENERATE_MC,
                  MAKE_CROSSES, MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, MULTI_LOGLIKELIST,
                  exper_name=None,
                  mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
@@ -885,7 +887,7 @@ class RunProgram_Multiexperiment:
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
                     class_name[0].MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
                                                                          multiexper_input, class_name,
-                                                                         mx, fp, fn, delta, True)
+                                                                         mx, fp, fn, delta, False)
 
             if np.any(EHI_METHOD[4:]):
                 (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = \
@@ -925,11 +927,58 @@ class RunProgram_Multiexperiment:
                                                               logeta_percent_plus,
                                                               logeta_num_steps,
                                                               plot=not np.any(EHI_METHOD[5:]))
-                                                                
+                   
+            if GENERATE_MC:
+                (vminStar, logetaStar) = (500., -26.478)
+                
+                MC_directory = "../Output_Band/MC_Files_ContactSI_delta_0/"
+                MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_500_etastar_m26.478.dat"
+                
+                for i in range(0, len(class_name)):   
+                    
+                    Nexpected = class_name[i].ExpectedNumEvents(class_name, mx, fp, fn, delta)
+                    
+                    Obs_events = class_name[i].Simulate_Events(Nexpected, class_name, mx, fp, fn, delta)
+                    if i == 0:
+                        Tot_list = [Obs_events]
+                    else:
+                        Tot_list.append(Obs_events)
+                    
+                LcMaxSuper = class_name[1].Constrained_MC(Obs_events, mx, 
+                                                          fp, fn, delta, vminStar, logetaStar)
+                print('LcMaxSuper: ', LcMaxSuper)
+                if Tot_list[0].size > 0:                                              
+                    LcMaxCDMS = class_name[0].Constrained_MC_Likelihood(Tot_list[0], vminStar, logetaStar,
+                                                                        multiexper_input, class_name,
+                                                                        mx, fp, fn, delta)    
+                else:
+                    LcMaxCDMS = class_name[0]._MinusLogLikelihood(Tot_list[0], vminStar, logetaStar, 0)
+                    
+                total_events = np.concatenate((Tot_list[0],Tot_list[1]))
+                print('LcMaxCDMS: ', LcMaxCDMS)
+                if total_events.size > 0:
+                    Lcglobal = class_name[0].Constrained_MC_Likelihood(total_events, vminStar, logetaStar,
+                                                                       multiexper_input, class_name,
+                                                                       mx, fp, fn, delta) 
+                else:
+                    Lcglobal = LcMaxCDMS + LcMaxSuper
+                print('LcGlobal: ', Lcglobal)
+                MC_run = np.array([Lcglobal, LcMaxCDMS, LcMaxSuper])
+                file_name = MC_directory + MC_filename
+                
+                if os.path.exists(file_name):
+                    hold = np.loadtxt(file_name)
+                    hold = np.append(hold, MC_run)
+                    np.savetxt(file_name, np.transpose(MC_run))
+                else:
+                    np.savetxt(file_name, np.transpose(MC_run))
+
+                                             
             if MULTI_LOGLIKELIST:
                 output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)  
                 for i in range(1, len(multiexper_input)):
                     class_name[1].ConstrainedLikelihoodList(class_name, output_file_loc, mx, fp, fn, delta)
+                                   
                 
             if EHI_METHOD.LogLikelihoodList:
                     print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max,

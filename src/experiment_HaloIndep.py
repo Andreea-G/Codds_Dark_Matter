@@ -30,6 +30,8 @@ from scipy.linalg import det, inv
 from lambertw import *
 from scipy.optimize import brentq
 import os
+from scipy.stats import poisson
+import numpy.random as random
 
 
 class Experiment_HaloIndep(Experiment):
@@ -508,6 +510,47 @@ class Poisson_Likelihood(Experiment_HaloIndep):
             result = np.inf
         print("(vmin, result) =", (vmin, result))
         return [vmin, result]
+        
+    def ExpectedNumEvents(self, class_name, mx, fp, fn, delta): 
+        vmin_list_w0 = class_name[0].optimal_vmin
+        logeta_list = class_name[0].optimal_logeta
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                                                   self.BinEdges_left[0],
+                                                   self.BinEdges_right[0],
+                                                   mx, fp, fn, delta)
+        Nsignal = self.BinExposure * np.dot(10**logeta_list, resp_integr)
+        return Nsignal
+        
+    def Simulate_Events(self, Nexpected, class_name, mx, fp, fn, delta):
+        Nevents = poisson.rvs(Nexpected)        
+        vmin_list_w0 = class_name[0].optimal_vmin
+        logeta_list = class_name[0].optimal_logeta
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+        vmin_grid = np.linspace(0, vmin_list_w0[-1],1000)
+        
+        if Nevents > 0:            
+            resp_integr = self.IntegratedResponseTable(vmin_grid,
+                                                   self.BinEdges_left[0],
+                                                   self.BinEdges_right[0],
+                                                   mx, fp, fn, delta)            
+            pdf = resp_integr / np.sum(resp_integr)
+            cdf = pdf.cumsum()  
+            u = random.rand(Nevents)
+            Q = np.zeros(Nevents)
+            for i in np.arange(Nevents):
+                Q[i] = vmin_grid[np.absolute(cdf - u[i]).argmin()]
+            Q = np.sort(Q)
+        else:
+            Q = np.array([])
+            Nevents = 0
+            Nexpected = 0
+            
+        print('Events expected: ', Nexpected, 'Events Simulated: ', Nevents)
+        print('Events: ', Q)
+        
+        return Q
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
                             vminStar=None, logetaStar=None, vminStar_index=None):
@@ -662,6 +705,46 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                    np.log(mu + self.BinBkgr))  
        
         return mloglike[0]
+        
+    def Constrained_MC(self, data, mx, fp, fn, delta, vminStar, logetaStar):
+        nobs = len(data)
+        vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+        
+        if vminStar > vmin_low:
+            mu_max = np.inf
+            mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(0., vminStar, self.BinEdges_left,
+                                                                        self.BinEdges_right, mx, fp, 
+                                                                        fn, delta)
+            
+        else:
+            mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(0., 1000., self.BinEdges_left,
+                                                                        self.BinEdges_right, mx, fp, 
+                                                                        fn, delta)
+            mu_min = 0.
+            
+            
+        
+        if nobs > self.BinBkgr:
+            optimal_mu = (nobs - self.BinBkgr) 
+            
+            if mu_min < optimal_mu < mu_max:
+                mu = optimal_mu
+            elif optimal_mu <= mu_min:
+                mu = mu_min
+            else:
+                mu = mu_max            
+        else:
+            optimal_mu = 0.
+            if mu_min > optimal_mu:
+                mu = mu_min
+            else:
+                mu = optimal_mu
+        
+        mloglike = 2.0 * (mu + self.BinBkgr + np.log(factorial(nobs)) - nobs *
+                   np.log(mu + self.BinBkgr))  
+       
+        return mloglike[0]    
+        
         
     def GetLikelihoodTable(self, index, output_file_loc, mx, fp, fn, delta):
 

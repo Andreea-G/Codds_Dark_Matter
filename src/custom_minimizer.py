@@ -115,7 +115,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
 
         ni = 0
         check = False
-        logeta_bnd = (-40.0, -18.0)
+        logeta_bnd = (-40.0, -12.0)
         bnd = [logeta_bnd] * vmin_list_reduced.size
 
         vmin_bnd = (0, 1000)
@@ -124,7 +124,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
         while ni < 15 and not check:
             mloglike_min = minimize(optimize_logeta, logeta_list_reduced, args=(vmin_list_reduced, class_name, mx,
                                     fp, fn, delta, vminStar, logetaStar, index_hold), method='SLSQP',
-                                    bounds=bnd, constraints=constr)
+                                    bounds=bnd)#, constraints=constr)
             logeta_list_reduced = mloglike_min.x
 
             if logetaStar is not None:
@@ -134,7 +134,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
 
             vminloglike_min = minimize(minimize_over_vmin, vmin_list_reduced, args=(logeta_list_reduced, class_name,
                                        mx, fp, fn, delta, vminStar, logetaStar, index_hold),
-                                       method='SLSQP', bounds=bnd_vmin, constraints=constr_vmin)
+                                       method='SLSQP', bounds=bnd_vmin)#, constraints=constr_vmin)
             vmin_list_reduced = vminloglike_min.x
 
             if vminStar is not None:
