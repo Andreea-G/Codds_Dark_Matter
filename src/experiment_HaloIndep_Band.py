@@ -1098,16 +1098,21 @@ class Experiment_EHI(Experiment_HaloIndep):
         if isinstance(multiexper_input,str):
             class_name = [class_name]
         vminStar_index=0
-        if events.size > 0:
-            while vminStar_index < events.size and vminStar > events[vminStar_index]:
-                vminStar_index += 1
-
-        constr_optimum_new = \
-            self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
+        
+        for vminStar_index in range(0, len(events)+1):
+            print('~~~~~~~INDEX: ',vminStar,'/',len(events)+1)
+            constr_optimum_new = \
+                self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
                                                     multiexper_input, class_name, mx,
                                                     fp, fn, delta)
+            if vminStar_index ==0:
+                constr_optimum_old = constr_optimum_new[1]
+            else:
+                if constr_optimum_new[1] > constr_optimum_old:
+                    constr_optimum_old = constr_optimum_new[1]
+                                  
         
-        constr_optimal_logl = constr_optimum_new[1]
+        constr_optimal_logl = constr_optimum_old
         
         return constr_optimal_logl
 
@@ -1178,47 +1183,21 @@ class Experiment_EHI(Experiment_HaloIndep):
 
 
         events = self.optimal_vmin
-        for i in range(0, events.size + 1):
-            if i == 0:
-                constr_optimal_old = (class_name[0]._MinusLogLikelihood(np.array([]),
-                                       vminStar, logetaStar, 0))
-                for x in range(1,len(multiexper_input)):
-                       constr_optimal_old += class_name[x]._MinusLogLikelihood(np.array([]), mx, fp,
-                                                                               fn, delta,
-                                                                               vminStar, logetaStar, 0)
-                old_optimum = np.array([vminStar, logetaStar])
-                if events.size == 0:
-                    constr_optimal_logl = constr_optimal_old
-            else:
-                vminStar_index = 0
-
-                while vminStar_index < events[: i].size and vminStar > events[: i][vminStar_index]:
-                    vminStar_index += 1
-                print('Length of events: ', events[: i].size)
-                constr_optimum_log_likelihood = \
-                    self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
+        for vminStar_index in range(0, len(events)+1):
+            print('~~~~~~~INDEX: ',vminStar,'/',len(events)+1)
+            vars_result, constr_optimum_new = \
+                self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
                                                     multiexper_input, class_name, mx,
                                                     fp, fn, delta)
-
-
-                new_optimum = constr_optimum_log_likelihood[0]
-
-                full_eta = new_optimum[new_optimum.size/2 :]
-                check_const1 = np.all(np.diff(np.abs(full_eta))>0.)
-                full_vmin = new_optimum[: new_optimum.size/2]
-                check_const2 = np.all(np.diff(full_vmin)>0.)
-                if not check_const1 or not check_const2:
-                    print('Constraint Fail, Reverting to # Events = ', i-1)
-                    constr_optimal_logl = constr_optimal_old
-                    vars_result = old_optimum
-                    break
-                elif check_const1 and check_const2:
-                    constr_optimal_old = constr_optimum_log_likelihood[1]
-                    old_optimum = constr_optimum_log_likelihood[0]
-                    if i == events.size:
-                        constr_optimal_logl = constr_optimal_old
-                        vars_result = constr_optimum_log_likelihood[0]
-                    continue
+            if vminStar_index ==0:
+                constr_optimum_old = constr_optimum_new
+                vars_result_old = vars_result
+            else:
+                if constr_optimum_new > constr_optimum_old:
+                    constr_optimum_old = constr_optimum_new
+                    vars_result_old = vars_result
+        
+        constr_optimal_logl = constr_optimum_old
         self.constr_optimal_logl = constr_optimal_logl
 
 
@@ -1227,7 +1206,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         print("vminStar =", vminStar)
         print("logetaStar =", logetaStar)
-        print("new:", self.constr_optimal_logl, vars_result)
+        print("new:", self.constr_optimal_logl, vars_result_old)
 
         return self.constr_optimal_logl
 
