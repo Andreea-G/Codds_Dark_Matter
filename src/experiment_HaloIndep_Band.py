@@ -1090,43 +1090,46 @@ class Experiment_EHI(Experiment_HaloIndep):
                 The constrained minimum MinusLogLikelihood
         """
 
-        
 
-        finish = 0
-        while finish != 1:
-            vminStar_index = 0
-            if events.size > 0:
-                while vminStar_index < events.size and vminStar > events[vminStar_index]:
-                    vminStar_index += 1
-            print('Length of events: ', events.size)
-            constr_optimum_log_likelihood = \
-                self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
-                                                multiexper_input, class_name, mx,
-                                                fp, fn, delta)
-    
-           
-            original_optimum = constr_optimum_log_likelihood[0]
-    
-            print('Eta List: ', original_optimum[original_optimum.size/2 :])
-            full_eta = original_optimum[original_optimum.size/2 :]
-            check_const1 = np.all(np.diff(np.abs(full_eta))>0.)
-            print('vmin List: ', original_optimum[: original_optimum.size/2])
-            full_vmin = original_optimum[: original_optimum.size/2]
-            check_const2 = np.all(np.diff(full_vmin)>0.)
-            print(check_const1,check_const2)
-            if not check_const1 or not check_const2:
-                events = np.delete(events,0)
-            elif check_const1 and check_const2:
-                constr_optimal_logl = constr_optimum_log_likelihood[1]
-                finish = 1
-            if events.size == 0:
-                constr_optimal_logl = (class_name[0]._MinusLogLikelihood(events, 
+        for i in range(0, events.size):
+            if i == 0:
+                if len(multiexper_input) > 1:
+                    constr_optimal_old = (class_name[0]._MinusLogLikelihood(np.array([]), 
                                        vminStar, logetaStar, 0) + 
-                                       class_name[1].Constrained_MC(events, mx, 
+                                       class_name[1].Constrained_MC(np.array([]), mx, 
                                                                     fp, fn, delta, 
                                                                     vminStar, logetaStar))
-                finish = 1
-            
+                else:
+                    constr_optimal_old = (class_name[0]._MinusLogLikelihood(np.array([]), 
+                                       vminStar, logetaStar, 0))
+                if events.size == 0:
+                    constr_optimal_logl = constr_optimal_old
+            else:              
+                vminStar_index = 0
+                
+                while vminStar_index < events[: i].size and vminStar > events[: i][vminStar_index]:
+                    vminStar_index += 1
+                print('Length of events: ', events[: i].size)
+                constr_optimum_new = \
+                    self._Constrained_MC_Likelihood(events[: i], vminStar, logetaStar, vminStar_index,
+                                                    multiexper_input, class_name, mx,
+                                                    fp, fn, delta)               
+                new_optimum = constr_optimum_new[0]
+        
+                print('Eta List: ', new_optimum[new_optimum.size/2 :])
+                full_eta = new_optimum[new_optimum.size/2 :]
+                check_const1 = np.all(np.diff(np.abs(full_eta))>0.)
+                print('vmin List: ', new_optimum[: new_optimum.size/2])
+                full_vmin = new_optimum[: new_optimum.size/2]
+                check_const2 = np.all(np.diff(full_vmin)>0.)                
+                if not check_const1 or not check_const2:
+                    print('Constraint Fail, Reverting to # Events = ', i-1)
+                    constr_optimal_logl = constr_optimal_old
+                    break
+                elif check_const1 and check_const2:
+                    constr_optimal_old = constr_optimum_log_likelihood[1]
+                    continue
+                                               
 
         return constr_optimal_logl
 

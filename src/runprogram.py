@@ -965,11 +965,12 @@ class RunProgram_Multiexperiment:
                 print('LcGlobal: ', Lcglobal)
                 MC_run = np.array([Lcglobal, LcMaxCDMS, LcMaxSuper])
                 file_name = MC_directory + MC_filename
+                print(MC_run)
                 
                 if os.path.exists(file_name):
                     hold = np.loadtxt(file_name)
-                    with open(file_name,"w") as f:
-                        f.write("\n".join(" ".join(map(str, x)) for x in (hold,MC_run)))
+                    hold = np.vstack((hold,MC_run))
+                    np.savetxt(file_name,hold)
                 else:
                     np.savetxt(file_name, np.transpose(MC_run))
 
