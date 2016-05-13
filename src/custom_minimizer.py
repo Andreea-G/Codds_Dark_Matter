@@ -82,10 +82,8 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
                         
             return constr
         
-
         constr = ({'type': 'ineq', 'fun': constr_func_logeta})
         constr_vmin = ({'type': 'ineq', 'fun': constr_func_vmin})
-
 
         def optimize_logeta(logeta_list, vmin_list, class_name, mx, fp, fn, delta,
                             vminStar=None, logetaStar=None, index_hold=None):

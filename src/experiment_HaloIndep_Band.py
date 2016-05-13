@@ -290,11 +290,24 @@ class Experiment_EHI(Experiment_HaloIndep):
         return
 
     def VminIntegratedResponseTable(self, vmin_list):
-        return np.array([[integrate.quad(self.diff_response_interp[i],
+        tab = np.zeros((vmin_list.size-1) * self.ERecoilList.size)
+        tab = tab.reshape((self.ERecoilList.size,vmin_list.size-1))
+
+        for i in range(self.ERecoilList.size):
+            for a in range(vmin_list.size - 1):
+                if (vmin_list[a+1] - vmin_list[a]) > .5:
+                    tab[i,a] = integrate.quad(self.diff_response_interp[i],
                                          vmin_list[a], vmin_list[a + 1],
                                          epsrel=PRECISSION, epsabs=0)[0]
-                        for a in range(vmin_list.size - 1)]
-                        for i in range(self.ERecoilList.size)])
+                else:
+                    tab[i,a] = 0.
+#        tab2 = np.array([[integrate.quad(self.diff_response_interp[i],
+#                                         vmin_list[a], vmin_list[a + 1],
+#                                         epsrel=PRECISSION, epsabs=0)[0]
+#                        for a in range(vmin_list.size - 1)]
+#                        for i in range(self.ERecoilList.size)])    
+
+        return tab
 
     def IntegratedResponseTable(self, vmin_list):
         return np.array([integrate.quad(self.response_interp,
@@ -314,7 +327,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
     def Simulate_Events(self, Nexpected, class_name, mx, fp, fn, delta):
 
-        Nevents = poisson.rvs(Nexpected + 0.41)
+        Nevents = poisson.rvs(Nexpected + 0.41+3.)
 
         vmin_list_w0 = self.optimal_vmin
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
@@ -363,6 +376,10 @@ class Experiment_EHI(Experiment_HaloIndep):
 
             self.diff_response_tab = np.append(self.diff_response_tab, diff_resp_list.transpose(), axis=1)
             self.response_tab = np.append(self.response_tab, [resp], axis=0)
+            self.diff_response_interp = np.array([unif.interp1d(self.vmin_linspace, dr)
+                                              for dr in self.diff_response_tab])
+            self.response_interp = unif.interp1d(self.vmin_linspace, self.response_tab)
+            
         return Q
 
     def _MinusLogLikelihood(self, vars_list, vminStar=None, logetaStar=None,
