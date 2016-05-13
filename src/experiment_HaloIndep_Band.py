@@ -312,7 +312,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         
     def Simulate_Events(self, Nexpected, class_name, mx, fp, fn, delta):
                
-        Nevents = poisson.rvs(Nexpected)
+        Nevents = poisson.rvs(Nexpected + 0.41)
         
         vmin_list_w0 = self.optimal_vmin
         logeta_list = self.optimal_logeta
@@ -333,7 +333,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             Nevents = 0
             
             
-        print('Events expected: ', Nexpected, 'Events Simulated: ', Nevents)
+        print('Events expected: ', (Nexpected + 0.41), 'Events Simulated: ', Nevents)
         print('Events: ', Q)
         
         return Q
