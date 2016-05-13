@@ -1100,7 +1100,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         vminStar_index=0
         
         for vminStar_index in range(0, len(events)+1):
-            print('~~~~~~~INDEX: ',vminStar,'/',len(events)+1)
+            print('~~~~~~~INDEX: ',vminStar_index,'/',len(events)+1)
             constr_optimum_new = \
                 self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
                                                     multiexper_input, class_name, mx,
@@ -1184,7 +1184,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         events = self.optimal_vmin
         for vminStar_index in range(0, len(events)+1):
-            print('~~~~~~~INDEX: ',vminStar,'/',len(events)+1)
+            print('~~~~~~~INDEX: ',vminStar_index,'/',len(events)+1)
             vars_result, constr_optimum_new = \
                 self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
                                                     multiexper_input, class_name, mx,
