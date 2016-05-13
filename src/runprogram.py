@@ -957,7 +957,7 @@ class RunProgram_Multiexperiment:
                     
                 
                 print('LcMaxCDMS: ', LcMaxCDMS)
-                if Tot_list[0] > 0:
+                if len(Tot_list[0]) > 0:
                     Lcglobal = class_name[0].Constrained_MC_Likelihood(Tot_list[0], vminStar, logetaStar,
                                                                        multiexper_input, class_name,
                                                                        mx, fp, fn, delta) 
@@ -974,6 +974,7 @@ class RunProgram_Multiexperiment:
                     hold = np.vstack((hold,MC_run))
                     np.savetxt(file_name,hold)
                 else:
+#                    pass
                     np.savetxt(file_name, np.transpose(MC_run))
 
                                              
