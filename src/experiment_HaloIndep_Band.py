@@ -333,7 +333,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             Q = np.array([])
             Nevents = 0
             
-            
+        #TODO Generalize to inelastic scattering! Can't do MC in vmin?    
         print('Events expected: ', (Nexpected + 0.41), 'Events Simulated: ', Nevents)
         print('Events: ', Q)
         for x in Q:
@@ -376,6 +376,8 @@ class Experiment_EHI(Experiment_HaloIndep):
         Returns:
             -log(L): float
         """
+        
+            
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
             logeta_list = vars_list[vars_list.size/2:]
@@ -384,6 +386,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                                      vminStar_index, vminStar)
             logeta_list = np.insert(vars_list[vars_list.size/2:],
                                     vminStar_index, logetaStar)
+                                    
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
         vmin_resp_integr = self.VminIntegratedResponseTable(vmin_list_w0)
         resp_integr = self.IntegratedResponseTable(vmin_list_w0)
@@ -664,25 +667,24 @@ class Experiment_EHI(Experiment_HaloIndep):
             optimum_log_likelihood = basinhopping(self.MultiExperimentMinusLogLikelihood, vars_guess,
                                                   minimizer_kwargs=minimizer_kwargs, niter=30, stepsize=.2)
         else:
-            finish = 0
-            while finish != 1:
-                
-                print('Length of events: ', vars_guess.size / 2.)
+            
+            for i in range(1, int(vars_guess.size / 2 + 1)):                
+                print('Length of events: ', i)
+                print(np.concatenate((vars_guess[: i],vars_guess[-i :])))
                 optimum_log_likelihood, fun_val = \
-                    Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
-
+                    Custom_SelfConsistent_Minimization(class_name, np.concatenate((vars_guess[: i],vars_guess[-i :])), mx, fp, fn, delta)
                 full_eta = optimum_log_likelihood[optimum_log_likelihood.size/2 :]
                 check_const1 = np.all(np.diff(np.abs(full_eta))>0.)
                 full_vmin = optimum_log_likelihood[: optimum_log_likelihood.size/2]
-                check_const2 = np.all(np.diff(full_vmin)>0.)
-                
+                check_const2 = np.all(np.diff(full_vmin)>0.)                
                 if not check_const1 or not check_const2:
-                    vars_guess = np.delete(vars_guess,0)
-                    vars_guess = np.delete(vars_guess,-1)
-                    print('Try again with less steps...')
+                    print('Constraint Fail, Reverting to # Events = ', i-1)
+                    optimum_log_likelihood = optimum_old
+                    fun_val = fun_val_old  
+                    break
                 elif check_const1 and check_const2:
-                    finish = 1
-
+                    optimum_old = optimum_log_likelihood
+                    fun_val_old = fun_val
                     
 #            optimum_log_likelihood, fun_val = Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
             
@@ -1225,98 +1227,58 @@ class Experiment_EHI(Experiment_HaloIndep):
                 The constrained minimum MinusLogLikelihood
         """
 
-        finish = 0
+        
         events = self.optimal_vmin
-        while finish != 1:
-            vminStar_index = 0
-            if events.size > 0:
-                while vminStar_index < events.size and vminStar > events[vminStar_index]:
+        for i in range(0, events.size + 1):
+            if i == 0:                
+                constr_optimal_old = (class_name[0]._MinusLogLikelihood(np.array([]), 
+                                       vminStar, logetaStar, 0))
+                for x in range(1,len(multiexper_input)):
+                       constr_optimal_old += class_name[x]._MinusLogLikelihood(np.array([]), mx, fp, 
+                                                                               fn, delta,
+                                                                               vminStar, logetaStar, 0)
+                old_optimum = np.array([vminStar, logetaStar])
+                if events.size == 0:
+                    constr_optimal_logl = constr_optimal_old
+            else:              
+                vminStar_index = 0
+                
+                while vminStar_index < events[: i].size and vminStar > events[: i][vminStar_index]:
                     vminStar_index += 1
-            print('Length of events: ', events.size)
-            constr_optimum_log_likelihood = \
-                self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
-                                                multiexper_input, class_name, mx,
-                                                fp, fn, delta)
-    
-           
-            original_optimum = constr_optimum_log_likelihood[0]
-    
-            print('Eta List: ', original_optimum[original_optimum.size/2 :])
-            full_eta = original_optimum[original_optimum.size/2 :]
-            check_const1 = np.all(np.diff(np.abs(full_eta))>0.)
-            print('vmin List: ', original_optimum[: original_optimum.size/2])
-            full_vmin = original_optimum[: original_optimum.size/2]
-            check_const2 = np.all(np.diff(full_vmin)>0.)
-            print(check_const1,check_const2)
-            if not check_const1 or not check_const2:
-                events = np.delete(events,0)
-            elif check_const1 and check_const2:
-                self.constr_optimal_logl = constr_optimum_log_likelihood[1]
-                finish = 1
-            if events.size == 0:
-                self.constr_optimal_logl = (class_name[0]._MinusLogLikelihood(events, 
-                                       vminStar, logetaStar, 0) + 
-                                       class_name[1].Constrained_MC(events, mx, 
-                                                                    fp, fn, delta, 
-                                                                    vminStar, logetaStar))
-                finish = 1
+                print('Length of events: ', events[: i].size)
+                constr_optimum_log_likelihood = \
+                    self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
+                                                    multiexper_input, class_name, mx,
+                                                    fp, fn, delta)
         
-        
-#        vminStar_index = 0
-#        while vminStar_index < self.optimal_vmin.size and \
-#                vminStar > self.optimal_vmin[vminStar_index]:
-#            vminStar_index += 1
-#
-#        constr_optimum_log_likelihood = \
-#            self._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar, vminStar_index,
-#                                                         multiexper_input, class_name, mx,
-#                                                         fp, fn, delta)
-#
-#        optim_logL = constr_optimum_log_likelihood[1]
-#        original_optimum = constr_optimum_log_likelihood[0]
-#
-#        vminStar_index_original = vminStar_index
-#        index = vminStar_index
-#        while ALLOW_MOVE and index > 0:
-#            index -= 1
-#            new_optimum = \
-#                self._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar, index,
-#                                                             multiexper_input, class_name,
-#                                                             mx, fp, fn, delta)
-#
-#            if new_optimum[1] < optim_logL:
-#                    print("Moved left, index is now", index)
-#                    print("############################################################" +
-#                          "############################################################")
-#                    vminStar_index = index
-#                    constr_optimum_log_likelihood = new_optimum
-#                    optim_logL = constr_optimum_log_likelihood[1]
-#        index = vminStar_index_original
-#        while ALLOW_MOVE and index < self.optimal_vmin.size:
-#            index += 1
-#            new_optimum = self._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
-#                                                                       index, multiexper_input,
-#                                                                       class_name, mx, fp, fn,
-#                                                                       delta)
-#
-#            if new_optimum[1] < optim_logL:
-#                    print("Moved right, index is now", index)
-#                    print("############################################################" +
-#                          "############################################################")
-#                    vminStar_index = index
-#                    constr_optimum_log_likelihood = new_optimum
-#                    optim_logL = constr_optimum_log_likelihood[1]
-#
-#        self.constr_optimal_logl = constr_optimum_log_likelihood[1]
-        vars_result = constr_optimum_log_likelihood[0]
+               
+                new_optimum = constr_optimum_log_likelihood[0]
+                
+                full_eta = new_optimum[new_optimum.size/2 :]
+                check_const1 = np.all(np.diff(np.abs(full_eta))>0.)
+                full_vmin = new_optimum[: new_optimum.size/2]
+                check_const2 = np.all(np.diff(full_vmin)>0.)
+                if not check_const1 or not check_const2:
+                    print('Constraint Fail, Reverting to # Events = ', i-1)
+                    constr_optimal_logl = constr_optimal_old
+                    vars_result = old_optimum 
+                    break
+                elif check_const1 and check_const2:
+                    constr_optimal_old = constr_optimum_log_likelihood[1]
+                    old_optimum = constr_optimum_log_likelihood[0]
+                    if i == events.size:
+                        constr_optimal_logl = constr_optimal_old
+                        vars_result = constr_optimum_log_likelihood[0]
+                    continue 
+        self.constr_optimal_logl = constr_optimal_logl
+
 
         self.constr_optimal_vmin = vars_result[: vars_result.size/2]
         self.constr_optimal_logeta = vars_result[vars_result.size/2:]
 
         print("vminStar =", vminStar)
         print("logetaStar =", logetaStar)
-        print("original:", original_optimum)
-        print("new:", constr_optimum_log_likelihood)
+        print("new:", self.constr_optimal_logl, vars_result)
 
         return self.constr_optimal_logl
 
