@@ -947,9 +947,10 @@ class RunProgram_Multiexperiment:
                 LcMaxSuper = class_name[1].Constrained_MC(Obs_events, mx, 
                                                           fp, fn, delta, vminStar, logetaStar)
                 print('LcMaxSuper: ', LcMaxSuper)
-                if Tot_list[0].size > 0:                                              
+                if Tot_list[0].size > 0:
+                                             
                     LcMaxCDMS = class_name[0].Constrained_MC_Likelihood(Tot_list[0], vminStar, logetaStar,
-                                                                        multiexper_input, class_name,
+                                                                        multiexper_input[0], class_name[0],
                                                                         mx, fp, fn, delta)    
                 else:
                     LcMaxCDMS = class_name[0]._MinusLogLikelihood(Tot_list[0], vminStar, logetaStar, 0)

@@ -36,6 +36,7 @@ import parallel_map as par
 from scipy.stats import poisson
 import numpy.random as random
 import numpy as np
+from scipy.interpolate import interp1d
 
 DEBUG = T
 DEBUG_FULL = F
@@ -111,6 +112,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         self.mu_BKG_i = module.mu_BKG_i
         self.NBKG = module.NBKG
         self.method = method
+        self.mu_BKG_interp = interp1d(self.ERecoilList, self.mu_BKG_i, bounds_error=False)
 
     def _VMinSortedList(self, mx, fp, fn, delta):
         """ Computes the list of vmin corresponsing to measured recoil energies,
@@ -315,7 +317,6 @@ class Experiment_EHI(Experiment_HaloIndep):
         Nevents = poisson.rvs(Nexpected + 0.41)
         
         vmin_list_w0 = self.optimal_vmin
-        logeta_list = self.optimal_logeta
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
         vmin_grid = np.linspace(0, vmin_list_w0[-1],1000)
         
@@ -335,7 +336,33 @@ class Experiment_EHI(Experiment_HaloIndep):
             
         print('Events expected: ', (Nexpected + 0.41), 'Events Simulated: ', Nevents)
         print('Events: ', Q)
+        for x in Q:
+            self.ERecoilList = ERecoilBranch(Q, self.mT[0], mx, delta, 1)
         
+        self.vmin_linspace = np.linspace(0, 1000, 10)
+        self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
+        self.response_tab = np.zeros(1)
+        self.mu_BKG_i = np.zeros(len(self.ERecoilList))
+        
+        for x in range(0, len(self.ERecoilList)):
+            if self.mu_BKG_interp(self.ERecoilList[x]) > 0:
+                self.mu_BKG_i[x] = self.mu_BKG_interp(self.ERecoilList[x])
+            else:
+                self.mu_BKG_i[x] = 0.
+        resp = 0
+        for vmin in self.vmin_linspace:            
+            diff_resp_list = np.zeros((1, len(self.ERecoilList)))
+            
+            branches = [1]
+            for sign in branches:
+                (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
+                diff_resp_list += np.array([self.DifferentialResponse(Eee, qER, const_factor)
+                                            for Eee in self.ERecoilList])
+                resp += integrate.quad(self.DifferentialResponse, self.Ethreshold, self.Emaximum,
+                                       args=(qER, const_factor), epsrel=PRECISSION, epsabs=0)[0]
+                                       
+            self.diff_response_tab = np.append(self.diff_response_tab, diff_resp_list.transpose(), axis=1)
+            self.response_tab = np.append(self.response_tab, [resp], axis=0)
         return Q
         
     def _MinusLogLikelihood(self, vars_list, vminStar=None, logetaStar=None,
@@ -366,12 +393,9 @@ class Experiment_EHI(Experiment_HaloIndep):
         if vminStar is None:
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
-        if mu_i[0] < 0:
-            mu_i[0] = 0.0
-        if mu_i[1] < 0:
-            mu_i[1] = 0.0
-        if mu_i[2] < 0.0:
-            mu_i[2] = 0.0
+        for x in range(0,len(mu_i)):
+            if mu_i[x] < 0:
+                mu_i[x] = 0.0
         
         result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
 
@@ -1089,16 +1113,17 @@ class Experiment_EHI(Experiment_HaloIndep):
             constr_optimal_logl: float
                 The constrained minimum MinusLogLikelihood
         """
-
-
-        for i in range(0, events.size):
+        if isinstance(multiexper_input,str):
+            class_name = [class_name]
+            
+        for i in range(0, events.size + 1):
             if i == 0:
-                if len(multiexper_input) > 1:
+                if len(class_name) > 1:
                     constr_optimal_old = (class_name[0]._MinusLogLikelihood(np.array([]), 
                                        vminStar, logetaStar, 0) + 
-                                       class_name[1].Constrained_MC(np.array([]), mx, 
-                                                                    fp, fn, delta, 
-                                                                    vminStar, logetaStar))
+                                       class_name[1]._MinusLogLikelihood(np.array([]), mx, fp, 
+                                                                         fn, delta,
+                                                                         vminStar, logetaStar, 0))
                 else:
                     constr_optimal_old = (class_name[0]._MinusLogLikelihood(np.array([]), 
                                        vminStar, logetaStar, 0))
@@ -1127,7 +1152,9 @@ class Experiment_EHI(Experiment_HaloIndep):
                     constr_optimal_logl = constr_optimal_old
                     break
                 elif check_const1 and check_const2:
-                    constr_optimal_old = constr_optimum_log_likelihood[1]
+                    constr_optimal_old = constr_optimum_new[1]
+                    if i == events.size:
+                        constr_optimal_logl = constr_optimal_old
                     continue
                                                
 

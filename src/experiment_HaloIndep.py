@@ -551,6 +551,8 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         print('Events expected: ', Totexpected, 'Events Simulated: ', Nevents)
         print('Events: ', Q)
         
+        self.BinData = np.array([Q.size])
+        
         return Q
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
@@ -722,9 +724,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                                                                         self.BinEdges_right, mx, fp, 
                                                                         fn, delta)
             mu_min = 0.
-            
-            
-        
+                                
         if nobs > self.BinBkgr:
             optimal_mu = (nobs - self.BinBkgr) 
             
