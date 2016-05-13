@@ -327,7 +327,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
     def Simulate_Events(self, Nexpected, class_name, mx, fp, fn, delta):
 
-        Nevents = poisson.rvs(Nexpected + 0.41+3.)
+        Nevents = poisson.rvs(Nexpected + 0.41)
 
         vmin_list_w0 = self.optimal_vmin
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
