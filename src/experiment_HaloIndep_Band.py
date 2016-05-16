@@ -1125,7 +1125,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             if vminStar_index ==0:
                 constr_optimum_old = constr_optimum_new[1]
             else:
-                if constr_optimum_new[1] > constr_optimum_old:
+                if constr_optimum_new[1] < constr_optimum_old:
                     constr_optimum_old = constr_optimum_new[1]
                                   
         
@@ -1206,11 +1206,12 @@ class Experiment_EHI(Experiment_HaloIndep):
                 self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
                                                     multiexper_input, class_name, mx,
                                                     fp, fn, delta)
-            if vminStar_index ==0:
+            print('constrained optimum: ',constr_optimum_new)
+            if vminStar_index == 0:
                 constr_optimum_old = constr_optimum_new
                 vars_result_old = vars_result
             else:
-                if constr_optimum_new > constr_optimum_old:
+                if constr_optimum_new < constr_optimum_old:
                     constr_optimum_old = constr_optimum_new
                     vars_result_old = vars_result
         
