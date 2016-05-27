@@ -961,7 +961,7 @@ class RunProgram_Multiexperiment:
                                                                        multiexper_input, class_name,
                                                                        mx, fp, fn, delta) 
                 else:                                                       
-                    Lcglobal = LcMaxCDMS + constr_val = class_name[1].Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
+                    Lcglobal = LcMaxCDMS + class_name[1].Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
 
                 print('LcGlobal: ', Lcglobal)
                 MC_run = np.array([Lcglobal, LcMaxCDMS, LcMaxSuper])
