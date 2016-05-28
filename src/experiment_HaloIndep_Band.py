@@ -315,9 +315,10 @@ class Experiment_EHI(Experiment_HaloIndep):
                                         epsrel=PRECISSION, epsabs=0)[0]
                         for a in range(vmin_list.size - 1)])
 
-    def ExpectedNumEvents(self, class_name, mx, fp, fn, delta):
-        vmin_list_w0 = self.optimal_vmin
-        logeta_list = self.optimal_logeta
+    def ExpectedNumEvents(self, minfunc, mx, fp, fn, delta):
+     
+        vmin_list_w0 = minfunc[: minfunc.size/2]
+        logeta_list = minfunc[minfunc.size/2 :]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
         resp_integr = self.IntegratedResponseTable(vmin_list_w0)
@@ -325,11 +326,11 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         return Nsignal
 
-    def Simulate_Events(self, Nexpected, class_name, mx, fp, fn, delta):
+    def Simulate_Events(self, Nexpected, minfunc, class_name, mx, fp, fn, delta):
 
         Nevents = poisson.rvs(Nexpected + 0.41)
 
-        vmin_list_w0 = self.optimal_vmin
+        vmin_list_w0 = minfunc[: minfunc.size/2]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
         vmin_grid = np.linspace(0, vmin_list_w0[-1],1000)
 

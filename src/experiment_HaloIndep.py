@@ -511,9 +511,9 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         print("(vmin, result) =", (vmin, result))
         return [vmin, result]
         
-    def ExpectedNumEvents(self, class_name, mx, fp, fn, delta): 
-        vmin_list_w0 = class_name[0].optimal_vmin
-        logeta_list = class_name[0].optimal_logeta
+    def ExpectedNumEvents(self, minfunc, mx, fp, fn, delta): 
+        vmin_list_w0 = minfunc[: minfunc.size/2]
+        logeta_list = minfunc[minfunc.size/2 :]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
         resp_integr = self.IntegratedResponseTable(vmin_list_w0,
@@ -523,11 +523,11 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         Nsignal = self.BinExposure * np.dot(10**logeta_list, resp_integr)
         return Nsignal
         
-    def Simulate_Events(self, Nexpected, class_name, mx, fp, fn, delta):
+    def Simulate_Events(self, Nexpected, minfunc, class_name, mx, fp, fn, delta):
         Totexpected = Nexpected + self.BinBkgr[0] 
         Nevents = poisson.rvs(Totexpected)        
-        vmin_list_w0 = class_name[0].optimal_vmin
-        logeta_list = class_name[0].optimal_logeta
+        vmin_list_w0 = minfunc[: minfunc.size/2]
+        logeta_list = minfunc[minfunc.size/2 :]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
         vmin_grid = np.linspace(0, vmin_list_w0[-1],1000)
         

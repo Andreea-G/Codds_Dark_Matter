@@ -929,16 +929,30 @@ class RunProgram_Multiexperiment:
                                                               plot=not np.any(EHI_METHOD[5:]))
                    
             if GENERATE_MC:
-                (vminStar, logetaStar) = (300., -25.478)
+                (vminStar, logetaStar) = (300., -26.478)
                 
                 MC_directory = "../Output_Band/MC_Files_ContactSI_delta_0/"
-                MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_500_etastar_m26.478.dat"
-                
+                MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_" + str(int(vminStar)) +\
+                              "_etastar_m" + str(abs(logetaStar)) + ".dat"
+                minfunc=np.array([300. ,452.34735088, 510.27959521,  579.8151641, -26.478, -26.47804933,  -26.47795099,  -27.06443809])
+#                class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
+#                ind = 0      
+#                con_min = 100.
+#                while ind < 4:
+#                    constr = class_name[0]._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar, ind,
+#                                                                                   multiexper_input, class_name,
+#                                                                                   mx, fp, fn, delta)
+#
+#                    if constr[1]<con_min:
+#                        con_min = constr[1]
+#                        minfunc=constr[0]
+#                    ind+=1
+
                 for i in range(0, len(class_name)):   
                     
-                    Nexpected = class_name[i].ExpectedNumEvents(class_name, mx, fp, fn, delta)
+                    Nexpected = class_name[i].ExpectedNumEvents(minfunc, mx, fp, fn, delta)
                     
-                    Obs_events = class_name[i].Simulate_Events(Nexpected, class_name, mx, fp, fn, delta)
+                    Obs_events = class_name[i].Simulate_Events(Nexpected, minfunc, class_name, mx, fp, fn, delta)
                     if i == 0:
                         Tot_list = [Obs_events]
                     else:
