@@ -881,7 +881,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (200., -29.)
+                    (vminStar, logetaStar) = (100., -26.478)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -934,7 +934,7 @@ class RunProgram_Multiexperiment:
                 MC_directory = "../Output_Band/MC_Files_ContactSI_delta_0/"
                 MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_" + str(int(vminStar)) +\
                               "_etastar_m" + str(abs(logetaStar)) + ".dat"
-                minfunc=np.array([300. ,452.34735088, 510.27959521,  579.8151641, -26.478, -26.47804933,  -26.47795099,  -27.06443809])
+                minfunc=np.array([300. ,452.3, 510.2,  579.8, -26.478, -26.478,  -26.478,  -27.06])
 #                class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
 #                ind = 0      
 #                con_min = 100.
@@ -975,7 +975,8 @@ class RunProgram_Multiexperiment:
                                                                        multiexper_input, class_name,
                                                                        mx, fp, fn, delta) 
                 else:                                                       
-                    Lcglobal = LcMaxCDMS + class_name[1].Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
+                    Lcglobal = LcMaxCDMS + class_name[1]._MinusLogLikelihood(np.array([]), mx, fp, fn, delta,
+                               vminStar, logetaStar, vminStar_index=0)
 
                 print('LcGlobal: ', Lcglobal)
                 MC_run = np.array([Lcglobal, LcMaxCDMS, LcMaxSuper])
@@ -992,7 +993,7 @@ class RunProgram_Multiexperiment:
 
                                              
             if MULTI_LOGLIKELIST:
-                (vminStar, logetaStar) = (200., -29.)
+                (vminStar, logetaStar) = (100., -26.478)
 #                output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)  
 #                for i in range(1, len(multiexper_input)):
 #                    class_name[1].ConstrainedLikelihoodList(class_name, output_file_loc, mx, fp, fn, delta)
