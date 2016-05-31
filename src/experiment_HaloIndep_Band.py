@@ -291,34 +291,43 @@ class Experiment_EHI(Experiment_HaloIndep):
 
     def VminIntegratedResponseTable(self, vmin_list):
         tab = np.zeros((vmin_list.size-1) * self.ERecoilList.size)
-        tab = tab.reshape((self.ERecoilList.size,vmin_list.size-1))
+        tab = tab.reshape((self.ERecoilList.size, vmin_list.size-1))
 
         for i in range(self.ERecoilList.size):
             for a in range(vmin_list.size - 1):
-                if (vmin_list[a+1] - vmin_list[a]) > .5:
-                    tab[i,a] = integrate.quad(self.diff_response_interp[i],
-                                         vmin_list[a], vmin_list[a + 1],
-                                         epsrel=PRECISSION, epsabs=0)[0]
+                if (vmin_list[a+1] - vmin_list[a]) > 0.5:
+                    tab[i, a] = integrate.quad(self.diff_response_interp[i],
+                                               vmin_list[a], vmin_list[a + 1],
+                                               epsrel=PRECISSION, epsabs=0)[0]
                 else:
-                    tab[i,a] = 0.
+                    tab[i, a] = 0.
 #        tab2 = np.array([[integrate.quad(self.diff_response_interp[i],
 #                                         vmin_list[a], vmin_list[a + 1],
 #                                         epsrel=PRECISSION, epsabs=0)[0]
 #                        for a in range(vmin_list.size - 1)]
-#                        for i in range(self.ERecoilList.size)])    
+#                        for i in range(self.ERecoilList.size)])
 
         return tab
 
     def IntegratedResponseTable(self, vmin_list):
-        return np.array([integrate.quad(self.response_interp,
+        tab = np.zeros(vmin_list.size - 1)
+        for a in range(vmin_list.size - 1):
+            if (vmin_list[a+1] - vmin_list[a]) > 0.5:
+                tab[a] = integrate.quad(self.response_interp,
                                         vmin_list[a], vmin_list[a + 1],
                                         epsrel=PRECISSION, epsabs=0)[0]
-                        for a in range(vmin_list.size - 1)])
+
+#        return np.array([integrate.quad(self.response_interp,
+#                                        vmin_list[a], vmin_list[a + 1],
+#                                        epsrel=PRECISSION, epsabs=0)[0]
+#                        for a in range(vmin_list.size - 1)])
+
+        return tab
 
     def ExpectedNumEvents(self, minfunc, mx, fp, fn, delta):
-     
-        vmin_list_w0 = minfunc[: minfunc.size/2]
-        logeta_list = minfunc[minfunc.size/2 :]
+
+        vmin_list_w0 = minfunc[:(minfunc.size / 2)]
+        logeta_list = minfunc[(minfunc.size / 2):]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
         resp_integr = self.IntegratedResponseTable(vmin_list_w0)
@@ -330,9 +339,9 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         Nevents = poisson.rvs(Nexpected + 0.41)
 
-        vmin_list_w0 = minfunc[: minfunc.size/2]
+        vmin_list_w0 = minfunc[:(minfunc.size / 2)]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
-        vmin_grid = np.linspace(0, vmin_list_w0[-1],1000)
+        vmin_grid = np.linspace(0, vmin_list_w0[-1], 1000)
 
         if Nevents > 0:
             resp_integr = self.IntegratedResponseTable(vmin_grid)
@@ -347,7 +356,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             Q = np.array([])
             Nevents = 0
 
-        #TODO Generalize to inelastic scattering! Can't do MC in vmin?
+#       TODO Generalize to inelastic scattering! Can't do MC in vmin?
         print('Events expected: ', (Nexpected + 0.41), 'Events Simulated: ', Nevents)
         print('Events: ', Q)
         for x in Q:
@@ -378,9 +387,9 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.diff_response_tab = np.append(self.diff_response_tab, diff_resp_list.transpose(), axis=1)
             self.response_tab = np.append(self.response_tab, [resp], axis=0)
             self.diff_response_interp = np.array([unif.interp1d(self.vmin_linspace, dr)
-                                              for dr in self.diff_response_tab])
+                                                  for dr in self.diff_response_tab])
             self.response_interp = unif.interp1d(self.vmin_linspace, self.response_tab)
-            
+
         return Q
 
     def _MinusLogLikelihood(self, vars_list, vminStar=None, logetaStar=None,
@@ -394,7 +403,6 @@ class Experiment_EHI(Experiment_HaloIndep):
         Returns:
             -log(L): float
         """
-
 
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
@@ -414,7 +422,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         if vminStar is None:
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
-        for x in range(0,len(mu_i)):
+        for x in range(0, len(mu_i)):
             if mu_i[x] < 0:
                 mu_i[x] = 0.0
 
@@ -655,9 +663,8 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         vmin_list = np.sort(self.vmin_sorted_list)
 
-
-        vars_guess = np.append(vmin_list,logeta_guess * np.ones(vmin_list.size))
-        print("vars_guess =", vars_guess)
+        vars_guess = np.append(vmin_list, logeta_guess * np.ones(vmin_list.size))
+        print("vars_guess = ", vars_guess)
         vmin_max = self.vmin_linspace[-1]
 
         def constr_func(x, vmin_max=vmin_max):
@@ -1056,7 +1063,6 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         return self.constr_optimal_logl
 
-
     def _Constrained_MC_Likelihood(self, events, vminStar, logetaStar, vminStar_index,
                                    multiexper_input, class_name,
                                    mx, fp, fn, delta):
@@ -1113,27 +1119,25 @@ class Experiment_EHI(Experiment_HaloIndep):
             constr_optimal_logl: float
                 The constrained minimum MinusLogLikelihood
         """
-        if isinstance(multiexper_input,str):
+        if isinstance(multiexper_input, str):
             class_name = [class_name]
-        vminStar_index=0
-        
+        vminStar_index = 0
+
         for vminStar_index in range(0, len(events)+1):
-            print('~~~~~~~INDEX: ',vminStar_index,'/',len(events)+1)
+            print('~~~~~~~INDEX: ', vminStar_index, '/', len(events) + 1)
             constr_optimum_new = \
                 self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
-                                                    multiexper_input, class_name, mx,
-                                                    fp, fn, delta)
-            if vminStar_index ==0:
+                                                multiexper_input, class_name, mx,
+                                                fp, fn, delta)
+            if vminStar_index == 0:
                 constr_optimum_old = constr_optimum_new[1]
             else:
                 if constr_optimum_new[1] < constr_optimum_old:
                     constr_optimum_old = constr_optimum_new[1]
-                                  
-        
-        constr_optimal_logl = constr_optimum_old
-        
-        return constr_optimal_logl
 
+        constr_optimal_logl = constr_optimum_old
+
+        return constr_optimal_logl
 
     def _MultiExperConstrainedOptimalLikelihood(self, vminStar, logetaStar, vminStar_index,
                                                 multiexper_input, class_name,
@@ -1199,15 +1203,14 @@ class Experiment_EHI(Experiment_HaloIndep):
                 The constrained minimum MinusLogLikelihood
         """
 
-
         events = self.optimal_vmin
         for vminStar_index in range(0, len(events)+1):
-            print('~~~~~~~INDEX: ',vminStar_index,'/',len(events)+1)
+            print('~~~~~~~INDEX: ', vminStar_index, '/', len(events) + 1)
             vars_result, constr_optimum_new = \
                 self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
-                                                    multiexper_input, class_name, mx,
-                                                    fp, fn, delta)
-            print('constrained optimum: ',constr_optimum_new)
+                                                multiexper_input, class_name, mx,
+                                                fp, fn, delta)
+            print('constrained optimum: ', constr_optimum_new)
             if vminStar_index == 0:
                 constr_optimum_old = constr_optimum_new
                 vars_result_old = vars_result
@@ -1215,10 +1218,9 @@ class Experiment_EHI(Experiment_HaloIndep):
                 if constr_optimum_new < constr_optimum_old:
                     constr_optimum_old = constr_optimum_new
                     vars_result_old = vars_result
-        
+
         constr_optimal_logl = constr_optimum_old
         self.constr_optimal_logl = constr_optimal_logl
-
 
         self.constr_optimal_vmin = vars_result[: vars_result.size/2]
         self.constr_optimal_logeta = vars_result[vars_result.size/2:]
@@ -1762,8 +1764,8 @@ class Experiment_EHI(Experiment_HaloIndep):
             error = F
 
             try:
-                if y[0] > self.optimal_logL + delta_logL: #and \
-                        #abs(logeta_minimLogL) < self.optimal_logL + delta_logL:
+                if y[0] > self.optimal_logL + delta_logL:  # and \
+#                   abs(logeta_minimLogL) < self.optimal_logL + delta_logL:
                     sol = brentq(lambda logeta: logL_interp(logeta) - self.optimal_logL -
                                  delta_logL,
                                  table[0, 0], logeta_minimLogL)
