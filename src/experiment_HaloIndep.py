@@ -510,10 +510,10 @@ class Poisson_Likelihood(Experiment_HaloIndep):
             result = np.inf
         print("(vmin, result) =", (vmin, result))
         return [vmin, result]
-        
-    def ExpectedNumEvents(self, minfunc, mx, fp, fn, delta): 
-        vmin_list_w0 = minfunc[: minfunc.size/2]
-        logeta_list = minfunc[minfunc.size/2 :]
+
+    def ExpectedNumEvents(self, minfunc, mx, fp, fn, delta):
+        vmin_list_w0 = minfunc[:(minfunc.size / 2)]
+        logeta_list = minfunc[(minfunc.size / 2):]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
 
         resp_integr = self.IntegratedResponseTable(vmin_list_w0,
@@ -522,22 +522,22 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                                                    mx, fp, fn, delta)
         Nsignal = self.BinExposure * np.dot(10**logeta_list, resp_integr)
         return Nsignal
-        
+
     def Simulate_Events(self, Nexpected, minfunc, class_name, mx, fp, fn, delta):
-        Totexpected = Nexpected + self.BinBkgr[0] 
-        Nevents = poisson.rvs(Totexpected)        
-        vmin_list_w0 = minfunc[: minfunc.size/2]
-        logeta_list = minfunc[minfunc.size/2 :]
+        Totexpected = Nexpected + self.BinBkgr[0]
+        Nevents = poisson.rvs(Totexpected)
+        vmin_list_w0 = minfunc[:(minfunc.size / 2)]
+        logeta_list = minfunc[(minfunc.size / 2):]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
-        vmin_grid = np.linspace(0, vmin_list_w0[-1],1000)
-        
-        if Nevents > 0:            
+        vmin_grid = np.linspace(0, vmin_list_w0[-1], 1000)
+
+        if Nevents > 0:
             resp_integr = self.IntegratedResponseTable(vmin_grid,
-                                                   self.BinEdges_left[0],
-                                                   self.BinEdges_right[0],
-                                                   mx, fp, fn, delta)            
+                                                       self.BinEdges_left[0],
+                                                       self.BinEdges_right[0],
+                                                       mx, fp, fn, delta)
             pdf = resp_integr / np.sum(resp_integr)
-            cdf = pdf.cumsum()  
+            cdf = pdf.cumsum()
             u = random.rand(Nevents)
             Q = np.zeros(Nevents)
             for i in np.arange(Nevents):
@@ -547,12 +547,12 @@ class Poisson_Likelihood(Experiment_HaloIndep):
             Q = np.array([])
             Nevents = 0
             Nexpected = 0
-            
+
         print('Events expected: ', Totexpected, 'Events Simulated: ', Nevents)
         print('Events: ', Q)
-        
+
         self.BinData = np.array([Q.size])
-        
+
         return Q
 
     def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
@@ -586,7 +586,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                                                        self.BinEdges_left[x],
                                                        self.BinEdges_right[x],
                                                        mx, fp, fn, delta)
-    
+
             rate_partials[x] = np.dot(10**logeta_list, resp_integr)
             if rate_partials[x] < 0:
                 rate_partials[x] = 0.0
@@ -597,7 +597,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
             self.Response = self._Response_Dirac
         else:
             self.Response = self._Response_Finite
-        
+
         for x in range(0, self.BinData.size):
             result += 2.0 * (self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] + log(factorial(self.BinData[x])) -
                              self.BinData[x] * log(self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x]))
@@ -668,101 +668,95 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         print('Obtained Variational of Likelihood')
 
         return self.Q_contrib
-        
 
     def Constrained_likelihood(self, mx, fp, fn, delta, vminStar, logetaStar):
-                    
+
         vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
-        
+
         if vminStar > vmin_low:
             mu_max = np.inf
             mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(0., vminStar, self.BinEdges_left,
-                                                                        self.BinEdges_right, mx, fp, 
-                                                                        fn, delta)
-            
+                                                                                 self.BinEdges_right, mx, fp,
+                                                                                 fn, delta)
+
         else:
             mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(0., 1000., self.BinEdges_left,
-                                                                        self.BinEdges_right, mx, fp, 
-                                                                        fn, delta)
+                                                                                 self.BinEdges_right, mx, fp,
+                                                                                 fn, delta)
             mu_min = 0.
-            
-            
-        
+
         if self.BinData > self.BinBkgr:
-            optimal_mu = (self.BinData - self.BinBkgr) 
-            
+            optimal_mu = (self.BinData - self.BinBkgr)
+
             if mu_min < optimal_mu < mu_max:
                 mu = optimal_mu
             elif optimal_mu <= mu_min:
                 mu = mu_min
             else:
-                mu = mu_max            
+                mu = mu_max
         else:
             optimal_mu = 0.
             if mu_min > optimal_mu:
                 mu = mu_min
             else:
                 mu = optimal_mu
-        
+
         mloglike = 2.0 * (mu + self.BinBkgr + np.log(factorial(self.BinData)) - self.BinData *
-                   np.log(mu + self.BinBkgr))  
-       
+                          np.log(mu + self.BinBkgr))
+
         return mloglike[0]
-        
+
     def Constrained_MC(self, data, mx, fp, fn, delta, vminStar, logetaStar):
         nobs = len(data)
         vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
-        
+
         if vminStar > vmin_low:
             mu_max = np.inf
             mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(0., vminStar, self.BinEdges_left,
-                                                                        self.BinEdges_right, mx, fp, 
-                                                                        fn, delta)
-            
+                                                                                 self.BinEdges_right, mx, fp,
+                                                                                 fn, delta)
+
         else:
             mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(0., 1000., self.BinEdges_left,
-                                                                        self.BinEdges_right, mx, fp, 
-                                                                        fn, delta)
+                                                                                 self.BinEdges_right, mx, fp,
+                                                                                 fn, delta)
             mu_min = 0.
-                                
+
         if nobs > self.BinBkgr:
-            optimal_mu = (nobs - self.BinBkgr) 
-            
+            optimal_mu = (nobs - self.BinBkgr)
+
             if mu_min < optimal_mu < mu_max:
                 mu = optimal_mu
             elif optimal_mu <= mu_min:
                 mu = mu_min
             else:
-                mu = mu_max            
+                mu = mu_max
         else:
             optimal_mu = 0.
             if mu_min > optimal_mu:
                 mu = mu_min
             else:
                 mu = optimal_mu
-        
+
         mloglike = 2.0 * (mu + self.BinBkgr + np.log(factorial(nobs)) - nobs *
-                   np.log(mu + self.BinBkgr))  
-       
-        return mloglike[0]    
-        
-        
+                          np.log(mu + self.BinBkgr))
+
+        return mloglike[0]
+
     def GetLikelihoodTable(self, index, output_file_loc, mx, fp, fn, delta):
 
-        
         print('index =', index)
-        
+
         vminStar = self.call_table.vmin_logeta_sampling_table[index, 0, 0]
         logetaStar_list = self.call_table.vmin_logeta_sampling_table[index, :, 1]
-        
+
         print("vminStar =", vminStar)
-        
-                                
+
         temp_file = output_file_loc + str(self.name) + "_" + str(index) + \
-                    "_mx_" + str(mx) + "GeV_" + "fpfn" + str(fp) + "_" + str(fn) + \
-                    "_ConstrainedLogLikelihoodList" + ".dat"
+            "_mx_" + str(mx) + "GeV_" + "fpfn" + str(fp) + "_" + str(fn) + \
+            "_ConstrainedLogLikelihoodList" + ".dat"
         table = np.empty((0, 2))
-        
+
         if os.path.exists(temp_file):
             size_of_file = len(np.loadtxt(temp_file))
             fileexists = True
@@ -777,14 +771,14 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                 for logetaStar in logetaStar_list:
                     if logetaStar > table[-1, 0]:
                         print('V* =', vminStar, 'log(eta)* =', logetaStar)
-                        
+
                         constr_opt = self.Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
                         if constr_opt < 0.:
                             pass
                         else:
                             print("index =", index, "; vminStar =", vminStar,
                                   "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
-                        
+
                             table = np.append(table, [[logetaStar, constr_opt]], axis=0)
 
                             print("vminStar =", vminStar, "; table =", table)
@@ -793,28 +787,25 @@ class Poisson_Likelihood(Experiment_HaloIndep):
             else:
                 for logetaStar in logetaStar_list:
                     print('V* =', vminStar, 'log(eta)* =', logetaStar)
-                    
+
                     constr_opt = self.Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
                     if constr_opt < 0.:
                         pass
                     else:
                         print("index =", index, "; vminStar =", vminStar,
                               "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
-                    
+
                         table = np.append(table, [[logetaStar, constr_opt]], axis=0)
 
                         print("vminStar =", vminStar, "; table =", table)
                         print(temp_file)
                         np.savetxt(temp_file, table)
-        
         return
-        
-        
+
     def ConstrainedLikelihoodList(self, class_name, output_file_loc, mx, fp, fn, delta, processes=None):
-        
-        
+
         vmin_index_list = range(0, class_name[0].vmin_logeta_sampling_table.shape[0])
-        
+
         print("vmin_index_list =", vmin_index_list)
         self.call_table = class_name[0]
         kwargs = ({'index': index,
@@ -825,7 +816,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                    'output_file_loc': output_file_loc
                    }
                   for index in vmin_index_list)
-        
+
         par.parmap(self.GetLikelihoodTable, kwargs, processes)
 
         return

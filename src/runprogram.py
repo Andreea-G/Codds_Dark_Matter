@@ -493,8 +493,8 @@ class RunProgram:
 
     def plot_EHI_band(self, exper_name, confidence_levels, HALO_DEP, extra_tail,
                       plot_dots):
-#        output_file = self.output_file_no_extension + ".dat"
         self.exper.ImportOptimalLikelihood(self.output_file_no_extension)
+#        output_file = self.output_file_no_extension + ".dat"
         interp_kind = 'linear'
         plot_limits = PlotData(exper_name, HALO_DEP, plot_close=False)
 
@@ -881,7 +881,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (100., -26.478)
+                    (vminStar, logetaStar) = (300., -27.0)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -927,16 +927,16 @@ class RunProgram_Multiexperiment:
                                                               logeta_percent_plus,
                                                               logeta_num_steps,
                                                               plot=not np.any(EHI_METHOD[5:]))
-                   
+
             if GENERATE_MC:
-                (vminStar, logetaStar) = (300., -26.478)
-                
+                (vminStar, logetaStar) = (300., -27.0)
+
                 MC_directory = "../Output_Band/MC_Files_ContactSI_delta_0/"
                 MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_" + str(int(vminStar)) +\
                               "_etastar_m" + str(abs(logetaStar)) + ".dat"
-                minfunc=np.array([300. ,452.3, 510.2,  579.8, -26.478, -26.478,  -26.478,  -27.06])
+                minfunc = np.array([300., 452.3, 510.2, 579.8, -26.478, -26.478, -26.478, -27.06])
 #                class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
-#                ind = 0      
+#                ind = 0
 #                con_min = 100.
 #                while ind < 4:
 #                    constr = class_name[0]._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar, ind,
@@ -948,58 +948,55 @@ class RunProgram_Multiexperiment:
 #                        minfunc=constr[0]
 #                    ind+=1
 
-                for i in range(0, len(class_name)):   
-                    
+                for i in range(0, len(class_name)):
+
                     Nexpected = class_name[i].ExpectedNumEvents(minfunc, mx, fp, fn, delta)
-                    
+
                     Obs_events = class_name[i].Simulate_Events(Nexpected, minfunc, class_name, mx, fp, fn, delta)
                     if i == 0:
                         Tot_list = [Obs_events]
                     else:
                         Tot_list.append(Obs_events)
-                    
-                LcMaxSuper = class_name[1].Constrained_MC(Obs_events, mx, 
+
+                LcMaxSuper = class_name[1].Constrained_MC(Obs_events, mx,
                                                           fp, fn, delta, vminStar, logetaStar)
                 print('LcMaxSuper: ', LcMaxSuper)
                 if Tot_list[0].size > 0:
                     LcMaxCDMS = class_name[0].Constrained_MC_Likelihood(Tot_list[0], vminStar, logetaStar,
                                                                         multiexper_input[0], class_name[0],
-                                                                        mx, fp, fn, delta)    
+                                                                        mx, fp, fn, delta)
                 else:
                     LcMaxCDMS = class_name[0]._MinusLogLikelihood(Tot_list[0], vminStar, logetaStar, 0)
-                    
-                
+
                 print('LcMaxCDMS: ', LcMaxCDMS)
                 if len(Tot_list[0]) > 0:
                     Lcglobal = class_name[0].Constrained_MC_Likelihood(Tot_list[0], vminStar, logetaStar,
                                                                        multiexper_input, class_name,
-                                                                       mx, fp, fn, delta) 
-                else:                                                       
+                                                                       mx, fp, fn, delta)
+                else:
                     Lcglobal = LcMaxCDMS + class_name[1]._MinusLogLikelihood(np.array([]), mx, fp, fn, delta,
-                               vminStar, logetaStar, vminStar_index=0)
+                                                                             vminStar, logetaStar, vminStar_index=0)
 
                 print('LcGlobal: ', Lcglobal)
                 MC_run = np.array([Lcglobal, LcMaxCDMS, LcMaxSuper])
                 file_name = MC_directory + MC_filename
                 print(MC_run)
-                
+
                 if os.path.exists(file_name):
                     hold = np.loadtxt(file_name)
-                    hold = np.vstack((hold,MC_run))
-                    np.savetxt(file_name,hold)
+                    hold = np.vstack((hold, MC_run))
+                    np.savetxt(file_name, hold)
                 else:
-#                    pass
                     np.savetxt(file_name, np.transpose(MC_run))
 
-                                             
             if MULTI_LOGLIKELIST:
-                (vminStar, logetaStar) = (100., -26.478)
-#                output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)  
+                (vminStar, logetaStar) = (300., -27.0)
+#                output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
 #                for i in range(1, len(multiexper_input)):
 #                    class_name[1].ConstrainedLikelihoodList(class_name, output_file_loc, mx, fp, fn, delta)
                 constr_val = class_name[1].Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
                 print('L_constrained_2;max = ', constr_val)
-                 
+
             if EHI_METHOD.LogLikelihoodList:
                     print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max,
                           vmin_Band_numsteps)

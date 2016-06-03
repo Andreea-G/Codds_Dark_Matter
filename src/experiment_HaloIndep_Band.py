@@ -1104,9 +1104,10 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                vmin_err=10.0, logeta_err=0.05)
 
         vars_list = constr_optimum_log_likelihood[0]
-        if (np.any(np.ones(vars_list.size/2 - 1) * (-0.01) > np.diff(vars_list[:vars_list.size/2])) or 
+        if (np.any(np.ones(vars_list.size/2 - 1) * (-0.01) > np.diff(vars_list[:vars_list.size/2])) or
             np.any(np.ones(vars_list.size/2 - 1) * (-0.01) > np.diff(abs(vars_list[vars_list.size/2:])))):
-            print('Fail ',vars_list)
+
+            print('Fail ', vars_list)
             return vars_list, 10**6
         print(vars_list)
         return constr_optimum_log_likelihood
@@ -1770,8 +1771,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             error = F
 
             try:
-                if y[0] > self.optimal_logL + delta_logL:  # and \
-#                   abs(logeta_minimLogL) < self.optimal_logL + delta_logL:
+                if y[0] > self.optimal_logL + delta_logL:  # and abs(logeta_minimLogL) < self.optimal_logL + delta_logL:
                     sol = brentq(lambda logeta: logL_interp(logeta) - self.optimal_logL -
                                  delta_logL,
                                  table[0, 0], logeta_minimLogL)
