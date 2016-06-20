@@ -868,9 +868,10 @@ class RunProgram_Multiexperiment:
             f_handle.close()
 
             if EHI_METHOD.OptimalLikelihood:
+                nsteps_bin = 1
                 class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
                                                                fp, fn, delta, output_file,
-                                                               output_file_CDMS, logeta_guess)
+                                                               output_file_CDMS, logeta_guess,nsteps_bin)
 
             if EHI_METHOD.ImportOptimalLikelihood:
                     class_name[0].ImportResponseTables(output_file_CDMS,
@@ -881,7 +882,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (300., -27.0)
+                    (vminStar, logetaStar) = (450., -30.0)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -990,7 +991,7 @@ class RunProgram_Multiexperiment:
                     np.savetxt(file_name, np.transpose(MC_run))
 
             if MULTI_LOGLIKELIST:
-                (vminStar, logetaStar) = (300., -27.0)
+                (vminStar, logetaStar) = (450., -30.0)
 #                output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
 #                for i in range(1, len(multiexper_input)):
 #                    class_name[1].ConstrainedLikelihoodList(class_name, output_file_loc, mx, fp, fn, delta)

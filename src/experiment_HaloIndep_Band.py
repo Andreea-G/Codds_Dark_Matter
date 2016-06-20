@@ -648,7 +648,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 raise
 
     def MultiExperimentOptimalLikelihood(self, multiexper_input, class_name, mx, fp, fn,
-                                         delta, output_file_tail, output_file_CDMS, logeta_guess):
+                                         delta, output_file_tail, output_file_CDMS, logeta_guess, nsteps_bin):
         """ Finds the best-fit piecewise constant eta function corresponding to the
         minimum MinusLogLikelihood, and prints the results to file (value of the minimum
         MinusLogLikelihood and the corresponding values of vmin, logeta steps.
@@ -660,8 +660,10 @@ class Experiment_EHI(Experiment_HaloIndep):
         """
 
         self.ImportResponseTables(output_file_CDMS, plot=False)
-
-        vmin_list = np.sort(self.vmin_sorted_list)
+        
+        addsteps = self.vmin_sorted_list[-1]* np.ones(nsteps_bin * (len(multiexper_input) - 1))
+        vminhold = np.append(self.vmin_sorted_list,addsteps)
+        vmin_list = np.sort(vminhold)
 
         vars_guess = np.append(vmin_list, logeta_guess * np.ones(vmin_list.size))
         print("vars_guess = ", vars_guess)
