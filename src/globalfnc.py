@@ -466,10 +466,18 @@ def ERecoilBranch(vmin, mT, mx, delta, sign):
         ER: float
     """
     muT = mx * mT / (mx + mT)
-    return 1.e6 * muT**2 / (2.*mT) * \
-        (vmin / SpeedOfLight +
-         sign * np.sqrt((vmin / SpeedOfLight)**2 - 2.*delta / muT * 1.e-6))**2
-
+    if delta > 0:
+        vdel = np.sqrt(2. * delta / muT)
+    else:
+        vdel = np.array([0.])
+    if vmin >= min(vdel):
+        return 1.e6 * muT**2 / (2.*mT) * \
+            (vmin / SpeedOfLight +
+             sign * np.sqrt((vmin / SpeedOfLight)**2 - 2.*delta / muT * 1.e-6))**2
+    else:
+        return 1.e6 * muT**2 / (2.*mT) * \
+            (vdel / SpeedOfLight +
+             sign * np.sqrt((vdel / SpeedOfLight)**2 - 2.*delta / muT * 1.e-6))**2
 
 def dERecoildVmin(vmin, mT, mx, delta, sign):
     """ Derivative of recoil energy ER with respect to velocity vmin
@@ -490,13 +498,20 @@ def dERecoildVmin(vmin, mT, mx, delta, sign):
         d ER/d vmin: float
     """
     muT = mx * mT / (mx + mT)
-    if vmin != 0:
+    if delta > 0:
+        vdel = np.sqrt(2. * delta / muT)
+    else:
+        vdel = np.array([0.])
+
+    if vmin != 0 and vmin >= min(vdel):
         sqrt_factor = np.sqrt(1. - 2.*delta / (muT * vmin**2) * SpeedOfLight**2 * 1.e-6)
         ret = sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
     elif vmin == 0 and delta == 0:
-        ret = 0.
-    else:
+        ret = muT**2 * vmin / mT
+    elif vmin == 0 and delta < 0:
         ret = sign * (- delta * muT) / (np.sqrt(- 2.0 * delta * SpeedOfLight**2 * 1.e-6 / muT) * mT) 
+    else:
+        ret = 0.
     return ret
 
 
