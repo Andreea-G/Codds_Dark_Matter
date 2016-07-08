@@ -382,7 +382,10 @@ class Experiment_EHI(Experiment_HaloIndep):
         for vmin in self.vmin_linspace:
             diff_resp_list = np.zeros((1, len(self.ERecoilList)))
 
-            branches = [1]
+            if delta==0:
+                branches = [1]
+            else:
+                branches = [-1,1]
             for sign in branches:
                 (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
                 diff_resp_list += np.array([self.DifferentialResponse(Eee, qER, const_factor)
