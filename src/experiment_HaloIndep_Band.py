@@ -366,7 +366,7 @@ class Experiment_EHI(Experiment_HaloIndep):
              if x == Q[0]:
                  self.ERecoilList = np.array([recoil])
              else:
-                 self.ERecoilList = np.append(ERecoilList,recoil)
+                 self.ERecoilList = np.append(self.ERecoilList,recoil)
             
         self.vmin_linspace = np.linspace(vdelta, 1000, 10)
         self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
