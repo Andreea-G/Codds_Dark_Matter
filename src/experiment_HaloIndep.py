@@ -530,13 +530,25 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         logeta_list = minfunc[(minfunc.size / 2):]
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
         vmin_grid = np.linspace(0, vmin_list_w0[-1], 1000)
-
-        if Nevents > 0:
-            resp_integr = self.IntegratedResponseTable(vmin_grid,
+        
+        di_resp_integr = np.diff(self.IntegratedResponseTable(vmin_grid,
                                                        self.BinEdges_left[0],
                                                        self.BinEdges_right[0],
-                                                       mx, fp, fn, delta)
+                                                       mx, fp, fn, delta))
+                                                       
+        x_run = 0
+        resp_integr = np.zeros(len(di_resp_integr))
+        for index in range(len(di_resp_integr)):
+            if vmin_grid[index] < (vmin_list_w0[x_run+1]-1):
+                resp_integr[index] = 10**logeta_list[x_run] * di_resp_integr[index]
+            else:
+                x_run+=1
+                resp_integr[index] = 10**logeta_list[x_run] * di_resp_integr[index]                                                     
+    
+        if Nevents > 0:
+            
             pdf = resp_integr / np.sum(resp_integr)
+            print(pdf)
             cdf = pdf.cumsum()
             u = random.rand(Nevents)
             Q = np.zeros(Nevents)
