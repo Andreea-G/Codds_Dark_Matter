@@ -312,7 +312,7 @@ class Experiment_EHI(Experiment_HaloIndep):
     def IntegratedResponseTable(self, vmin_list):
         tab = np.zeros(vmin_list.size - 1)
         for a in range(vmin_list.size - 1):
-            if (vmin_list[a+1] - vmin_list[a]) > 0.5:
+            if (vmin_list[a+1] - vmin_list[a]) > 0.1:
                 tab[a] = integrate.quad(self.response_interp,
                                         vmin_list[a], vmin_list[a + 1],
                                         epsrel=PRECISSION, epsabs=0)[0]
@@ -340,13 +340,23 @@ class Experiment_EHI(Experiment_HaloIndep):
         Nevents = poisson.rvs(Nexpected + 0.41)
 
         vdelta=min(VminDelta(self.mT, mx, delta))
-
+        logeta_list = minfunc[(minfunc.size / 2):]
         vmin_list_w0 = minfunc[:(minfunc.size / 2)]
         vmin_list_w0 = np.insert(vmin_list_w0, vdelta, 0)
         vmin_grid = np.linspace(vdelta, vmin_list_w0[-1], 1000)
 
-        if Nevents > 0:
-            resp_integr = self.IntegratedResponseTable(vmin_grid)
+        di_resp_integr = np.diff(self.IntegratedResponseTable(vmin_grid))
+        x_run = 0
+        resp_integr = np.zeros(len(di_resp_integr))
+        for index in range(len(di_resp_integr)):
+            if vmin_grid[index] < (vmin_list_w0[x_run+1]-1):
+                resp_integr[index] = 10**logeta_list[x_run] * di_resp_integr[index]
+            else:
+                x_run+=1
+                resp_integr[index] = 10**logeta_list[x_run] * di_resp_integr[index]               
+                
+        if Nevents > 0:            
+
             pdf = resp_integr / np.sum(resp_integr)
             cdf = pdf.cumsum()
             u = random.rand(Nevents)
@@ -358,7 +368,10 @@ class Experiment_EHI(Experiment_HaloIndep):
             Q = np.array([])
             Nevents = 0
 
-#       TODO Generalize to inelastic scattering! Can't do MC in vmin? 
+#       TODO Generalize! I'm not sure this works for endothermic -- I'd have to think more about it
+#       Also, for the exothermic example I use E^- is below threshold, so i only need to translate
+#       vmin simulated events to ER+, in general not true. Need to think about proper way to sim data here
+
         print('Events expected: ', (Nexpected + 0.41), 'Events Simulated: ', Nevents)
         print('Events: ', Q)
         for x in Q:
