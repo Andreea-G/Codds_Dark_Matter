@@ -884,7 +884,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (100., -20.)
+                    (vminStar, logetaStar) = (400., -22.5)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -978,7 +978,7 @@ class RunProgram_Multiexperiment:
                                                                        mx, fp, fn, delta)
                 else:
                     Lcglobal = LcMaxCDMS + class_name[1]._MinusLogLikelihood(np.array([]), mx, fp, fn, delta,
-                                                                             vminSta, logetaStar, vminStar_index=0)
+                                                                             vminStar, logetaStar, vminStar_index=0)
 
                 print('LcGlobal: ', Lcglobal)
                 MC_run = np.array([Lcglobal, LcMaxCDMS, LcMaxSuper])
@@ -993,7 +993,7 @@ class RunProgram_Multiexperiment:
                     np.savetxt(file_name, np.transpose(MC_run))
 
             if MULTI_LOGLIKELIST:
-                (vminStar, logetaStar) = (200., -20.)
+                (vminStar, logetaStar) = (400., -22.5)
 #                output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
 #                for i in range(1, len(multiexper_input)):
 #                    class_name[1].ConstrainedLikelihoodList(class_name, output_file_loc, mx, fp, fn, delta)
