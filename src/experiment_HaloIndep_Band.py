@@ -339,7 +339,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         Nevents = poisson.rvs(Nexpected + 0.41)
 
-        vdelta=VminDelta(mT, mx, delta)
+        vdelta=min(VminDelta(self.mT, mx, delta))
 
         vmin_list_w0 = minfunc[:(minfunc.size / 2)]
         vmin_list_w0 = np.insert(vmin_list_w0, vdelta, 0)
