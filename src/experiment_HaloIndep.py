@@ -547,8 +547,6 @@ class Poisson_Likelihood(Experiment_HaloIndep):
     
         if Nevents > 0:
             
-            pdf = resp_integr / np.sum(resp_integr)
-            print(pdf)
             cdf = pdf.cumsum()
             u = random.rand(Nevents)
             Q = np.zeros(Nevents)
