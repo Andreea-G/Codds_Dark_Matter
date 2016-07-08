@@ -470,7 +470,7 @@ def ERecoilBranch(vmin, mT, mx, delta, sign):
         vdel = np.sqrt(2. * delta / muT)
     else:
         vdel = np.array([0.])
-    if vmin >= min(vdel):
+    if vmin >= np.min(vdel):
         return 1.e6 * muT**2 / (2.*mT) * \
             (vmin / SpeedOfLight +
              sign * np.sqrt((vmin / SpeedOfLight)**2 - 2.*delta / muT * 1.e-6))**2
