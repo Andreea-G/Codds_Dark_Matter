@@ -339,9 +339,11 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         Nevents = poisson.rvs(Nexpected + 0.41)
 
+        vdelta=VminDelta(mT, mx, delta)
+
         vmin_list_w0 = minfunc[:(minfunc.size / 2)]
-        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
-        vmin_grid = np.linspace(0, vmin_list_w0[-1], 1000)
+        vmin_list_w0 = np.insert(vmin_list_w0, vdelta, 0)
+        vmin_grid = np.linspace(vdelta, vmin_list_w0[-1], 1000)
 
         if Nevents > 0:
             resp_integr = self.IntegratedResponseTable(vmin_grid)
@@ -356,13 +358,17 @@ class Experiment_EHI(Experiment_HaloIndep):
             Q = np.array([])
             Nevents = 0
 
-#       TODO Generalize to inelastic scattering! Can't do MC in vmin?
+#       TODO Generalize to inelastic scattering! Can't do MC in vmin? 
         print('Events expected: ', (Nexpected + 0.41), 'Events Simulated: ', Nevents)
         print('Events: ', Q)
         for x in Q:
-            self.ERecoilList = ERecoilBranch(Q, self.mT[0], mx, delta, 1)
-
-        self.vmin_linspace = np.linspace(0, 1000, 10)
+             recoil = ERecoilBranch(x, self.mT[0], mx, delta, 1)
+             if x == Q[0]:
+                 self.ERecoilList = np.array([recoil])
+             else:
+                 self.ERecoilList = np.append(ERecoilList,recoil)
+            
+        self.vmin_linspace = np.linspace(vdelta, 1000, 10)
         self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
         self.response_tab = np.zeros(1)
         self.mu_BKG_i = np.zeros(len(self.ERecoilList))
