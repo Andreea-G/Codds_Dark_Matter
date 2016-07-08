@@ -870,7 +870,7 @@ class RunProgram_Multiexperiment:
             f_handle.close()
 
             if EHI_METHOD.OptimalLikelihood:
-                nsteps_bin = 1
+                nsteps_bin = 0
                 class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
                                                                fp, fn, delta, output_file,
                                                                output_file_CDMS, logeta_guess,nsteps_bin)
@@ -884,7 +884,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (450., -30.0)
+                    (vminStar, logetaStar) = (100., -20.)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -932,7 +932,7 @@ class RunProgram_Multiexperiment:
                                                               plot=not np.any(EHI_METHOD[5:]))
 
             if GENERATE_MC:
-                (vminStar, logetaStar) = (300., -27.0)
+                (vminStar, logetaStar) = (10., -20.0)
 
                 MC_directory = "../Output_Band/MC_Files_ContactSI_delta_0/"
                 MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_" + str(int(vminStar)) +\
@@ -978,7 +978,7 @@ class RunProgram_Multiexperiment:
                                                                        mx, fp, fn, delta)
                 else:
                     Lcglobal = LcMaxCDMS + class_name[1]._MinusLogLikelihood(np.array([]), mx, fp, fn, delta,
-                                                                             vminStar, logetaStar, vminStar_index=0)
+                                                                             vminSta, logetaStar, vminStar_index=0)
 
                 print('LcGlobal: ', Lcglobal)
                 MC_run = np.array([Lcglobal, LcMaxCDMS, LcMaxSuper])
@@ -993,7 +993,7 @@ class RunProgram_Multiexperiment:
                     np.savetxt(file_name, np.transpose(MC_run))
 
             if MULTI_LOGLIKELIST:
-                (vminStar, logetaStar) = (450., -30.0)
+                (vminStar, logetaStar) = (200., -20.)
 #                output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
 #                for i in range(1, len(multiexper_input)):
 #                    class_name[1].ConstrainedLikelihoodList(class_name, output_file_loc, mx, fp, fn, delta)

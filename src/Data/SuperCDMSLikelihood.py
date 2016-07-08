@@ -96,4 +96,4 @@ BinData = np.array([11])
 BinError = np.array([1.0])
 BinBkgr = np.array([6.56])  # +/- (1.39, 1.17)
 BinExposure = np.array([577.])
-Expected_limit = 10.13
+Expected_limit = 11.25
