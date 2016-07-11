@@ -112,6 +112,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         self.mu_BKG_i = module.mu_BKG_i
         self.NBKG = module.NBKG
         self.method = method
+        
         self.mu_BKG_interp = interp1d(self.ERecoilList, self.mu_BKG_i, bounds_error=False)
 
     def _VMinSortedList(self, mx, fp, fn, delta):
@@ -354,7 +355,8 @@ class Experiment_EHI(Experiment_HaloIndep):
             else:
                 x_run+=1
                 resp_integr[vmin_ind] = 10**eta_list[x_run] * self.response_interp(vmin_grid[vmin_ind])            
-                
+             
+        #TODO This needs to be generalized for the future. MC must be done in ER for inelastic scattering and translated to vmin             
         if Nevents > 0:            
 
             pdf = resp_integr / np.sum(resp_integr)
@@ -378,7 +380,9 @@ class Experiment_EHI(Experiment_HaloIndep):
                  self.ERecoilList = np.array([recoil])
              else:
                  self.ERecoilList = np.append(self.ERecoilList,recoil)
-            
+       
+        self.ERecoilList = np.sort(self.ERecoilList)
+        
         self.vmin_linspace = np.linspace(vdelta, 1000, 10)
         self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
         self.response_tab = np.zeros(1)
