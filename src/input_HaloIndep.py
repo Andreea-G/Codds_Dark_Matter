@@ -146,6 +146,7 @@ def Logeta_guess(exper_name, mx, delta, mPhi=1000.):
     logeta_options = {(9., 0, 1000.): -26.,
                       (3.5, -50, 1000.): -24,
                       (1.3, -200, 1000.): -22,
+                      (38, 50, 1000.): -20,
                       }
     return logeta_options[(mx, delta, mPhi)]
 
@@ -169,6 +170,7 @@ def Vmin_EHIBand_range(exper_name, mx, delta, mPhi=1000.):
     options = {(9., 0, 1000.): (0, 1000, 100),
                (3.5, -50, 1000.): (0, 1000, 80),
                (1.3, -200, 1000.): (0, 1000, 80),
+               (38, 50, 1000.): (0, 1000, 80),
                }
     return options[(mx, delta, mPhi)]
 

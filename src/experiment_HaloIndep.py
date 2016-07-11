@@ -526,27 +526,27 @@ class Poisson_Likelihood(Experiment_HaloIndep):
     def Simulate_Events(self, Nexpected, minfunc, class_name, mx, fp, fn, delta):
         Totexpected = Nexpected + self.BinBkgr[0]
         Nevents = poisson.rvs(Totexpected)
+
+        vdelta=min(VminDelta(self.mT, mx, delta))
         vmin_list_w0 = minfunc[:(minfunc.size / 2)]
         logeta_list = minfunc[(minfunc.size / 2):]
+        eta_list = np.insert(logeta_list,0,-1)
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
-        vmin_grid = np.linspace(0, vmin_list_w0[-1], 1000)
-        
-        di_resp_integr = np.diff(self.IntegratedResponseTable(vmin_grid,
-                                                       self.BinEdges_left[0],
-                                                       self.BinEdges_right[0],
-                                                       mx, fp, fn, delta))
-                                                       
+        vmin_grid = np.linspace(vdelta, vmin_list_w0[-1], 1000)
+                                                              
         x_run = 0
-        resp_integr = np.zeros(len(di_resp_integr))
-        for index in range(len(di_resp_integr)):
-            if vmin_grid[index] < (vmin_list_w0[x_run+1]-1):
-                resp_integr[index] = 10**logeta_list[x_run] * di_resp_integr[index]
+        resp_integr = np.zeros(len(vmin_grid))
+        for vmin_ind in range(len(vmin_grid)):
+            if vmin_grid[vmin_ind] < (vmin_list_w0[x_run+1]):
+                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.Response(vmin_grid[vmin_ind],self.BinEdges_left[0],
+                                                                            self.BinEdges_right[0], mx, fp, fn, delta)
             else:
                 x_run+=1
-                resp_integr[index] = 10**logeta_list[x_run] * di_resp_integr[index]                                                     
+                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.Response(vmin_grid[vmin_ind],self.BinEdges_left[0],
+                                                                            self.BinEdges_right[0], mx, fp, fn, delta)                                                    
     
         if Nevents > 0:
-            
+            pdf = resp_integr / np.sum(resp_integr)
             cdf = pdf.cumsum()
             u = random.rand(Nevents)
             Q = np.zeros(Nevents)

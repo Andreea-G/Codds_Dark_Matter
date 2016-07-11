@@ -295,7 +295,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         for i in range(self.ERecoilList.size):
             for a in range(vmin_list.size - 1):
-                if (vmin_list[a+1] - vmin_list[a]) > 0.5:
+                if (vmin_list[a+1] - vmin_list[a]) > 0.1:
                     tab[i, a] = integrate.quad(self.diff_response_interp[i],
                                                vmin_list[a], vmin_list[a + 1],
                                                epsrel=PRECISSION, epsabs=0)[0]
@@ -341,23 +341,24 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         vdelta=min(VminDelta(self.mT, mx, delta))
         logeta_list = minfunc[(minfunc.size / 2):]
+        eta_list = np.insert(logeta_list,0,-1)
         vmin_list_w0 = minfunc[:(minfunc.size / 2)]
         vmin_list_w0 = np.insert(vmin_list_w0, vdelta, 0)
         vmin_grid = np.linspace(vdelta, vmin_list_w0[-1], 1000)
-
-        di_resp_integr = np.diff(self.IntegratedResponseTable(vmin_grid))
+        
         x_run = 0
-        resp_integr = np.zeros(len(di_resp_integr))
-        for index in range(len(di_resp_integr)):
-            if vmin_grid[index] < (vmin_list_w0[x_run+1]-1):
-                resp_integr[index] = 10**logeta_list[x_run] * di_resp_integr[index]
+        resp_integr = np.zeros(len(vmin_grid))
+        for vmin_ind in range(len(vmin_grid)):
+            if vmin_grid[vmin_ind] < (vmin_list_w0[x_run+1]):
+                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.response_interp(vmin_grid[vmin_ind])
             else:
                 x_run+=1
-                resp_integr[index] = 10**logeta_list[x_run] * di_resp_integr[index]               
+                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.response_interp(vmin_grid[vmin_ind])            
                 
         if Nevents > 0:            
 
             pdf = resp_integr / np.sum(resp_integr)
+
             cdf = pdf.cumsum()
             u = random.rand(Nevents)
             Q = np.zeros(Nevents)
@@ -368,9 +369,6 @@ class Experiment_EHI(Experiment_HaloIndep):
             Q = np.array([])
             Nevents = 0
 
-#       TODO Generalize! I'm not sure this works for endothermic -- I'd have to think more about it
-#       Also, for the exothermic example I use E^- is below threshold, so i only need to translate
-#       vmin simulated events to ER+, in general not true. Need to think about proper way to sim data here
 
         print('Events expected: ', (Nexpected + 0.41), 'Events Simulated: ', Nevents)
         print('Events: ', Q)
@@ -398,7 +396,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             if delta==0:
                 branches = [1]
             else:
-                branches = [-1,1]
+                branches = [1,-1]
             for sign in branches:
                 (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
                 diff_resp_list += np.array([self.DifferentialResponse(Eee, qER, const_factor)

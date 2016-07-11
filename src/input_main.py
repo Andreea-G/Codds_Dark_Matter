@@ -234,10 +234,12 @@ class Input:
                 run_program = RunProgram_Multiexperiment()
                 run_program(**kwargs)
 
-            PlotData.make_legend(self.HALO_DEP, self.scattering_type, self.mPhi,
+
+            if self.MAKE_PLOT or self.EHI_METHOD.ConfidenceBandPlot:
+                PlotData.make_legend(self.HALO_DEP, self.scattering_type, self.mPhi,
                                  self.fp, self.fn, self.delta, mx=self.mx,
                                  log_sigma_p=self.log_sigma_p)
-            if self.MAKE_PLOT or self.EHI_METHOD.ConfidenceBandPlot:
+
                 if xlim is not None:
                     plt.xlim(xlim)
                 if ylim is not None:
