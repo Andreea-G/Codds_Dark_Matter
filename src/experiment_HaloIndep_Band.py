@@ -379,8 +379,10 @@ class Experiment_EHI(Experiment_HaloIndep):
                 self.ERecoilList[x] = self.Ethreshold + .01
             elif self.ERecoilList[x] > self.Emaximum:
                 self.ERecoilList[x] = self.Emaximum - .01
-
-        self.vmin_linspace = np.linspace(vdelta, 1000, 600)
+        
+        print('Recoil List', self.ERecoilList)
+        
+        self.vmin_linspace = np.linspace(vdelta, 1000, 800)
 
         self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
       
@@ -433,7 +435,6 @@ class Experiment_EHI(Experiment_HaloIndep):
         vmin_resp_integr = self.VminIntegratedResponseTable(vmin_list_w0)
         resp_integr = self.IntegratedResponseTable(vmin_list_w0)
         mu_i = self.Exposure * np.dot(vmin_resp_integr, 10**logeta_list)
-        
 
         Nsignal = self.Exposure * np.dot(10**logeta_list, resp_integr)
         if vminStar is None:
@@ -442,7 +443,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         for x in range(0, len(mu_i)):
             if mu_i[x] + self.mu_BKG_i[x] <= 0.:               
                 raise ValueError()
-        
+                
         result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
 
         return result

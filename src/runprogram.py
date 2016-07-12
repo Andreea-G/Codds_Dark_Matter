@@ -884,7 +884,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (400., -22.5)
+                    (vminStar, logetaStar) = (100., -22.)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -931,25 +931,16 @@ class RunProgram_Multiexperiment:
                                                               logeta_num_steps,
                                                               plot=not np.any(EHI_METHOD[5:]))
 
+#################### MC SETTINGS ###########
+
             if GENERATE_MC:
-                (vminStar, logetaStar) = (10., -20.0)
+                (vminStar, logetaStar) = (200., -22.)
 
                 MC_directory = "../Output_Band/MC_Files_ContactSI_delta_0/"
                 MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_" + str(int(vminStar)) +\
                               "_etastar_m" + str(abs(logetaStar)) + ".dat"
-                minfunc = np.array([300., 452.3, 510.2, 579.8, -26.478, -26.478, -26.478, -27.06])
-#                class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
-#                ind = 0
-#                con_min = 100.
-#                while ind < 4:
-#                    constr = class_name[0]._MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar, ind,
-#                                                                                   multiexper_input, class_name,
-#                                                                                   mx, fp, fn, delta)
-#
-#                    if constr[1]<con_min:
-#                        con_min = constr[1]
-#                        minfunc=constr[0]
-#                    ind+=1
+                minfunc = np.array([200., 280.3, 438., 677.8, -22., -23.17, -23.17, -23.7])
+
 
                 for i in range(0, len(class_name)):
 
@@ -993,10 +984,7 @@ class RunProgram_Multiexperiment:
                     np.savetxt(file_name, np.transpose(MC_run))
 
             if MULTI_LOGLIKELIST:
-                (vminStar, logetaStar) = (400., -22.5)
-#                output_file_loc = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
-#                for i in range(1, len(multiexper_input)):
-#                    class_name[1].ConstrainedLikelihoodList(class_name, output_file_loc, mx, fp, fn, delta)
+                (vminStar, logetaStar) = (100., -22.)
                 constr_val = class_name[1].Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
                 print('L_constrained_2;max = ', constr_val)
 
