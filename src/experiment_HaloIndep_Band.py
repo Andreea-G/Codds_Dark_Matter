@@ -294,19 +294,11 @@ class Experiment_EHI(Experiment_HaloIndep):
         tab = np.zeros((vmin_list.size-1) * self.ERecoilList.size)
         tab = tab.reshape((self.ERecoilList.size, vmin_list.size-1))
 
-        for i in range(self.ERecoilList.size):
-            for a in range(vmin_list.size - 1):
-                if (vmin_list[a+1] - vmin_list[a]) > 0.001:
-                    tab[i, a] = integrate.quad(self.diff_response_interp[i],
-                                               vmin_list[a], vmin_list[a + 1],
-                                               epsrel=PRECISSION, epsabs=0)[0]
-                else:
-                    tab[i, a] = 0.
-#        tab2 = np.array([[integrate.quad(self.diff_response_interp[i],
-#                                         vmin_list[a], vmin_list[a + 1],
-#                                         epsrel=PRECISSION, epsabs=0)[0]
-#                        for a in range(vmin_list.size - 1)]
-#                        for i in range(self.ERecoilList.size)])
+        tab = np.array([[integrate.quad(self.diff_response_interp[i],
+                                         vmin_list[a], vmin_list[a + 1],
+                                         epsrel=PRECISSION, epsabs=0)[0]
+                        for a in range(vmin_list.size - 1)]
+                        for i in range(self.ERecoilList.size)])
 
         return tab
 
@@ -382,18 +374,21 @@ class Experiment_EHI(Experiment_HaloIndep):
                  self.ERecoilList = np.append(self.ERecoilList,recoil)
        
         self.ERecoilList = np.sort(self.ERecoilList)
-        
-        self.vmin_linspace = np.linspace(vdelta, 1000, 10)
+        for x in range(len(self.ERecoilList)):
+            if self.ERecoilList[x] < self.Ethreshold:
+                self.ERecoilList[x] = self.Ethreshold + .01
+            elif self.ERecoilList[x] > self.Emaximum:
+                self.ERecoilList[x] = self.Emaximum - .01
+
+        self.vmin_linspace = np.linspace(vdelta, 1000, 600)
+
         self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
-        self.response_tab = np.zeros(1)
+      
         self.mu_BKG_i = np.zeros(len(self.ERecoilList))
 
         for x in range(0, len(self.ERecoilList)):
-            if self.mu_BKG_interp(self.ERecoilList[x]) > 0:
-                self.mu_BKG_i[x] = self.mu_BKG_interp(self.ERecoilList[x])
-            else:
-                self.mu_BKG_i[x] = 0.
-        resp = 0
+            self.mu_BKG_i[x] = 0.07
+
         for vmin in self.vmin_linspace:
             diff_resp_list = np.zeros((1, len(self.ERecoilList)))
 
@@ -405,14 +400,11 @@ class Experiment_EHI(Experiment_HaloIndep):
                 (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
                 diff_resp_list += np.array([self.DifferentialResponse(Eee, qER, const_factor)
                                             for Eee in self.ERecoilList])
-                resp += integrate.quad(self.DifferentialResponse, self.Ethreshold, self.Emaximum,
-                                       args=(qER, const_factor), epsrel=PRECISSION, epsabs=0)[0]
 
+            
             self.diff_response_tab = np.append(self.diff_response_tab, diff_resp_list.transpose(), axis=1)
-            self.response_tab = np.append(self.response_tab, [resp], axis=0)
             self.diff_response_interp = np.array([unif.interp1d(self.vmin_linspace, dr)
                                                   for dr in self.diff_response_tab])
-            self.response_interp = unif.interp1d(self.vmin_linspace, self.response_tab)
 
         return Q
 
@@ -441,13 +433,14 @@ class Experiment_EHI(Experiment_HaloIndep):
         vmin_resp_integr = self.VminIntegratedResponseTable(vmin_list_w0)
         resp_integr = self.IntegratedResponseTable(vmin_list_w0)
         mu_i = self.Exposure * np.dot(vmin_resp_integr, 10**logeta_list)
+        
 
         Nsignal = self.Exposure * np.dot(10**logeta_list, resp_integr)
         if vminStar is None:
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
         for x in range(0, len(mu_i)):
-            if mu_i[x] + self.mu_BKG_i[x] <= 0.:
+            if mu_i[x] + self.mu_BKG_i[x] <= 0.:               
                 raise ValueError()
         
         result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
