@@ -296,7 +296,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         for i in range(self.ERecoilList.size):
             for a in range(vmin_list.size - 1):
-                if (vmin_list[a+1] - vmin_list[a]) > 0.1:
+                if (vmin_list[a+1] - vmin_list[a]) > 0.001:
                     tab[i, a] = integrate.quad(self.diff_response_interp[i],
                                                vmin_list[a], vmin_list[a + 1],
                                                epsrel=PRECISSION, epsabs=0)[0]
@@ -447,9 +447,9 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
         for x in range(0, len(mu_i)):
-            if mu_i[x] < 0:
-                mu_i[x] = 0.0
-
+            if mu_i[x] + self.mu_BKG_i[x] <= 0.:
+                raise ValueError()
+        
         result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
 
         return result
