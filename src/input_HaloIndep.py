@@ -42,12 +42,26 @@ def Vmin_range(exper_name, mx, delta, mPhi=1000., quenching=None, EHI_METHOD=Fal
     if exper_name == "CDMSSi2012" and EHI_METHOD:
         vmin_step = vmin_min = 1
         vmin_max = 1000
-    elif "LUX" in exper_name:
+    elif "LUX2013" in exper_name:
         vmin_step = vmin_min = 1
         vmin_max = 1000
         vmin_range_options = {(9., 0, 1000.): (450, vmin_max, vmin_step),
                               (3.5, -50, 1000.): (550, vmin_max, vmin_step),
                               (1.3, -200, 1000.): (750, vmin_max, vmin_step)
+                              }
+    elif "LUX2016" in exper_name:
+        vmin_step = vmin_min = 1
+        vmin_max = 1000
+        vmin_range_options = {(9., 0, 1000.): (10, vmin_max, vmin_step),
+                              (3.5, -50, 1000.): (10, vmin_max, vmin_step),
+                              (1.3, -200, 1000.): (10, vmin_max, vmin_step)
+                              }
+    elif "PandaX" in exper_name:
+        vmin_step = vmin_min = 1
+        vmin_max = 1000
+        vmin_range_options = {(9., 0, 1000.): (10, vmin_max, vmin_step),
+                              (3.5, -50, 1000.): (10, vmin_max, vmin_step),
+                              (1.3, -200, 1000.): (10, vmin_max, vmin_step)
                               }
     elif "DAMA" in exper_name:
         vmin_step = vmin_min = 1

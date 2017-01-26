@@ -437,6 +437,218 @@ class PoissonExperiment(Experiment):
         return result
 
 
+class Extended_likelihood(Experiment):
+    """ Class for experiments with Poisson analysis.
+    Input:
+        exper_name: string
+            Name of experiment.
+        scattering_type: string
+            Type of scattering.
+        mPhi: float, optional
+            Mass of the mediator.
+        quenching_factor: float, optional
+            Quenching factor. If not given, the default used is specified in the data
+            modules.
+    """
+    def __init__(self, exper_name, scattering_type, mPhi=mPhiRef, quenching_factor=None):
+        super().__init__(exper_name, scattering_type, mPhi)
+        module = import_file(INPUT_DIR + exper_name + ".py")
+        self.mu_bkg = module.mu_BKG_i
+        self.data = module.ERecoilList
+        self.nobs = len(self.data)
+        self.bkg = module.NBKG
+        self.Exposure = module.Exposure
+        self.lowE = np.array([module.Ethreshold])
+
+        self.HighE = np.array([module.ERmaximum])
+
+        self.ERecoilList = module.ERecoilList
+        self.ElistMaxGap = \
+            np.append(np.insert(np.array(list(filter(lambda x:
+                                                     self.Ethreshold < x < self.Emaximum,
+                                                     self.ERecoilList))), 0, self.Ethreshold), self.Emaximum)
+
+    def MaximumGapUpperBoundSHM(self, mx, fp, fn, delta, output_file):
+        print("mx = ", mx)
+        xtable = np.array([self.IntegratedResponseSHM(i, j, mx, fp, fn, delta)
+                           for i, j in zip(self.ElistMaxGap[:-1], self.ElistMaxGap[1:])])
+
+        mu_scaled = xtable.sum()
+
+        x_scaled = np.max(xtable)
+        if x_scaled == 0:
+            mu_over_x = np.inf
+            result = [np.inf]
+        else:
+            mu_over_x = mu_scaled / x_scaled
+            y_guess = np.real(-lambertw(-0.1 / mu_over_x, -1))
+
+            y = fsolve(lambda x:
+                       MaximumGapC0scaled(x, mu_over_x) - ConfidenceLevel, y_guess)
+            result = y / x_scaled / self.Exposure
+        print("mx = ", mx, "   mu_over_x = ", mu_over_x)
+        print("xtable = ", xtable)
+        print("yguess =", y_guess)
+        print("result = ", result[0])
+        to_print = np.log10(np.array([[mx, result[0]]]))
+        with open(output_file, 'ab') as f_handle:
+            np.savetxt(f_handle, to_print)
+        return result
+
+    def UpperLimit(self, fp, fn, delta, mx_min, mx_max, num_steps, output_file,
+                   processes=None):
+        """ Computes the upper limit in cross-section as a function of DM mass mx.
+        """
+        self.fp = fp
+        self.fn = fn
+        self.delta = delta
+        mx_list = np.logspace(np.log10(mx_min), np.log10(mx_max), num_steps)
+
+        kwargs = ({'mx': mx,
+                   'fp': fp,
+                   'fn': fn,
+                   'delta': delta,
+                   'output_file': output_file}
+                  for mx in mx_list)
+        #upper_limit = np.array(par.parmap(self.MaximumGapUpperBoundSHM, kwargs, processes)
+        #                       ).flatten()
+        #upper_limit = 1. / conversion_factor * mx_list * upper_limit
+        #print("mx_list = ", mx_list)
+        #print("upper_limit = ", upper_limit)
+        #result = np.log10(np.transpose([mx_list, upper_limit]))
+        #return result[result[:, 1] != np.inf]
+        upper_limit = np.array(par.parmap(self.RegionSHM, kwargs, processes))
+        print("mx_list = ", mx_list)
+        print("upper_limit = ", upper_limit)
+        return upper_limit
+
+
+    def get_lim(self, mx, fp, fn, delta):
+        cl = chi_squared(1, 0.9)
+        maxval = self.mlog_likelihood(-100., mx, fp, fn, delta)
+        find_min = minimize(self.boundry_term, np.array([-40.]), args=(mx, fp, fn, delta, maxval+cl),
+                            bounds=[(-45., -30.)], method='SLSQP', tol=0.01)
+        return find_min.x
+
+    def _Predicted(self, mx, fp, fn, delta):
+        return self.Exposure * conversion_factor / mx * \
+            np.array([self.IntegratedResponseSHM(self.lowE, self.HighE, mx, fp, fn, delta)])
+
+    def mlog_likelihood(self, sigp, mx, fp, fn, delta):
+        pred = self._Predicted(mx, fp, fn, delta)
+
+        dr_terms = 10**sigp * self.Exposure * conversion_factor / mx * \
+            np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, fp, fn, delta)
+                     for erg in self.data])
+        dr_terms += self.mu_bkg
+        dr_term = 1.
+        for x in range(len(dr_terms)):
+            dr_term *= dr_terms[x]
+        prefac = (10**sigp * pred + self.bkg) ** (self.nobs - 1.) * \
+                 np.exp(- 10**sigp * pred + self.bkg) / factorial(self.nobs)
+        #print('Prefac, drterm: ', prefac, dr_term)
+        if prefac * dr_term <= 0.:
+            return np.inf
+        return -2. * np.log(prefac * dr_term)
+
+    def boundry_term(self, sigp, mx, fp, fn, delta, constant):
+        return np.abs(self.mlog_likelihood(sigp, mx, fp, fn, delta) - constant)
+
+    def RegionSHM(self, mx, output_file, fp, fn, delta):
+
+        log_like_call = minimize(self.mlog_likelihood, np.array([-40.]), args=(mx, self.fp, self.fn, self.delta),
+                                 bounds=[(-50., -20.)], method='SLSQP', tol=0.01)
+        log_likelihood_max = log_like_call.fun
+        sigma_fit = log_like_call.x
+        predicted = 10**sigma_fit * self._Predicted(mx, self.fp, self.fn, self.delta)
+
+        print("mx = ", mx)
+        print("sigma_fit = ", sigma_fit)
+        print("max log likelihood = ", log_likelihood_max)
+        to_print = np.hstack((mx, sigma_fit, log_likelihood_max, predicted))
+        with open(output_file, 'ab') as f_handle:
+            np.savetxt(f_handle, to_print)
+        return to_print
+
+
+    def LogLMax(self, output_file, mx_fit_guess=None):
+        table = np.transpose(np.loadtxt(output_file))
+        mx_list = table[0]
+        mx_min = mx_list[0]
+        mx_max = mx_list[-1]
+        if mx_fit_guess is None:
+            mx_fit_guess = (mx_min + mx_max)/2
+        print('mx_min, mx_max =', mx_min, mx_max)
+        log_likelihood_max = table[2]
+        neg_log_likelihood_max_interp = interpolate.interp1d(mx_list, -log_likelihood_max,
+                                                             kind='linear')
+        print('logL_guess =', neg_log_likelihood_max_interp(mx_fit_guess))
+        mx_fit = minimize(neg_log_likelihood_max_interp, mx_fit_guess, tol=1e-4,
+                          bounds=[(1.1 * mx_min, 0.9 * mx_max)]).x
+        print('mx_fit =', mx_fit)
+        logL_max = -neg_log_likelihood_max_interp(mx_fit)
+        print('logL_max =', logL_max)
+        return mx_fit, logL_max, mx_list, log_likelihood_max
+
+    def _UpperLowerLists(self, mx, logL_max, sigma):
+        #print('Mass, sigma, logL_max, self.logL_targ: ', mx, sigma, logL_max, self.logL_target)
+
+        if logL_max < self.logL_target:
+            sig_low = minimize(self.boundry_term, np.array([sigma-0.01]),args=(mx, self.fp, self.fn, self.delta,
+                                                                               self.logL_target),
+                               bounds=[(sigma-5., sigma)], method='SLSQP', tol=0.01).x
+            sig_high = minimize(self.boundry_term, np.array([sigma+0.01]),args=(mx, self.fp, self.fn, self.delta,
+                                                                               self.logL_target),
+                               bounds=[(sigma, sigma+5.)], method='SLSQP', tol=0.01).x
+
+            #print('Mass, Sigma_low, Sigma_high: ', mx, sig_low, sig_high)
+            return [[np.log10(mx), sig_low],
+                    [np.log10(mx), sig_high]]
+        return []
+
+    def UpperLowerLists(self, CL, output_file, output_file_lower, output_file_upper,
+                        num_mx=1000, processes=None):
+        print('CL =', CL, 'chi2 =', chi_squared(2, CL))
+        self.logL_target = self.logL_max - chi_squared(2, CL)/2
+
+        table = np.transpose(np.loadtxt(output_file))
+        mx_list = table[0]
+        sigma_fit_interp = interpolate.interp1d(mx_list, table[1])
+        log_likelihood_max_interp = interpolate.interp1d(mx_list, table[2])
+
+        mx_list = np.logspace(np.log10(mx_list[0]), np.log10(mx_list[-1]), num=num_mx)
+
+        sigma_fit = np.array([sigma_fit_interp(mx) for mx in mx_list])
+        logL_max = np.array([log_likelihood_max_interp(mx) for mx in mx_list])
+
+        kwargs = ({'mx': mx_list[index],
+                   'logL_max': logL_max[index],
+                   'sigma': sigma_fit[index],
+                   }
+                  for index in range(len(mx_list)))
+        limits = [l for l in par.parmap(self._UpperLowerLists, kwargs,
+                                        processes=processes, verbose=False) if l]
+        if limits:
+            limits = np.transpose(limits, axes=(1, 0, 2))
+            limit_low = limits[0]
+            limit_high = limits[1]
+        else:
+            limit_low = limit_high = []
+        return [np.array(limit_low), np.array(limit_high)]
+
+    def Region(self, delta, CL, output_file, output_file_lower, output_file_upper,
+               num_mx=1000, processes=None):
+
+        self.mx_fit, self.logL_max, mx_list, log_likelihood_max = \
+            self.LogLMax(output_file)
+        [limit_low, limit_high] = \
+            self.UpperLowerLists(CL, output_file, output_file_lower, output_file_upper,
+                                 num_mx=num_mx, processes=processes)
+        np.savetxt(output_file_lower, limit_low)
+        np.savetxt(output_file_upper, limit_high)
+        return
+
+
 class PoissonLikelihood(Experiment):
     """ Class for experiments with Poisson analysis.
     Input:
@@ -463,7 +675,7 @@ class PoissonLikelihood(Experiment):
 
     def _MinusLogLikelihood(self, mx, fp, fn, delta):
         """
-
+        Calculates -2 log likelihood
         """
         rate_partials = [None] * (self.BinEdges_left.size)
 
@@ -683,11 +895,14 @@ class DAMAExperiment(Experiment):
         self.BinEdges = module.BinEdges
         self.BinData = module.BinData
         self.BinError = module.BinError
+
 #        self._Rebin()
         self.BinEdges_left = self.BinEdges[:-1]
         self.BinEdges_right = self.BinEdges[1:]
         self.BinData = self.Exposure * self.BinData
+
         self.BinError = self.Exposure * self.BinError
+
         if quenching_factor is not None:
             self.QuenchingFactor = lambda e: quenching_factor
 
@@ -756,11 +971,16 @@ class DAMAExperiment(Experiment):
 
     def _UpperLowerLists(self, mx, logL_max, sigma, pred, data, err):
         def logL(ratio, pred=pred, data=data, err=err):
-            return -sum((ratio * pred - data)**2 / (2 * err**2)) - self.logL_target
+            #return -sum((ratio * pred - data)**2 / (2 * err**2)) - self.logL_target
+            return -sum((ratio * pred - data) ** 2 / (2 * err ** 2)) - self.logL_target
         if logL_max > self.logL_target:
             ratio_low = fsolve(logL, 0.5)[0]
             ratio_high = fsolve(logL, 3)[0]
-            return [[np.log10(mx), np.log10(ratio_low * sigma)],
+            if ratio_low < 0.:
+                r_low = 0.
+            else:
+                r_low = np.log10(ratio_low * sigma)
+            return [[np.log10(mx), r_low],
                     [np.log10(mx), np.log10(ratio_high * sigma)]]
         return []
 

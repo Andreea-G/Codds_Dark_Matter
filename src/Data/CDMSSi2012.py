@@ -93,5 +93,5 @@ BinEdges = np.array([7, 9, 11, 13])
 BinData = np.array([len([e for e in ERecoilList
                          if e > BinEdges[k] and e < BinEdges[k+1]])
                     for k in range(len(BinEdges) - 1)]) / Exposure
-BinError = sqrt(BinData / Exposure)
+BinError = np.sqrt(BinData)/ Exposure
 

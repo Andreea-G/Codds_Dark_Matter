@@ -29,7 +29,8 @@ def main():
          "DAMA2010Na", "DAMA2010I", "DAMA2010Nas_TotRateLimit",  # 11 - 13
          "DAMA2010Na DAMA2010I", "DAMA2010I DAMA2010Na",  # 14 - 15
          "CDMSlite2013CoGeNTQ", "CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif",  # 16 - 19
-         "SHM_eta0", "SHM_eta1", "SuperCDMSLessT5", "SuperCDMSLikelihood"]  # 20 - 23
+         "SHM_eta0", "SHM_eta1", "SuperCDMSLessT5", "SuperCDMSLikelihood", # 20 - 23
+         "LUX2016zero", "LUX2016five", "LUX2016many", "PandaX"] # 24 - 27
 
     # Give input parameters
     
@@ -41,7 +42,7 @@ def main():
     EHI_METHOD = {}
     # EHI_METHOD['ResponseTables'] = T
     # EHI_METHOD['OptimalLikelihood'] = T
-    EHI_METHOD['ImportOptimalLikelihood'] = T
+    # EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
     # EHI_METHOD['VminLogetaSamplingTable'] = T
     # EHI_METHOD['LogLikelihoodList'] = T
@@ -52,27 +53,27 @@ def main():
     # Only works for 22,23 at this moment 
     # Generate MC can be used for calculation of TS
     MULTI_LOGLIKELIST = F
-    GENERATE_MC = T 
+    GENERATE_MC = F
 
     # General Commands
-    HALO_DEP = F
-    MULTI_EXPER = T  # Set to True iff EHI_Method should be applied to multiexper_input_indices
+    HALO_DEP = T
+    MULTI_EXPER = F  # Set to True iff EHI_Method should be applied to multiexper_input_indices
     plot_dots = F
     RUN_PROGRAM = T
     MAKE_LIMITS = F
-    MAKE_REGIONS = F
+    MAKE_REGIONS = T
     MAKE_CROSSES = F
-    MAKE_PLOT = F
-    EXPORT_PLOT = F
+    MAKE_PLOT = T
+    EXPORT_PLOT = T
 
     scattering_types = ['SI']  # may be 'SI', 'SDAV', 'SDPS'
     # indices of input_list which can be found in input files
     input_indices = [0]
     # indices of implemented_exper_list
-    exper_indices = []
+    exper_indices = [17]
     # indices to be used in multiexperiment EHI anlysis
     # make sure experiments being used have functioning likelihood subroutine
-    multiexper_input_indices = [17,22]
+    multiexper_input_indices = [] # e.g. 17,22
 
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]
@@ -98,9 +99,11 @@ def main():
 
     try:
         plt.close()
-        xlim = None
-        # ylim = [-43,-40]
-        ylim = [-30, -22]
+        # xlim = None
+        xlim = [1, 100]
+        ylim = [-45,-37]
+        # ylim = [-30, -22]
+        # ylim = None
         inp.RunProgram(EXPORT_PLOT=EXPORT_PLOT, xlim=xlim, ylim=ylim)
         if MAKE_PLOT or EHI_METHOD.get('ConfidenceBandPlot', F):
             if not EXPORT_PLOT:

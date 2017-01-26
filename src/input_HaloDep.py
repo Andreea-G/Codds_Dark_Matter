@@ -66,7 +66,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                             (50, 1000.): (20, 100, num_steps),
                             (100, 1000.): (30, 100, num_steps),
                             }
-    elif "LUX" in exper_name:
+    elif "LUX2013" in exper_name:
         num_steps = 30
         mx_range_options = {(0, 1000.): (5.85, 100, num_steps),
                             # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
@@ -77,6 +77,39 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                             (50, 1000.): (17.66, 100, num_steps),
                             (100, 1000.): (40, 100, num_steps),
                             (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (0.75, 2, num_steps),
+                            (-500, 1000.): (0.5, 1, num_steps)
+                            }
+    elif "LUX2016" in exper_name:
+        num_steps = 30
+        mx_range_options = {(0, 1000.): (3.3, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (1.5, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (0.57, 2, num_steps),
+                            (-500, 1000.): (0.25, 1, num_steps)
+                            }
+
+    elif exper_name == "PandaX":
+        num_steps = 30
+        mx_range_options = {(0, 1000.): (3.5, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (3.197, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (-200, 1000.): (0.75, 2, num_steps),
+                            (-500, 1000.): (0.35, 1, num_steps)
                             }
     elif exper_name == "KIMS2012":
         num_steps = 40

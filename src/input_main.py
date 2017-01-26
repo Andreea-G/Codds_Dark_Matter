@@ -258,6 +258,7 @@ class Input:
         """ Run the program for halo-dependent analysis.
         """
         module = import_file(input_filename_list[self.HALO_DEP] + ".py")
+        
         for self.scattering_type, self.filename_tail, \
                 (self.fn, self.delta, self.mPhi) \
                 in product(self.scattering_type_list,

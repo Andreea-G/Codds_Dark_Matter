@@ -30,7 +30,7 @@ pi = np.pi
 T = True    # short-hand notation
 F = False
 
-PRECISSION = 1.e-3
+PRECISSION = 1.e-5
 # Unit conversions
 fermiGeV = 1./0.1973269602  # Natural[GeV femto Meter]
 kilogram = 1e-9/1.782661758e-36  # kg in GeV  (units: [GeV/kg])
@@ -55,7 +55,8 @@ if False:   # alternative velocities; kept for reference
 """
 MaximumGapLimit_exper = ["SuperCDMS",
                          "LUX2013zero", "LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
-                         "XENON10", "XENON100", "CDMSlite2013CoGeNTQ", "CDMSSi2012"]
+                         "XENON10", "XENON100", "CDMSlite2013CoGeNTQ",
+                         "LUX2016zero", "LUX2016five", "LUX2016many","PandaX"]
 GaussianLimit_exper = ["KIMS2012", "PICASSO"]
 BinnedSignal_exper = ["DAMA2010Na", "DAMA2010I"]
 Crosses_exper = ["CDMSSi2012", "DAMA2010Na", "DAMA2010I"]
@@ -63,6 +64,7 @@ DAMALimit_exper = ["DAMA2010Na_TotRateLimit"]
 Poisson_exper = ["SIMPLEModeStage2"]
 EHImethod_exper = ["CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif"]
 SHM_line = ["SHM_eta0", "SHM_eta1"]
+Extended_Like = ["CDMSSi2012"]
 Poisson_Like = ["SuperCDMSLessT5", "SuperCDMSLikelihood"]
 Poisson_likelihood = ["SuperCDMSLessT5", "SuperCDMSLikelihood"]
 
@@ -80,7 +82,8 @@ Color = {"SuperCDMS": 'peru',
          "DAMA2010I": 'green',
          "SIMPLEModeStage2": 'saddlebrown',
          "SHM_eta0": 'gray', "SHM_eta1": 'gray', "SuperCDMSLessT5": 'peru',
-         "SuperCDMSLikelihood": 'peru'
+         "SuperCDMSLikelihood": 'peru',
+         "LUX2016zero": 'navy', "LUX2016five": 'navy', "LUX2016many": 'navy', "PandaX":'goldenrod'
          }
 """ Linestyles get cicled through for each experiment name.
 """
@@ -90,7 +93,9 @@ linestyles = ['-', '--', '-.', ':']
 line_dashes = {"LUX2013zero": (3, 4), "LUX2013one": (8, 4, 3, 4, 3, 4),
                "LUX2013three": (8, 4, 3, 4), "LUX2013five": (8, 4), "LUX2013many": None,
                "SHM_eta0": (8, 4), "SHM_eta1": (3, 4), "SuperCDMSLessT5": (3, 4),
-               "SuperCDMSLikelihood": (8, 4, 3, 4, 3, 4)
+               "SuperCDMSLikelihood": (8, 4, 3, 4, 3, 4),
+               "LUX2016five": (8, 4, 3, 4, 3, 4),
+               "LUX2016many": (8, 4, 3, 4),
                }
 """ Legend names, in order of appearence in the legend for the corresponding experiments
 that appear in the plot.
@@ -104,11 +109,13 @@ legend_names = OrderedDict([("DAMA$_0", ["DAMA2010Na_TotRateLimit"]),
                             ("CDMSlite", ["CDMSlite2013CoGeNTQ"]),
                             ("SIMPLE", ["SIMPLEModeStage2"]),
                             ("XENON10", ["XENON10"]), ("XENON100", ["XENON100"]),
-                            ("LUX", ["LUX2013zero", "LUX2013one", "LUX2013three",
+                            ("LUX2013", ["LUX2013zero", "LUX2013one", "LUX2013three",
                                      "LUX2013five", "LUX2013many"]),
                             ("PICASSO", ["PICASSO"]), ("KIMS", ["KIMS2012"]),
                             ("SHM $(\sigma_p = 10^{-40}\mathrm{ cm}^2)$",
-                             ["SHM_eta0", "SHM_eta1"])
+                             ["SHM_eta0", "SHM_eta1"]),
+                            ("LUX2016", ["LUX2016zero", "LUX2016five", "LUX2016many"]),
+                            ("PandaX", ["PandaX"])
                             ])
 """ Transparency parameter for filling regions, depending on the quenching factor.
 """

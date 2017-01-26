@@ -361,7 +361,6 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
             -2log(L): float
 
         """
-
         if vminStar is None:
             vmin_list_w0 = vars_list[: vars_list.size/2]
             logeta_list = vars_list[vars_list.size/2:]
@@ -431,12 +430,17 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         if calculate_Q:
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
-                    self.curly_H_tab[x, v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
-                                                                  args=(self.BinEdges_left[x], self.BinEdges_right[x], mx,
-                                                                        fp, fn, delta), epsrel=PRECISSION, epsabs=0)[0]
+                    self.curly_H_tab[x, v_dummy] =\
+                    integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)),
+                                   v_dummy,args=(self.BinEdges_left[x],
+                                                 self.BinEdges_right[x], mx,
+                                                 fp, fn, delta),
+                                   epsrel=PRECISSION, epsabs=0)[0]
+
                     if self.BinData[x] != 0:
-                            result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] / self.Exposure) /
-                                                         self.BinError[x] ** 2.0) * self.curly_H_tab[x, v_dummy])
+                            result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] /
+                                                          self.Exposure) / self.BinError[x] ** 2.0)
+                                                          * self.curly_H_tab[x, v_dummy])
 
                     self.Q_contrib[x, v_dummy] = result[x, v_dummy]
             file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
@@ -533,18 +537,20 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         eta_list = np.insert(logeta_list,0,-1)
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
         vmin_grid = np.linspace(vdelta, vmin_list_w0[-1], 1000)
-                                                              
+
         x_run = 0
         resp_integr = np.zeros(len(vmin_grid))
         for vmin_ind in range(len(vmin_grid)):
             if vmin_grid[vmin_ind] < (vmin_list_w0[x_run+1]):
-                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.Response(vmin_grid[vmin_ind],self.BinEdges_left[0],
-                                                                            self.BinEdges_right[0], mx, fp, fn, delta)
+                resp_integr[vmin_ind] = 10**eta_list[x_run] *\
+                self.Response(vmin_grid[vmin_ind],self.BinEdges_left[0],
+                              self.BinEdges_right[0], mx, fp, fn, delta)
             else:
                 x_run+=1
-                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.Response(vmin_grid[vmin_ind],self.BinEdges_left[0],
-                                                                            self.BinEdges_right[0], mx, fp, fn, delta)                                                    
-    
+                resp_integr[vmin_ind] = 10**eta_list[x_run] *\
+                self.Response(vmin_grid[vmin_ind],self.BinEdges_left[0],
+                              self.BinEdges_right[0], mx, fp, fn, delta)
+
         if Nevents > 0:
             pdf = resp_integr / np.sum(resp_integr)
             cdf = pdf.cumsum()
@@ -609,8 +615,9 @@ class Poisson_Likelihood(Experiment_HaloIndep):
             self.Response = self._Response_Finite
 
         for x in range(0, self.BinData.size):
-            result += 2.0 * (self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] + log(factorial(self.BinData[x])) -
-                             self.BinData[x] * log(self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x]))
+            result += 2.0 * (self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] +
+                             log(factorial(self.BinData[x])) - self.BinData[x] *
+                             log(self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x]))
 
         return result
 
@@ -654,12 +661,19 @@ class Poisson_Likelihood(Experiment_HaloIndep):
         if calculate_Q:
             for x in range(0, self.BinData.size):
                 for v_dummy in range(1, 1001):
-                        self.curly_H_tab[x, v_dummy] = integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)), v_dummy,
-                                                                      args=(self.BinEdges_left[x], self.BinEdges_right[x], mx,
-                                                                            fp, fn, delta), epsrel=PRECISSION, epsabs=0)[0]
+                        self.curly_H_tab[x, v_dummy] = integrate.quad(self.Response,
+                                                                      min(VminDelta(self.mT, mx, 
+                                                                                    delta)),
+                                                                      v_dummy, 
+                                                                      args=(self.BinEdges_left[x],
+                                                                            self.BinEdges_right[x],
+                                                                            mx, fp, fn, delta),
+                                                                      epsrel=PRECISSION, epsabs=0)[0]
 
-                        result[x, v_dummy] = (2.0 * ((self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] - self.BinData[x]) /
-                                                     (rate_partials[x] + self.BinBkgr[x] / self.BinExposure[x])) *
+                        result[x, v_dummy] = (2.0 * ((self.BinExposure[x] * rate_partials[x] +
+                                                      self.BinBkgr[x] - self.BinData[x]) /
+                                                     (rate_partials[x] + self.BinBkgr[x] /
+                                                     self.BinExposure[x])) *
                                               self.curly_H_tab[x, v_dummy])
                         self.Q_contrib[x, v_dummy] = result[x, v_dummy]
 
@@ -681,33 +695,38 @@ class Poisson_Likelihood(Experiment_HaloIndep):
 
     def Constrained_likelihood(self, mx, fp, fn, delta, vminStar, logetaStar):
 
-        if delta == 0:        
+        if delta == 0:
             vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
-            vd=0.
+            vd = 0.
         elif delta < 0:
             er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
-            vd=0.
+            vd = 0.
             if self.BinEdges_left > er_delta:
                 vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
-            else: 
+            else:
                 vmin_low = 0.
         elif delta > 0:
-             er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
-             vd = np.sqrt(2. * delta * 10**(-6.) * (mx + np.mean(self.mT)) / (mx * np.mean(self.mT))) * SpeedOfLight
-             if self.BinEdges_left > er_delta:
-                 vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
-             else:
-                 vmin_low = vd
+            er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
+            vd = np.sqrt(2. * delta * 10**(-6.) * (mx + np.mean(self.mT)) /
+                         (mx * np.mean(self.mT))) * SpeedOfLight
+            if self.BinEdges_left > er_delta:
+                vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+            else:
+                vmin_low = vd
 
         if vminStar > vmin_low:
             mu_max = np.inf
-            mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, vminStar, self.BinEdges_left,
-                                                                                 self.BinEdges_right, mx, fp,
+            mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, vminStar,
+                                                                                 self.BinEdges_left,
+                                                                                 self.BinEdges_right,
+                                                                                 mx, fp,
                                                                                  fn, delta)
 
         else:
-            mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, 1000., self.BinEdges_left,
-                                                                                 self.BinEdges_right, mx, fp,
+            mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, 1000.,
+                                                                                 self.BinEdges_left,
+                                                                                 self.BinEdges_right,
+                                                                                 mx, fp,
                                                                                  fn, delta)
             mu_min = 0.
 
@@ -734,33 +753,39 @@ class Poisson_Likelihood(Experiment_HaloIndep):
 
     def Constrained_MC(self, data, mx, fp, fn, delta, vminStar, logetaStar):
         nobs = len(data)
-        if delta == 0:        
+        if delta == 0:
             vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
-            vd=0.
+            vd = 0.
         elif delta < 0:
             er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
-            vd=0.
+            vd = 0.
             if self.BinEdges_left > er_delta:
                 vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
-            else: 
+            else:
                 vmin_low = 0.
         elif delta > 0:
-             er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
-             vd = np.sqrt(2. * delta * 10**(-6.) * (mx + np.mean(self.mT)) / (mx * np.mean(self.mT))) * SpeedOfLight
-             if self.BinEdges_left > er_delta:
-                 vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
-             else:
-                 vmin_low = vd
+            er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
+            vd = np.sqrt(2. * delta * 10**(-6.) * (mx + np.mean(self.mT)) /
+                         (mx * np.mean(self.mT))) * SpeedOfLight
+
+            if self.BinEdges_left > er_delta:
+                vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+            else:
+                vmin_low = vd
 
         if vminStar > vmin_low:
             mu_max = np.inf
-            mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, vminStar, self.BinEdges_left,
-                                                                                 self.BinEdges_right, mx, fp,
+            mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, vminStar,
+                                                                                 self.BinEdges_left,
+                                                                                 self.BinEdges_right,
+                                                                                 mx, fp,
                                                                                  fn, delta)
 
         else:
-            mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, 1000., self.BinEdges_left,
-                                                                                 self.BinEdges_right, mx, fp,
+            mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, 1000.,
+                                                                                 self.BinEdges_left,
+                                                                                 self.BinEdges_right,
+                                                                                 mx, fp,
                                                                                  fn, delta)
             mu_min = 0.
 
@@ -781,7 +806,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
                 mu = optimal_mu
 
         mloglike = 2.0 * (mu + self.BinBkgr - nobs *
-                          np.log(mu + self.BinBkgr) + np.log(factorial(self.BinData))) 
+                          np.log(mu + self.BinBkgr) + np.log(factorial(self.BinData)))
 
         return mloglike[0]
 

@@ -292,6 +292,8 @@ class RunProgram:
                 class_name = DAMATotalRateExperiment
             elif exper_name in Poisson_likelihood:
                 class_name = PoissonLikelihood
+            elif exper_name in Extended_Like:
+                class_name = Extended_likelihood
             else:
                 print("NotImplementedError: This experiment was not implemented!")
                 return
@@ -338,7 +340,6 @@ class RunProgram:
         f_handle.close()
 
         if HALO_DEP:
-
             (mx_min, mx_max, num_steps) = mx_range
             upper_limit = self.exper.UpperLimit(fp, fn, delta, mx_min, mx_max, num_steps,
                                                 output_file)
@@ -456,12 +457,16 @@ class RunProgram:
         """ Make regions for halo-dependent analysis and experiments with potential DM
         signal.
         """
+
         output_file = self.output_file_no_extension + ".dat"
+        #print(output_file)
+
         for CL in confidence_levels:
             output_file_regions = self.output_file_no_extension + \
                 "_" + str(round(sigma_dev(CL), 2)) + "sigma"
             output_file_lower = output_file_regions + "_lower_limit.dat"
             output_file_upper = output_file_regions + "_upper_limit.dat"
+            #print(output_file_lower)
             self.exper.Region(delta, CL, output_file, output_file_lower,
                               output_file_upper)
 
@@ -645,7 +650,7 @@ class RunProgram:
                                   vmin_index_list, logeta_index_range, extra_tail)
 
         # make regions
-        if MAKE_REGIONS and HALO_DEP and exper_name.split()[0] in BinnedSignal_exper:
+        if MAKE_REGIONS and HALO_DEP and exper_name.split()[0] in BinnedSignal_exper or exper_name in Extended_Like:
             self.make_regions(delta, confidence_levels)
 
         # make plot
@@ -884,7 +889,7 @@ class RunProgram_Multiexperiment:
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (100., -22.)
+                    (vminStar, logetaStar) = (800., -21.)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -934,11 +939,11 @@ class RunProgram_Multiexperiment:
 #################### MC SETTINGS ###########
 
             if GENERATE_MC:
-                (vminStar, logetaStar) = (200., -22.)
+                (vminStar, logetaStar) = (800., -20.)
 
                 MC_directory = "../Output_Band/MC_Files_ContactSI_delta_0/"
-                MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_" + str(int(vminStar)) +\
-                              "_etastar_m" + str(abs(logetaStar)) + ".dat"
+                MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_" +\
+                              str(int(vminStar)) + "_etastar_m" + str(abs(logetaStar)) + ".dat"
                 minfunc = np.array([200., 280.3, 438., 677.8, -22., -23.17, -23.17, -23.7])
 
 
@@ -984,7 +989,7 @@ class RunProgram_Multiexperiment:
                     np.savetxt(file_name, np.transpose(MC_run))
 
             if MULTI_LOGLIKELIST:
-                (vminStar, logetaStar) = (100., -22.)
+                (vminStar, logetaStar) = (800., -21.)
                 constr_val = class_name[1].Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
                 print('L_constrained_2;max = ', constr_val)
 

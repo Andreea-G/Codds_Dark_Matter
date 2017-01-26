@@ -112,7 +112,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         self.mu_BKG_i = module.mu_BKG_i
         self.NBKG = module.NBKG
         self.method = method
-        
+
         self.mu_BKG_interp = interp1d(self.ERecoilList, self.mu_BKG_i, bounds_error=False)
 
     def _VMinSortedList(self, mx, fp, fn, delta):
@@ -338,7 +338,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         vmin_list_w0 = minfunc[:(minfunc.size / 2)]
         vmin_list_w0 = np.insert(vmin_list_w0, vdelta, 0)
         vmin_grid = np.linspace(vdelta, vmin_list_w0[-1], 1000)
-        
+
         x_run = 0
         resp_integr = np.zeros(len(vmin_grid))
         for vmin_ind in range(len(vmin_grid)):
@@ -346,10 +346,12 @@ class Experiment_EHI(Experiment_HaloIndep):
                 resp_integr[vmin_ind] = 10**eta_list[x_run] * self.response_interp(vmin_grid[vmin_ind])
             else:
                 x_run+=1
-                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.response_interp(vmin_grid[vmin_ind])            
-             
-        #TODO This needs to be generalized for the future. MC must be done in ER for inelastic scattering and translated to vmin             
-        if Nevents > 0:            
+                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.response_interp(vmin_grid[vmin_ind])
+
+        #TODO This needs to be generalized for the future. MC must be done in ER
+        #for inelastic scattering and translated to vmin
+
+        if Nevents > 0:
 
             pdf = resp_integr / np.sum(resp_integr)
 
@@ -372,20 +374,20 @@ class Experiment_EHI(Experiment_HaloIndep):
                  self.ERecoilList = np.array([recoil])
              else:
                  self.ERecoilList = np.append(self.ERecoilList,recoil)
-       
+
         self.ERecoilList = np.sort(self.ERecoilList)
         for x in range(len(self.ERecoilList)):
             if self.ERecoilList[x] < self.Ethreshold:
                 self.ERecoilList[x] = self.Ethreshold + .01
             elif self.ERecoilList[x] > self.Emaximum:
                 self.ERecoilList[x] = self.Emaximum - .01
-        
+
         print('Recoil List', self.ERecoilList)
-        
+
         self.vmin_linspace = np.linspace(vdelta, 1000, 800)
 
         self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
-      
+
         self.mu_BKG_i = np.zeros(len(self.ERecoilList))
 
         for x in range(0, len(self.ERecoilList)):
@@ -403,7 +405,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 diff_resp_list += np.array([self.DifferentialResponse(Eee, qER, const_factor)
                                             for Eee in self.ERecoilList])
 
-            
+
             self.diff_response_tab = np.append(self.diff_response_tab, diff_resp_list.transpose(), axis=1)
             self.diff_response_interp = np.array([unif.interp1d(self.vmin_linspace, dr)
                                                   for dr in self.diff_response_tab])
@@ -441,9 +443,9 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
         for x in range(0, len(mu_i)):
-            if mu_i[x] + self.mu_BKG_i[x] <= 0.:               
+            if mu_i[x] + self.mu_BKG_i[x] <= 0.:
                 raise ValueError()
-                
+
         result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
 
         return result
@@ -678,7 +680,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         """
 
         self.ImportResponseTables(output_file_CDMS, plot=False)
-        
+
         addsteps = self.vmin_sorted_list[-1]* np.ones(nsteps_bin * (len(multiexper_input) - 1))
         vminhold = np.append(self.vmin_sorted_list,addsteps)
         vmin_list = np.sort(vminhold)
