@@ -555,7 +555,9 @@ class Extended_likelihood(Experiment):
         return np.abs(self.mlog_likelihood(sigp, mx, fp, fn, delta) - constant)
 
     def RegionSHM(self, mx, output_file, fp, fn, delta):
-
+        self.fp = fp
+        self.fn = fn
+        self.delta = delta
         log_like_call = minimize(self.mlog_likelihood, np.array([-40.]), args=(mx, self.fp, self.fn, self.delta),
                                  bounds=[(-50., -20.)], method='SLSQP', tol=0.01)
         log_likelihood_max = log_like_call.fun
@@ -596,10 +598,10 @@ class Extended_likelihood(Experiment):
         if logL_max < self.logL_target:
             sig_low = minimize(self.boundry_term, np.array([sigma-0.01]),args=(mx, self.fp, self.fn, self.delta,
                                                                                self.logL_target),
-                               bounds=[(sigma-5., sigma)], method='SLSQP', tol=0.01).x
+                               bounds=[(sigma-5., sigma)], method='SLSQP', tol=0.001).x
             sig_high = minimize(self.boundry_term, np.array([sigma+0.01]),args=(mx, self.fp, self.fn, self.delta,
                                                                                self.logL_target),
-                               bounds=[(sigma, sigma+5.)], method='SLSQP', tol=0.01).x
+                               bounds=[(sigma, sigma+5.)], method='SLSQP', tol=0.001).x
 
             print('Mass, Sigma_low, Sigma_high: ', mx, sig_low, sig_high)
             return [[np.log10(mx), sig_low],
@@ -609,7 +611,7 @@ class Extended_likelihood(Experiment):
     def UpperLowerLists(self, CL, output_file, output_file_lower, output_file_upper,
                         num_mx=1000, processes=None):
         print('CL =', CL, 'chi2 =', chi_squared(2, CL))
-        self.logL_target = self.logL_max - chi_squared(2, CL)/2
+        self.logL_target = self.logL_max - chi_squared(2, CL)
 
         table = np.transpose(np.loadtxt(output_file))
         mx_list = table[0]
@@ -646,6 +648,7 @@ class Extended_likelihood(Experiment):
                                  num_mx=num_mx, processes=processes)
         np.savetxt(output_file_lower, limit_low)
         np.savetxt(output_file_upper, limit_high)
+
         return
 
 
@@ -987,7 +990,7 @@ class DAMAExperiment(Experiment):
     def UpperLowerLists(self, CL, output_file, output_file_lower, output_file_upper,
                         num_mx=1000, processes=None):
         print('CL =', CL, 'chi2 =', chi_squared(2, CL))
-        self.logL_target = self.logL_max - chi_squared(2, CL)/2
+        self.logL_target = self.logL_max - chi_squared(2, CL)
 
         table = np.transpose(np.loadtxt(output_file))
         num_dimensions = table.shape[0]

@@ -252,7 +252,7 @@ class PlotData:
 
         if lower_limit is not None and fill:
             linewidth = 0
-
+        #print('Upper/LowerLimit: ', upper_limit, lower_limit)
         x_upper, y_upper = self.plot_limits(upper_limit, kind, linewidth, linestyle,
                                             dashes, plot_dots, alpha=alpha)
         if lower_limit is not None:
@@ -472,7 +472,8 @@ class RunProgram:
 
     def plot_limits(self, exper_name, confidence_levels, HALO_DEP, plot_dots, alpha=1):
         plot_data = PlotData(exper_name, HALO_DEP, plot_close=False)
-        if HALO_DEP and exper_name.split()[0] in BinnedSignal_exper:
+        if (HALO_DEP and exper_name.split()[0] in BinnedSignal_exper) or \
+                (HALO_DEP and exper_name=='CDMSSi2012'):
             PlotData.count[exper_name] = -1
             for index, CL in enumerate(confidence_levels):
                 output_file_regions = self.output_file_no_extension + \
@@ -650,7 +651,8 @@ class RunProgram:
                                   vmin_index_list, logeta_index_range, extra_tail)
 
         # make regions
-        if MAKE_REGIONS and HALO_DEP and exper_name.split()[0] in BinnedSignal_exper or exper_name in Extended_Like:
+        if (MAKE_REGIONS and HALO_DEP and exper_name.split()[0] in BinnedSignal_exper) or \
+                (MAKE_REGIONS and exper_name in Extended_Like):
             self.make_regions(delta, confidence_levels)
 
         # make plot
