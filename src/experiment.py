@@ -601,7 +601,7 @@ class Extended_likelihood(Experiment):
                                                                                self.logL_target),
                                bounds=[(sigma, sigma+5.)], method='SLSQP', tol=0.01).x
 
-            #print('Mass, Sigma_low, Sigma_high: ', mx, sig_low, sig_high)
+            print('Mass, Sigma_low, Sigma_high: ', mx, sig_low, sig_high)
             return [[np.log10(mx), sig_low],
                     [np.log10(mx), sig_high]]
         return []
@@ -637,7 +637,7 @@ class Extended_likelihood(Experiment):
         return [np.array(limit_low), np.array(limit_high)]
 
     def Region(self, delta, CL, output_file, output_file_lower, output_file_upper,
-               num_mx=1000, processes=None):
+               num_mx=100, processes=None):
 
         self.mx_fit, self.logL_max, mx_list, log_likelihood_max = \
             self.LogLMax(output_file)

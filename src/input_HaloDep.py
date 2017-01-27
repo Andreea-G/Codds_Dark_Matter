@@ -191,6 +191,18 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                             (-30, 0.): (1, 10, num_steps),
                             (-50, 1000.): (1, 10, num_steps),
                             }
+
+    elif exper_name == "CDMSSi2012":
+        num_steps = 30
+        # mx_range_options = {(0, 1000.): (3, 15, num_steps),
+        mx_range_options = {(0, 1000.): (4, 25, num_steps),
+                            (0, 0.): (3, 15, num_steps),
+                            (-30, 1000.): (1, 10, num_steps),
+                            (-30, 0.): (1, 10, num_steps),
+                            (-50, 1000.): (1, 10, num_steps),
+                            (-200, 1000.): (0.75, 2, num_steps),
+                            (-500, 1000.): (0.35, 1, num_steps)
+                            }
     else:
         num_steps = 60
         if 'SI' in scattering[0]:
