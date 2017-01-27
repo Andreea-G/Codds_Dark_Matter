@@ -555,9 +555,7 @@ class Extended_likelihood(Experiment):
         return np.abs(self.mlog_likelihood(sigp, mx, fp, fn, delta) - constant)
 
     def RegionSHM(self, mx, output_file, fp, fn, delta):
-        self.fp = fp
-        self.fn = fn
-        self.delta = delta
+
         log_like_call = minimize(self.mlog_likelihood, np.array([-40.]), args=(mx, self.fp, self.fn, self.delta),
                                  bounds=[(-50., -20.)], method='SLSQP', tol=0.01)
         log_likelihood_max = log_like_call.fun
@@ -640,6 +638,7 @@ class Extended_likelihood(Experiment):
 
     def Region(self, delta, CL, output_file, output_file_lower, output_file_upper,
                num_mx=100, processes=None):
+
 
         self.mx_fit, self.logL_max, mx_list, log_likelihood_max = \
             self.LogLMax(output_file)
