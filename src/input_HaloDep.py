@@ -82,8 +82,8 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                             (-500, 1000.): (0.5, 1, num_steps)
                             }
     elif "LUX2016" in exper_name:
-        num_steps = 30
-        mx_range_options = {(0, 1000.): (3.3, 100, num_steps),
+        num_steps = 40
+        mx_range_options = {(0, 1000.): (3.5, 100, num_steps),
                             # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
                             (0, 0.): (5.80, 130, num_steps),
                             (-30, 1000.): (3.95, 100, num_steps),
@@ -99,7 +99,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
 
     elif exper_name == "PandaX":
         num_steps = 30
-        mx_range_options = {(0, 1000.): (3.5, 100, num_steps),
+        mx_range_options = {(0, 1000.): (4.0, 100, num_steps),
                             # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
                             (0, 0.): (5.80, 130, num_steps),
                             (-30, 1000.): (3.95, 100, num_steps),

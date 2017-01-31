@@ -23,7 +23,7 @@
 from __future__ import absolute_import
 from __future__ import division
 import numpy as np
-from interp import interp1d
+from scipy.interpolate import interp1d
 pi = np.pi
 
 name = "PandaX"
@@ -75,7 +75,9 @@ def Efficiency_ER(er):
 
 
 Eff_ER_interp = \
-    interp1d(np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Pandax2016.dat')[:,0],np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Pandax2016.dat')[:,1])
+    interp1d(np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Pandax2016.dat')[:,0],
+             np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Pandax2016.dat')[:,1],
+             kind='linear', bounds_error=False,fill_value=0.)
 
 
 def Efficiency(e):
@@ -87,11 +89,12 @@ Exposure = 3.3 * 10 ** 4.
 ERecoilList = np.array([25.5, 28., 30.5])
 
 
-BinData = np.array([0.0])
-BinEdges_left = np.array([2.0])
-BinEdges_right = np.array([30.0])
-BinBkgr=np.array([0.0])
-BinSize=28.0
+BinData = np.array([3.])
+BinEdges_left = np.array([0.0])
+BinEdges_right = np.array([80.0])
+BinBkgr=np.array([4.8])
+BinSize=80.0
+BinExposure=np.array([Exposure])
 
 
 

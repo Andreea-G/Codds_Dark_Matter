@@ -323,6 +323,7 @@ class Experiment:
         ER_plus = min(np.max(ER_plus_list), self.ERmaximum)
         ER_minus = np.min(ER_minus_list)
         midpoints = []
+
         if ER_minus < Eee1 < ER_plus:
             midpoints += [Eee1]
         if ER_minus < Eee2 < ER_plus:
@@ -331,10 +332,7 @@ class Experiment:
             integr = integrate.quad(self._ResponseSHM_Finite, ER_minus, ER_plus,
                                     args=(Eee1, Eee2, mx, fp, fn, delta),
                                     points=midpoints, epsrel=PRECISSION, epsabs=0)
-#            integr = integrate.dblquad(self.DifferentialResponseSHM, ER_minus, ER_plus, \
-#                                       lambda Eee: Eee1, lambda Eee: Eee2, \
-#                                       args=(mx, fp, fn, delta), epsrel = PRECISSION,
-#                                       epsabs = 0)
+
             return integr[0]
         else:
             return 0.
@@ -536,7 +534,7 @@ class Extended_likelihood(Experiment):
 
     def mlog_likelihood(self, sigp, mx, fp, fn, delta):
         pred = self._Predicted(mx, fp, fn, delta)
-
+        """
         dr_terms = 10**sigp * self.Exposure * conversion_factor / mx * \
             np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, fp, fn, delta)
                      for erg in self.data])
@@ -544,24 +542,39 @@ class Extended_likelihood(Experiment):
         dr_term = 1.
         for x in range(len(dr_terms)):
             dr_term *= dr_terms[x]
+        
         prefac = (10**sigp * pred + self.bkg) ** (self.nobs - 1.) * \
-                 np.exp(- 10**sigp * pred + self.bkg) / factorial(self.nobs)
+                 np.exp(- (10**sigp * pred + self.bkg)) / factorial(self.nobs)
+        
+        
         #print('Prefac, drterm: ', prefac, dr_term)
         if prefac * dr_term <= 0.:
             return np.inf
         return -2. * np.log(prefac * dr_term)
+        """
+        prefac = - 2. * np.log((10**sigp * pred + self.bkg) ** (self.nobs - 1.) * \
+                               np.exp(- (10**sigp * pred + self.bkg)) / factorial(self.nobs))
+        return prefac
 
     def boundry_term(self, sigp, mx, fp, fn, delta, constant):
         return np.abs(self.mlog_likelihood(sigp, mx, fp, fn, delta) - constant)
 
     def RegionSHM(self, mx, output_file, fp, fn, delta):
-
-        log_like_call = minimize(self.mlog_likelihood, np.array([-40.]), args=(mx, self.fp, self.fn, self.delta),
-                                 bounds=[(-50., -20.)], method='SLSQP', tol=0.01)
+        pred = self._Predicted(mx, fp, fn, delta)
+        d_pred = self.Exposure * conversion_factor / mx * \
+                np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, fp, fn, delta)
+                      for erg in self.data])
+        
+        log_like_call = minimize(lambda x: 2. * (10. ** x * pred + self.bkg -
+                                                 self.nobs * np.log(10. ** x * pred + self.bkg) -
+                                                 np.log(10.**x * d_pred + self.mu_bkg).sum()),
+                                 np.array([-40.]),
+                                 method='SLSQP', bounds=[(-50., -20.)])
         log_likelihood_max = log_like_call.fun
         sigma_fit = log_like_call.x
-        predicted = 10**sigma_fit * self._Predicted(mx, self.fp, self.fn, self.delta)
-
+        
+        predicted = 10**sigma_fit * pred
+        
         print("mx = ", mx)
         print("sigma_fit = ", sigma_fit)
         print("max log likelihood = ", log_likelihood_max)
@@ -580,27 +593,38 @@ class Extended_likelihood(Experiment):
             mx_fit_guess = (mx_min + mx_max)/2
         print('mx_min, mx_max =', mx_min, mx_max)
         log_likelihood_max = table[2]
-        neg_log_likelihood_max_interp = interpolate.interp1d(mx_list, -log_likelihood_max,
+        neg_log_likelihood_max_interp = interpolate.interp1d(mx_list, log_likelihood_max,
                                                              kind='linear')
         print('logL_guess =', neg_log_likelihood_max_interp(mx_fit_guess))
         mx_fit = minimize(neg_log_likelihood_max_interp, mx_fit_guess, tol=1e-4,
                           bounds=[(1.1 * mx_min, 0.9 * mx_max)]).x
         print('mx_fit =', mx_fit)
-        logL_max = -neg_log_likelihood_max_interp(mx_fit)
+        logL_max = neg_log_likelihood_max_interp(mx_fit)
         print('logL_max =', logL_max)
         return mx_fit, logL_max, mx_list, log_likelihood_max
 
     def _UpperLowerLists(self, mx, logL_max, sigma):
         #print('Mass, sigma, logL_max, self.logL_targ: ', mx, sigma, logL_max, self.logL_target)
-
+        pred = self._Predicted(mx, self.fp, self.fn, self.delta)
+        d_pred = self.Exposure * conversion_factor / mx * \
+            np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx,
+                                               self.fp, self.fn, self.delta)
+                      for erg in self.data])
         if logL_max < self.logL_target:
-            sig_low = minimize(self.boundry_term, np.array([sigma-0.01]),args=(mx, self.fp, self.fn, self.delta,
-                                                                               self.logL_target),
-                               bounds=[(sigma-5., sigma)], method='SLSQP', tol=0.001).x
-            sig_high = minimize(self.boundry_term, np.array([sigma+0.01]),args=(mx, self.fp, self.fn, self.delta,
-                                                                               self.logL_target),
-                               bounds=[(sigma, sigma+5.)], method='SLSQP', tol=0.001).x
-
+            sig_low = minimize(lambda x: np.abs(2. * (10. ** x * pred + self.bkg -
+                                                      self.nobs * np.log(10.**x * pred + self.bkg) -
+                                                      np.log(10.**x * d_pred + self.mu_bkg).sum()) -
+                                                self.logL_target),
+                               np.array([sigma-0.1]),
+                               bounds=[(sigma-5., sigma)], method='SLSQP', tol=0.01).x
+            
+            sig_high = minimize(lambda x: np.abs(2. * (10. ** x * pred + self.bkg -
+                                                       self.nobs * np.log(10.**x * pred + self.bkg)-
+                                                       np.log(10.**x * d_pred + self.mu_bkg).sum()) -
+                                                 self.logL_target),
+                               np.array([sigma+0.1]),
+                               bounds=[(sigma, sigma+5.)], method='SLSQP', tol=0.01).x
+                               
             print('Mass, Sigma_low, Sigma_high: ', mx, sig_low, sig_high)
             return [[np.log10(mx), sig_low],
                     [np.log10(mx), sig_high]]
@@ -609,7 +633,7 @@ class Extended_likelihood(Experiment):
     def UpperLowerLists(self, CL, output_file, output_file_lower, output_file_upper,
                         num_mx=1000, processes=None):
         print('CL =', CL, 'chi2 =', chi_squared(2, CL))
-        self.logL_target = self.logL_max - chi_squared(2, CL)
+        self.logL_target = self.logL_max + chi_squared(2, CL)
 
         table = np.transpose(np.loadtxt(output_file))
         mx_list = table[0]
@@ -638,7 +662,6 @@ class Extended_likelihood(Experiment):
 
     def Region(self, delta, CL, output_file, output_file_lower, output_file_upper,
                num_mx=100, processes=None):
-
 
         self.mx_fit, self.logL_max, mx_list, log_likelihood_max = \
             self.LogLMax(output_file)
@@ -674,36 +697,56 @@ class PoissonLikelihood(Experiment):
         self.BinBkgr = module.BinBkgr
         self.chiSquared = chi_squared(1)
         self.BinExposure = module.BinExposure
+        self.exper_name = module.name
 
     def _MinusLogLikelihood(self, mx, fp, fn, delta):
         """
         Calculates -2 log likelihood
         """
+    
         rate_partials = [None] * (self.BinEdges_left.size)
 
 
         resp_integr = self.BinExposure[0] * conversion_factor / mx * self.IntegratedResponseSHM(
                             self.BinEdges_left[0], self.BinEdges_right[0], mx, fp, fn, delta)
+        
         if resp_integr < 0.0:
             rate_partials[0] = 0.0
         else:
             rate_partials[0] = resp_integr
 
         result = 0
-
+        if self.exper_name == "LUX2016zero" or self.exper_name == "PandaX":
+            if self.exper_name == "LUX2016zero":
+                events = 3.2
+            else:
+                events = 3.
+            result = np.log10(rate_partials[0]) - np.log10(events)
+            print(result)
+            return result
+        
         likemin = minimize(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
-                        self.BinBkgr[0] + log(factorial(self.BinData[0])) - self.BinData[0] *
-                        log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0])), 40.,
-                        method = 'SLSQP', bounds = [(20., 100.)])
-
-# Likelihood Analysis for SuperCDMS less T5
+                                            self.BinBkgr[0] - self.BinData[0] *
+                                            log(10.0 ** (-y) * rate_partials[0] +
+                                                self.BinBkgr[0])), 44.,
+                            method = 'SLSQP', bounds = [(20., 100.)])
+        
+        result = minimize(lambda y: np.abs(2.0 * (10.0 ** (-y) * rate_partials[0] +
+                                                  self.BinBkgr[0]  - self.BinData[0] *
+                                                  np.log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0]))
+                                           - self.chiSquared - likemin.fun), 40.,
+                           method = 'SLSQP', bounds = [(20., 60.)])
+        
+        """
         result = fsolve(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
-                        self.BinBkgr[0] + log(factorial(self.BinData[0])) - self.BinData[0] *
-                        log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0]))
-                        - self.chiSquared - likemin.fun, 36.0)
-
-        print(result)
-        return result
+                                        self.BinBkgr[0]  - self.BinData[0] *
+                                        np.log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0]))
+                        - self.chiSquared - likemin.fun, 40.)
+        """
+        
+        print(result.x)
+        return result.x
+    
 
     def UpperLimit(self, fp, fn, delta, mx_min, mx_max, num_steps, output_file,
                    processes=None):

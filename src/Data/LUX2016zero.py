@@ -23,7 +23,7 @@
 from __future__ import absolute_import
 from __future__ import division
 import numpy as np
-from interp import interp1d
+from scipy.interpolate import interp1d
 pi = np.pi
 
 name = "LUX2016zero"
@@ -74,7 +74,7 @@ def Efficiency_ER(er):
         len(er)
     except TypeError:
         er = [er]
-    return np.array([Eff_ER_interp(e) if e > 1.15 and e < 70. else 0. for e in er])
+    return np.array([np.abs(Eff_ER_interp(e)) if e > 1. and e < 70. else 0. for e in er])
 
 
 #def eff_LUX(E):
@@ -83,7 +83,9 @@ def Efficiency_ER(er):
 #    return 0
 
 Eff_ER_interp = \
-    interp1d(np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Lux2016.dat')[:,0],np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Lux2016.dat')[:,1])
+    interp1d(np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Lux2016.dat')[:,0],
+             np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Lux2016.dat')[:,1],
+             kind='cubic', bounds_error=False, fill_value=0.)
 
 
 def Efficiency(e):
@@ -91,14 +93,15 @@ def Efficiency(e):
     #return Efficiency_interp(e) if 0.700414 <= e < 2.68015 \
     #   else np.array(0.) if e < 0.700414 else np.array(1.)
 
-Exposure = 3.35 * 10 ** 4.
+Exposure = 3.35 * 10 ** 4. + 95.3 * 118.3
 ERecoilList = np.array([])
 
 
-BinData = np.array([0.0])
-BinEdges_left = np.array([2.0])
-BinEdges_right = np.array([30.0])
-BinBkgr=np.array([0.0])
-BinSize=28.0
+BinData = np.array([1.8])
+BinEdges_left = np.array([2.])
+BinEdges_right = np.array([70.0])
+BinBkgr=np.array([1.6])
+BinSize=100.
+BinExposure = np.array([Exposure])
 
 

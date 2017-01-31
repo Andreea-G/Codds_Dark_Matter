@@ -660,8 +660,14 @@ class RunProgram:
         if MAKE_PLOT and not np.any(EHI_METHOD[:-1]) and MAKE_LIMITS:
             try:
                 print(quenching)
+                if exper_name.split()[0] in BinnedSignal_exper:
+                    alp = transparency.get(quenching, 1)
+                elif exper_name == "CDMSSi2012":
+                    alp = 0.4
+                else:
+                    alp = 1.
                 self.plot_limits(exper_name, confidence_levels, HALO_DEP, plot_dots,
-                                 alpha=transparency.get(quenching, 1))
+                                 alpha=alp)
             except np.linalg.linalg.LinAlgError:
                 pass
 
