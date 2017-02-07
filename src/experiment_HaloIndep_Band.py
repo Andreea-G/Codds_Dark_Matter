@@ -40,7 +40,7 @@ from scipy.interpolate import interp1d
 
 DEBUG = T
 DEBUG_FULL = F
-USE_BASINHOPPING = F
+USE_BASINHOPPING = T
 ADAPT_KWARGS = F
 ALLOW_MOVE = T
 
@@ -391,7 +391,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         self.mu_BKG_i = np.zeros(len(self.ERecoilList))
 
         for x in range(0, len(self.ERecoilList)):
-            self.mu_BKG_i[x] = 0.07
+            self.mu_BKG_i[x] = 0.7
 
         for vmin in self.vmin_linspace:
             diff_resp_list = np.zeros((1, len(self.ERecoilList)))
@@ -443,11 +443,9 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
         for x in range(0, len(mu_i)):
-            if mu_i[x] + self.mu_BKG_i[x] <= 0.:
-                raise ValueError()
-
+            if mu_i[x] <= 0.:
+                mu_i[x] = 0.
         result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
-
         return result
 
     def MinusLogLikelihood(self, vars_list, constr_func=None, vminStar=None,

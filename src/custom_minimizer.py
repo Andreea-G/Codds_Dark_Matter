@@ -38,7 +38,7 @@ Currently this only functions for a single extended likelihood (CDMS-Si) and
 
 def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminStar=None,
                                        logetaStar=None,
-                                       index=None, vmin_err=8.0, logeta_err=0.01):
+                                       index=None, vmin_err=15.0, logeta_err=0.02):
 
         if vminStar is not None:
             vmin_list_reduced = x0[: len(x0)/2]
@@ -119,7 +119,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
         vmin_bnd = (0, 1000)
         bnd_vmin = [vmin_bnd] * vmin_list_reduced.size
 
-        while ni < 15 and not check:
+        while ni < 10 and not check:
 
             mloglike_min = minimize(optimize_logeta, logeta_list_reduced,
                                     args=(vmin_list_reduced, class_name, mx,
