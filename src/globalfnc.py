@@ -56,7 +56,7 @@ if False:   # alternative velocities; kept for reference
 MaximumGapLimit_exper = ["SuperCDMS",
                          "LUX2013zero", "LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
                          "XENON10", "XENON100", "CDMSlite2013CoGeNTQ",
-                         "LUX2016one", "LUX2016five", "LUX2016many","PandaX"]
+                         "LUX2016one", "LUX2016five", "LUX2016many","PandaX","CDMSlite2016"]
 GaussianLimit_exper = ["KIMS2012", "PICASSO"]
 BinnedSignal_exper = ["DAMA2010Na", "DAMA2010I"]
 Crosses_exper = ["CDMSSi2012", "DAMA2010Na", "DAMA2010I"]
@@ -83,14 +83,14 @@ Color = {"SuperCDMS": 'peru',
          "SIMPLEModeStage2": 'saddlebrown',
          "SHM_eta0": 'gray', "SHM_eta1": 'gray', "SuperCDMSLessT5": 'peru',
          "SuperCDMSLikelihood": 'peru',
-         "LUX2016zero": 'navy', "LUX2016five": 'navy', "LUX2016many": 'navy', "PandaX":'goldenrod',
-         "LUX2016one": 'navy'}
+         "LUX2016zero": 'navy', "LUX2016five": 'navy', "LUX2016many": 'navy', "PandaX":'darkorchid',
+         "LUX2016one": 'navy', "CDMSlite2016": 'green'}
 """ Linestyles get cicled through for each experiment name.
 """
 linestyles = ['-', '--', '-.', ':']
 """ For some experiments the linestyles are fixed and customized, passed as dashes.
 """
-line_dashes = {"LUX2013zero": (3, 4), "LUX2013one": (8, 4, 3, 4, 3, 4),
+line_dashes = {"LUX2013one": (8, 4, 3, 4, 3, 4),
                "LUX2013three": (8, 4, 3, 4), "LUX2013five": (8, 4), "LUX2013many": None,
                "SHM_eta0": (8, 4), "SHM_eta1": (3, 4), "SuperCDMSLessT5": (3, 4),
                "SuperCDMSLikelihood": (8, 4, 3, 4, 3, 4),
@@ -115,7 +115,7 @@ legend_names = OrderedDict([("DAMA$_0", ["DAMA2010Na_TotRateLimit"]),
                             ("SHM $(\sigma_p = 10^{-40}\mathrm{ cm}^2)$",
                              ["SHM_eta0", "SHM_eta1"]),
                             ("LUX2016", ["LUX2016zero","LUX2016zero", "LUX2016five", "LUX2016many"]),
-                            ("PandaX", ["PandaX"])
+                            ("PandaX", ["PandaX"]), ("CDMSlite2016", ["CDMSlite2016"])
                             ])
 """ Transparency parameter for filling regions, depending on the quenching factor.
 """
@@ -358,7 +358,7 @@ def GPoisson(x, nu, sigma):
     eps = 1.e-4
     n = 1
     add = nu * np.exp(-(x-1.)**2 / (2 * sigma**2))
-    summation = 0
+    summation = 0.
     nfact = 1  # factorial
     while add > eps * (summation+add):
         summation += add

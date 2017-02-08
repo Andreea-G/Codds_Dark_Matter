@@ -20,18 +20,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import absolute_import
 from __future__ import division
 import numpy as np
-from interp import interp1d
+from scipy.interpolate import interp1d
 pi = np.pi
 
 name = "XENON100"
 modulated = False
 
 energy_resolution_type = "Poisson"
-
+#energy_resolution_type = "Gaussian"
 
 def EnergyResolution(e):
     return 0.5 * np.ones_like(e)
-
+#    return np.ones_like(e)
 
 FFSD = 'GaussianFFSD'
 FFSI = 'HelmFF'
@@ -89,7 +89,7 @@ x = np.array([2.97005128, 2.97105641, 3.54297436, 4.14605128, 5.02051282, 5.9653
 y = np.array([0., 0.91225403, 0.92039356, 0.92790698, 0.93729875, 0.94794275,
               0.95420394, 0.96109123, 0.96797853, 0.97330054, 0.9773703, 0.98175313,
               0.98488372, 0.98864043, 0.99177102, 0.99490161, 0.99740608, 1., 1.])
-Efficiency_interp = interp1d(x, y)
+Efficiency_interp = interp1d(x, y, kind='linear', bounds_error=False, fill_value=0.)
 
 def Efficiency(e):
     return 0. if e < Ethreshold else Efficiency_interp(e) if e < Emaximum else 1.
@@ -144,17 +144,18 @@ y = np.array([4.5716130497434311e-05, 0.052970474143870218, 0.0992277655385298,
               0.1554166657743882, 0.15810372102057421, 0.16314603797178423,
               0.16858735610788259, 0.17577842336975949, 0.18430146286315846,
               0.19450738576869805, 0.20680835396890743, 0.22319940077087433])
-Efficiency_ER_interp = interp1d(x, y)
+Efficiency_ER_interp = interp1d(x, y, kind='linear', bounds_error=False, fill_value=0.)
 
 def Efficiency_ER(er):
     try:
         len(er)
     except TypeError:
         er = [er]
-    return np.array([0. if e < 0.4588
-                     else Efficiency_ER_interp(e) if e < 30.095
-                     else 0.2232
-                     for e in er])
+    return np.array([1. if e >= 1.4 else 0. for e in er])
+            #return np.array([0. if e < 0.4588
+            #        else Efficiency_ER_interp(e) if e < 30.095
+            #         else 0.2232
+            #         for e in er])
     # TODO! Check the 0.2232 value!
 
 

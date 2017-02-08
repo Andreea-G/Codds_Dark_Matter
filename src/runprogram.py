@@ -154,6 +154,7 @@ class PlotData:
                     alpha=1):
         """ Make a list of the x and y coordinates of the plots, and plot them.
         """
+        
         if upper_limit.size == 0:   # nothing to plot
             print("upper_limit is empty!")
             return None, None
@@ -178,8 +179,10 @@ class PlotData:
                 interp_kind = "quadratic"
             else:
                 interp_kind = "cubic"
+            # print('Interpolation',interp_kind)
             interp = interp1d(x, y, kind=interp_kind)
             x1 = np.linspace(x[0], x[-1], 1000)
+            
             if plot_dots:
                 plt.plot(x, y, "o")
             if dashes is not None:
@@ -249,7 +252,8 @@ class PlotData:
                 Whether the plot should be shown or not.
         """
         linestyle, dashes = self.get_linestyle()
-
+        
+        
         if lower_limit is not None and fill:
             linewidth = 0
         #print('Upper/LowerLimit: ', upper_limit, lower_limit)
@@ -259,7 +263,7 @@ class PlotData:
             x_lower, y_lower = self.plot_limits(lower_limit, kind, linewidth, linestyle,
                                                 dashes, plot_dots, alpha=alpha)
             if fill:
-                plt.fill_between(x_lower, y_lower, y_upper,
+                plt.fill_between(x_lower, y_lower, y_upper, where=y_upper>y_lower,
                                  color=Color[self.exper_name.split()[0]], alpha=alpha)
 
         if plot_show:
