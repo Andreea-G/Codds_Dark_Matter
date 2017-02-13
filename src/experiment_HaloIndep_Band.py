@@ -291,6 +291,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         return
 
     def VminIntegratedResponseTable(self, vmin_list):
+        vmin_list[vmin_list > 1000.] = 1000.
         tab = np.zeros((vmin_list.size-1) * self.ERecoilList.size)
         tab = tab.reshape((self.ERecoilList.size, vmin_list.size-1))
 
@@ -439,6 +440,9 @@ class Experiment_EHI(Experiment_HaloIndep):
         mu_i = self.Exposure * np.dot(vmin_resp_integr, 10**logeta_list)
 
         Nsignal = self.Exposure * np.dot(10**logeta_list, resp_integr)
+        if Nsignal < 0.:
+            Nsignal = 0.
+
         if vminStar is None:
             self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
             # counts/kg/keVee/days
