@@ -115,6 +115,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         self.mu_BKG_interp = interp1d(self.ERecoilList, self.mu_BKG_i, bounds_error=False)
 
+
     def _VMinSortedList(self, mx, fp, fn, delta):
         """ Computes the list of vmin corresponsing to measured recoil energies,
         sorted in increasing order. Will be useful as starting guesses.

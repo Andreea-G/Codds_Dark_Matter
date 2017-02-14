@@ -41,6 +41,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
                                        index=None, vmin_err=15.0, logeta_err=0.02):
 
         if vminStar is not None:
+
             vmin_list_reduced = x0[: len(x0)/2]
             vmin_list = np.sort(np.append(vmin_list_reduced, vminStar))
 

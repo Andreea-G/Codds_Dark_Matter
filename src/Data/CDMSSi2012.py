@@ -57,7 +57,7 @@ def QuenchingFactorOfEee(e):
     return QuenchingFactor(e)  # since it's a constant function
 
 Ethreshold = 7.
-Emaximum = 100.
+Emaximum = 30.
 ERmaximum = 100.
 
 x = np.array([6.88073000e+00, 6.93807000e+00, 7.33945000e+00, 7.91284000e+00, 8.25688000e+00,
@@ -85,8 +85,8 @@ def Efficiency_ER(er):
 
 Exposure = 140.2
 ERecoilList = np.array([8.2, 9.5, 12.3])
-
 mu_BKG_i = np.array([0.0185176, 0.0203303, 0.0217355])
+#mu_BKG_i = np.array([0.0185176, 0.0203303, 0.0217355])
 NBKG = 0.7
 
 BinEdges = np.array([7, 9, 11, 13])

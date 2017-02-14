@@ -302,6 +302,7 @@ class Experiment:
         q = self.QuenchingFactor(ER)
         qER = q * ER
         vmin = VMin(ER, self.mT, mx, delta)
+
         const_factor = 1.e-6 * \
             kilogram * self.CrossSectionFactors(ER, mx, fp, fn, delta) * \
             self.Efficiency_ER(ER) * self.etaMaxwellian(vmin, vobs, v0bar, vesc)
@@ -326,15 +327,6 @@ class Experiment:
         r_list_sum = r_list.sum()
         return r_list_sum
 
-    def _ResponseSHM_Finite2(self, Eee, Er1, Er2, mx, fp, fn, delta):
-        """ Response function: integral over d**2 R / (d Eee d ER) between
-        measured energies Eee1 and Eee2, as a function of recoil energy ER.
-            For any finite resolution function (i.e. other than Dirac Delta).
-        """
-        self.count_response_calls += 1
-        result = integrate.quad(self.DifferentialResponseSHM2, Er1, Er2,
-                                args=(Eee, mx, delta, fn, fp), epsrel=PRECISSION, epsabs=0)[0]
-        return result
 
     def _IntegratedResponseSHM_Finite(self, Eee1, Eee2, mx, fp, fn, delta):
         """ Integrated Response Function between measured energies Eee1 and Eee2,
@@ -485,9 +477,9 @@ class Extended_likelihood(Experiment):
         self.bkg = module.NBKG
         self.Exposure = module.Exposure
         self.lowE = np.array([module.Ethreshold])
-
         self.HighE = np.array([module.ERmaximum])
 
+        self.expername = exper_name
         self.ERecoilList = module.ERecoilList
         self.ElistMaxGap = \
             np.append(np.insert(np.array(list(filter(lambda x:
@@ -529,22 +521,23 @@ class Extended_likelihood(Experiment):
 
     def mlog_likelihood(self, sigp, mx, fp, fn, delta):
         pred = self._Predicted(mx, fp, fn, delta)
-        d_pred = self.exposure * conversion_factor / mx * \
-            np.array([self._ResponseSHM_Finite2(erg, self.lowE, self.HighE, mx, fp, fn, delta)
-                      for erg in self.data])
+        d_pred = self.Exposure * conversion_factor / mx * \
+                 np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, fp, fn, delta)
+                           for erg in self.data])
 
-        prefac = 2. * ((10**sigp * pred + self.bkg) - np.log(10.**sigp * d_pred + self.mu_bkg).sum())
+        prefac = 2. * ((10**sigp * pred + self.bkg) - np.log((10.**sigp * d_pred + self.mu_bkg)/self.Exposure).sum())
         return prefac
 
 
     def RegionSHM(self, mx, output_file, fp, fn, delta):
         pred = self._Predicted(mx, fp, fn, delta)
+
         d_pred = self.Exposure * conversion_factor / mx * \
-                 np.array([self._ResponseSHM_Finite2(erg, self.lowE, self.HighE, mx, fp, fn, delta)
+                 np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, fp, fn, delta)
                            for erg in self.data])
 
         log_like_call = minimize(lambda x: 2. * (10. ** x * pred + self.bkg -
-                                                 np.log(10.**x * d_pred + self.mu_bkg).sum()),
+                                                 np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()),
                                  np.array([-40.]),
                                  method='SLSQP', bounds=[(-50., -20.)])
         log_likelihood_max = log_like_call.fun
@@ -584,20 +577,21 @@ class Extended_likelihood(Experiment):
         #print('Mass, sigma, logL_max, self.logL_targ: ', mx, sigma, logL_max, self.logL_target)
         pred = self._Predicted(mx, self.fp, self.fn, self.delta)
         d_pred = self.Exposure * conversion_factor / mx * \
-                 np.array([self._ResponseSHM_Finite2(erg, self.lowE, self.HighE, mx, self.fp, self.fn, self.delta)
+                 np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, self.fp, self.fn, self.delta)
                            for erg in self.data])
+
         if logL_max < self.logL_target:
             sig_low = minimize(lambda x: np.abs(2. * (10. ** x * pred + self.bkg -
-                                                      np.log(10.**x * d_pred + self.mu_bkg).sum()) -
+                                                      np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()) -
                                                 self.logL_target),
                                np.array([sigma-0.1]),
-                               bounds=[(sigma-5., sigma)], method='SLSQP', tol=0.01).x
-            
+                               bounds=[(sigma-4., sigma)], method='SLSQP', tol=0.01).x
+
             sig_high = minimize(lambda x: np.abs(2. * (10. ** x * pred + self.bkg -
-                                                       np.log(10.**x * d_pred + self.mu_bkg).sum()) -
+                                                       np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()) -
                                                  self.logL_target),
                                np.array([sigma+0.1]),
-                               bounds=[(sigma, sigma+5.)], method='SLSQP', tol=0.01).x
+                               bounds=[(sigma, sigma+4.)], method='SLSQP', tol=0.01).x
                                
             print('Mass, Sigma_low, Sigma_high: ', mx, sig_low, sig_high)
             return [[np.log10(mx), sig_low],
@@ -636,7 +630,7 @@ class Extended_likelihood(Experiment):
 
     def Region(self, delta, CL, output_file, output_file_lower, output_file_upper,
                num_mx=500, processes=None):
-
+        self.CL = CL
         self.mx_fit, self.logL_max, mx_list, log_likelihood_max = \
             self.LogLMax(output_file)
         [limit_low, limit_high] = \
@@ -646,6 +640,13 @@ class Extended_likelihood(Experiment):
         np.savetxt(output_file_upper, limit_high)
 
         return
+
+    def feldcous(self, CL):
+        #very specific. generalize.
+        if CL == 0.90:
+            return np.array([0.4, 6.72])
+        else:
+            return np.array([0.7, 4.6])
 
 
 class PoissonLikelihood(Experiment):

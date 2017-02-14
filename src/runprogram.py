@@ -286,7 +286,7 @@ class RunProgram:
                 class_name = MaxGapExperiment
             elif exper_name in GaussianLimit_exper:
                 class_name = GaussianExperiment
-            elif exper_name in Poisson_exper:
+            elif exper_name in Poisson_exper and (exper_name != 'LUX2016zero'):
                 class_name = PoissonExperiment
             elif exper_name in BinnedSignal_exper:
                 class_name = DAMAExperiment
@@ -888,7 +888,7 @@ class RunProgram_Multiexperiment:
             f_handle.close()
 
             if EHI_METHOD.OptimalLikelihood:
-                nsteps_bin = 0
+                nsteps_bin = 1
                 class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
                                                                fp, fn, delta, output_file,
                                                                output_file_CDMS, logeta_guess,nsteps_bin)

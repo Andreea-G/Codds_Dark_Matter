@@ -95,7 +95,7 @@ def Efficiency(e):
 
 Exposure = 3.35 * 10 ** 4. + 95.3 * 118.3
 ERecoilList = np.array([])
-
+Expected_limit = 3.2
 
 BinData = np.array([1.8])
 BinEdges_left = np.array([2.])
