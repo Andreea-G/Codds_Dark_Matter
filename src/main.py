@@ -31,7 +31,7 @@ def main():
          "CDMSlite2013CoGeNTQ", "CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif",  # 16 - 19
          "SHM_eta0", "SHM_eta1", "SuperCDMSLessT5", "SuperCDMSLikelihood", # 20 - 23
          "LUX2016zero", "LUX2016one" ,"LUX2016five", "LUX2016many", "PandaX", # 24 - 28
-         "CDMSlite2016"] # 29
+         "CDMSlite2016", "Xenon1T"] # 29 - 30
 
     # Give input parameters
     
@@ -60,7 +60,7 @@ def main():
     HALO_DEP = T
     MULTI_EXPER = F  # Set to True iff EHI_Method should be applied to multiexper_input_indices
     plot_dots = F
-    RUN_PROGRAM = F
+    RUN_PROGRAM = T
     MAKE_LIMITS = T
     MAKE_REGIONS = F
     MAKE_CROSSES = F
@@ -69,9 +69,9 @@ def main():
 
     scattering_types = ['SI']  # may be 'SI', 'SDAV', 'SDPS'
     # indices of input_list which can be found in input files
-    input_indices = [3]
+    input_indices = [0]
     # indices of implemented_exper_list
-    exper_indices = [0, 1, 9, 16, 17, 24, 28, 29] # [0, 1, 9, 11, 16, 17, 24, 28, 29]
+    exper_indices = [30] # [0, 1, 9, 11, 16, 17, 24, 28, 29]
     # indices to be used in multiexperiment EHI anlysis
     # make sure experiments being used have functioning likelihood subroutine
     multiexper_input_indices = [] # e.g. 17,22
@@ -101,9 +101,9 @@ def main():
     try:
         plt.close()
         #xlim = None
-        xlim = [0.2, 1.0]
-        #ylim = [-42,-37]
-        ylim = [-46, -41]
+        xlim = [5, 100.]
+        ylim = [-48,-40]
+        #ylim = [-26, -20]
         #ylim = None
         inp.RunProgram(EXPORT_PLOT=EXPORT_PLOT, xlim=xlim, ylim=ylim)
         if MAKE_PLOT or EHI_METHOD.get('ConfidenceBandPlot', F):

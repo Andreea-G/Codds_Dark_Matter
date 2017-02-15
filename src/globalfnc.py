@@ -56,7 +56,7 @@ if False:   # alternative velocities; kept for reference
 MaximumGapLimit_exper = ["SuperCDMS",
                          "LUX2013zero", "LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
                          "XENON10", "XENON100", "CDMSlite2013CoGeNTQ",
-                         "LUX2016one", "LUX2016five", "LUX2016many","PandaX","CDMSlite2016"]
+                         "LUX2016one", "LUX2016five", "LUX2016many","PandaX","CDMSlite2016", "Xenon1T"]
 GaussianLimit_exper = ["KIMS2012", "PICASSO"]
 BinnedSignal_exper = ["DAMA2010Na", "DAMA2010I"]
 Crosses_exper = ["CDMSSi2012", "DAMA2010Na", "DAMA2010I"]
@@ -84,7 +84,7 @@ Color = {"SuperCDMS": 'peru',
          "SHM_eta0": 'gray', "SHM_eta1": 'gray', "SuperCDMSLessT5": 'peru',
          "SuperCDMSLikelihood": 'peru',
          "LUX2016zero": 'navy', "LUX2016five": 'navy', "LUX2016many": 'navy', "PandaX":'darkorchid',
-         "LUX2016one": 'navy', "CDMSlite2016": 'green'}
+         "LUX2016one": 'navy', "CDMSlite2016": 'green', "Xenon1T": 'royalblue'}
 """ Linestyles get cicled through for each experiment name.
 """
 linestyles = ['-', '--', '-.', ':']
@@ -109,6 +109,7 @@ legend_names = OrderedDict([("DAMA$_0", ["DAMA2010Na_TotRateLimit"]),
                             ("CDMSlite", ["CDMSlite2013CoGeNTQ"]),
                             ("SIMPLE", ["SIMPLEModeStage2"]),
                             ("XENON10", ["XENON10"]), ("XENON100", ["XENON100"]),
+                             ("Xenon1T", ["Xenon1T"]),
                             ("LUX2013", ["LUX2013zero", "LUX2013one", "LUX2013three",
                                      "LUX2013five", "LUX2013many"]),
                             ("PICASSO", ["PICASSO"]), ("KIMS", ["KIMS2012"]),
@@ -360,13 +361,17 @@ def GPoisson(x, nu, sigma):
     add = nu * np.exp(-(x-1.)**2 / (2 * sigma**2))
     summation = 0.
     nfact = 1  # factorial
-    while add > eps * (summation+add):
-        summation += add
-        n += 1
-        nfact *= n
-        add = 1. * nu**n / nfact * np.exp(-(x-n)**2 / (2. * n * sigma**2)) / np.sqrt(n)
+    try:
+        while add > eps * (summation+add):
+            #print("TEST", add, summation, x, nu, sigma)
+            summation += add
+            n += 1
+            nfact *= n
+            add = 1. * nu**n / nfact * np.exp(-(x-n)**2 / (2. * n * sigma**2)) / np.sqrt(n)
+    except TypeError:
+        return 0.
     result = summation * np.exp(-nu) / np.sqrt(2 * np.pi) / sigma
-#    print("GPoisson: ", result)
+    #print("GPoisson: ", result)
     return result
 
 
