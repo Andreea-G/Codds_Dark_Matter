@@ -62,7 +62,7 @@ y0 = np.array([0., 0.0745321, 0.0792141, 0.0831369, 0.0941459, 0.0999667, 0.1164
 
 QuenchingFactor_interp = interp1d(x0, y0, kind='linear', bounds_error=False, fill_value=0.)
 
-def QuenchingFactor(e):
+def QuenchingFactor(e_list):
     Ly = 2.28
     Snr = 0.95
     See = 0.58
@@ -151,7 +151,7 @@ def Efficiency_ER(er):
         len(er)
     except TypeError:
         er = [er]
-    return np.array([1. if e >= 1.4 else 0. for e in er])
+    return np.array([Efficiency_ER_interp(er) if e >= 1.4 else 0. for e in er])
 
 
 
