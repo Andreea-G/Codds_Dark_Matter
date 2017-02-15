@@ -65,7 +65,7 @@ Poisson_exper = ["SIMPLEModeStage2"]
 EHImethod_exper = ["CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif"]
 SHM_line = ["SHM_eta0", "SHM_eta1"]
 Extended_Like = ["CDMSSi2012"]
-Poisson_Like = ["SuperCDMSLessT5", "SuperCDMSLikelihood"]
+Poisson_Like = ["SuperCDMSLessT5", "SuperCDMSLikelihood","LUX2016zero"]
 Poisson_likelihood = ["SuperCDMSLessT5", "SuperCDMSLikelihood", "LUX2016zero"]
 
 """ Colors for plotting.
