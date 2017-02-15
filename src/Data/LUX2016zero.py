@@ -89,7 +89,7 @@ Eff_ER_interp = \
 
 
 def Efficiency(e):
-    return np.array([1.])
+    return np.ones_like([e])
     #return Efficiency_interp(e) if 0.700414 <= e < 2.68015 \
     #   else np.array(0.) if e < 0.700414 else np.array(1.)
 
