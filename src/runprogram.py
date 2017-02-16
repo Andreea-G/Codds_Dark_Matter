@@ -286,7 +286,7 @@ class RunProgram:
                 class_name = MaxGapExperiment
             elif exper_name in GaussianLimit_exper:
                 class_name = GaussianExperiment
-            elif exper_name in Poisson_exper: #and (exper_name != 'LUX2016zero'):
+            elif exper_name in Poisson_exper:
                 class_name = PoissonExperiment
             elif exper_name in BinnedSignal_exper:
                 class_name = DAMAExperiment

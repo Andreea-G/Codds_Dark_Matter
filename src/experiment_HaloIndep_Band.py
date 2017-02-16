@@ -307,7 +307,7 @@ class Experiment_EHI(Experiment_HaloIndep):
     def IntegratedResponseTable(self, vmin_list):
         tab = np.zeros(vmin_list.size - 1)
         for a in range(vmin_list.size - 1):
-            if (vmin_list[a+1] - vmin_list[a]) > 0.1:
+            if (vmin_list[a+1] - vmin_list[a]) > 0.5:
                 tab[a] = integrate.quad(self.response_interp,
                                         vmin_list[a], vmin_list[a + 1],
                                         epsrel=PRECISSION, epsabs=0)[0]
@@ -436,8 +436,10 @@ class Experiment_EHI(Experiment_HaloIndep):
                                     vminStar_index, logetaStar)
 
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
-        vmin_resp_integr = self.VminIntegratedResponseTable(vmin_list_w0)
+
         resp_integr = self.IntegratedResponseTable(vmin_list_w0)
+
+        vmin_resp_integr = self.VminIntegratedResponseTable(vmin_list_w0)
         mu_i = self.Exposure * np.dot(vmin_resp_integr, 10**logeta_list)
 
         Nsignal = self.Exposure * np.dot(10**logeta_list, resp_integr)
