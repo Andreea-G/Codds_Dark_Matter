@@ -151,7 +151,7 @@ def Efficiency_ER(er):
         len(er)
     except TypeError:
         er = [er]
-    return np.array([Efficiency_ER_interp(er) if e >= 1.4 else 0. for e in er])
+    return np.array([Efficiency_ER_interp(e) if e >= 1.4 else 0. for e in er])
 
 
 
