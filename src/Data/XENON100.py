@@ -155,5 +155,5 @@ def Efficiency_ER(er):
 
 
 
-Exposure = 224.56 * 34.0
+Exposure = 224.56 * 34.0 + 48.*365.24
 ERecoilList = np.array([3.22, 3.68])
