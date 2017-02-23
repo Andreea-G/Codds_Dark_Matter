@@ -70,6 +70,7 @@ class Experiment_HaloIndep(Experiment):
         r_list = const_factor * self.Efficiency(Eee) * \
             np.array([self.ResolutionFunction(Eee, qer, self.EnergyResolution(qer))
                       for qer in qER])
+        
         return r_list.sum()
 
     def ConstFactor(self, vmin, mx, fp, fn, delta, sign):

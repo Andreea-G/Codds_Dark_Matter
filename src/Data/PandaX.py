@@ -29,8 +29,8 @@ pi = np.pi
 name = "PandaX"
 modulated = False
 
-#energy_resolution_type = "Poisson"
-energy_resolution_type = "Gaussian"
+energy_resolution_type = "Poisson"
+#energy_resolution_type = "Gaussian"
 
 def EnergyResolution(e):
     return np.ones_like(e)
@@ -78,6 +78,7 @@ Eff_ER_interp = \
     interp1d(np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Pandax2016.dat')[:,0],
              np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Pandax2016.dat')[:,1],
              kind='linear', bounds_error=False,fill_value=0.)
+
 
 
 def Efficiency(e):
