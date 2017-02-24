@@ -98,6 +98,21 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                             (-200, 1000.): (0.57, 2, num_steps),
                             (-500, 1000.): (0.25, 1, num_steps)
                             }
+    elif "CDMS_Snolab_GeHV" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (4., 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (2., 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (.8, 2, num_steps),
+                            (-500, 1000.): (.3, 1, num_steps)
+                            }
     elif "CDMSlite2016" in exper_name:
         num_steps = 60
         mx_range_options = {(0, 1000.): (2, 30, num_steps),
