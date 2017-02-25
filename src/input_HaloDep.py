@@ -173,7 +173,7 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
 
     elif exper_name == "PandaX":
         num_steps = 30
-        mx_range_options = {(0, 1000.): (7., 100, num_steps),
+        mx_range_options = {(0, 1000.): (5., 100, num_steps),
                             # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
                             (0, 0.): (5.80, 130, num_steps),
                             (-30, 1000.): (3.95, 100, num_steps),
