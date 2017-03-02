@@ -57,7 +57,7 @@ MaximumGapLimit_exper = ["SuperCDMS",
                          "LUX2013zero", "LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
                          "XENON10", "XENON100", "CDMSlite2013CoGeNTQ",
                          "LUX2016one", "LUX2016five", "LUX2016many","PandaX","CDMSlite2016", "Xenon1T",
-                         "CDMS_Snolab_GeHV"]
+                         "CDMS_Snolab_GeHV", "LZ","Darwin"]
 GaussianLimit_exper = ["KIMS2012", "PICASSO"]
 BinnedSignal_exper = ["DAMA2010Na", "DAMA2010I"]
 Crosses_exper = ["CDMSSi2012", "DAMA2010Na", "DAMA2010I"]
@@ -85,7 +85,8 @@ Color = {"SuperCDMS": 'peru',
          "SHM_eta0": 'gray', "SHM_eta1": 'gray', "SuperCDMSLessT5": 'peru',
          "SuperCDMSLikelihood": 'peru',
          "LUX2016zero": 'navy', "LUX2016five": 'navy', "LUX2016many": 'navy', "PandaX":'darkorchid',
-         "LUX2016one": 'navy', "CDMSlite2016": 'green', "Xenon1T": 'royalblue', "CDMS_Snolab_GeHV": 'darkturquoise'}
+         "LUX2016one": 'navy', "CDMSlite2016": 'green', "Xenon1T": 'royalblue', "CDMS_Snolab_GeHV": 'darkturquoise',
+         "LZ": 'black',"Darwin":'black'}
 """ Linestyles get cicled through for each experiment name.
 """
 linestyles = ['-', '--', '-.', ':']
@@ -118,7 +119,8 @@ legend_names = OrderedDict([("DAMA$_0", ["DAMA2010Na_TotRateLimit"]),
                              ["SHM_eta0", "SHM_eta1"]),
                             ("LUX2016", ["LUX2016zero","LUX2016zero", "LUX2016five", "LUX2016many"]),
                             ("PandaX", ["PandaX"]), ("CDMSlite2016", ["CDMSlite2016"]),
-                            ("CDMS_Snolab_GeHV", ["CDMS Snolab Ge HV"])
+                            ("CDMS_Snolab_GeHV", ["CDMS Snolab Ge HV"]),
+                            ("LZ", ["LZ"]),("Darwin", ["Darwin"])
                             ])
 """ Transparency parameter for filling regions, depending on the quenching factor.
 """
