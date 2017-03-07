@@ -24,7 +24,8 @@ pi = np.pi
 name = "CDMS_Snolab_GeHV"
 modulated = False
 
-energy_resolution_type = "Dirac"
+#energy_resolution_type = "Dirac"
+energy_resolution_type = "Gaussian"
 
 def EnergyResolution(e):
     return 0.1 * np.ones_like(e)
@@ -54,12 +55,13 @@ def QuenchingFactor(e):
     except TypeError:
         e = [e]
     ret_a = np.zeros(len(e))
+    #k = 0.159
     k = 0.159
     for i,ee in enumerate(e):
         if ee < 0.04:
             pass
         else:
-            eps = 11.5 * ee * 32. ** (-7./3.)
+            eps = 11.5 * 32. ** (-7./3.) * ee
             g = 3.*eps**0.15 + 0.7*eps**0.6 + eps
             ret_a[i] = k * g / (1. + k * g) * 100. / 3. + 1.
     return ret_a
@@ -67,11 +69,22 @@ def QuenchingFactor(e):
 #Ethreshold = 0.350
 Ethreshold = 0.100
 Emaximum = 100.0
-ERmaximum = 13.
+ERmaximum = 2.
 
 #def Efficiency(e): return np.array(1.0) if Ethreshold <= e < Emaximum else np.array(0.)
 
-def Efficiency(e,er):
+def Efficiency(e):
+    try:
+        len(e)
+    except TypeError:
+        e = [e]
+    ret_a = np.zeros(len(e))
+    for i,err in enumerate(e):
+        if 0.040 <= err <= ERmaximum:
+            ret_a[i] = 1.
+    return ret_a
+
+def Efficiency_ER(er):
     try:
         len(er)
     except TypeError:
@@ -81,9 +94,6 @@ def Efficiency(e,er):
         if 0.040 <= err <= ERmaximum:
             ret_a[i] = 1.
     return ret_a
-
-def Efficiency_ER(er):
-    return 1.0 * np.ones_like(er)
 
 #Exposure = 56.0 * 10.
 Exposure = 44.0 * 8.
