@@ -47,21 +47,24 @@ def Vmin_range(exper_name, mx, delta, mPhi=1000., quenching=None, EHI_METHOD=Fal
         vmin_max = 1000
         vmin_range_options = {(9., 0, 1000.): (450, vmin_max, vmin_step),
                               (3.5, -50, 1000.): (10, vmin_max, vmin_step),
-                              (1.3, -200, 1000.): (10, vmin_max, vmin_step)
+                              (1.3, -200, 1000.): (10, vmin_max, vmin_step),
+                              (1.1, -225, 1000.): (10, vmin_max, vmin_step)
                               }
     elif "LUX2016" in exper_name:
         vmin_step = vmin_min = 1
         vmin_max = 1000
         vmin_range_options = {(9., 0, 1000.): (10, vmin_max, vmin_step),
                               (3.5, -50, 1000.): (10, vmin_max, vmin_step),
-                              (1.3, -200, 1000.): (10, vmin_max, vmin_step)
+                              (1.3, -200, 1000.): (10, vmin_max, vmin_step),
+                              (1.1, -225, 1000.): (10, vmin_max, vmin_step)
                               }
     elif "PandaX" in exper_name:
         vmin_step = vmin_min = 1
         vmin_max = 1000
         vmin_range_options = {(9., 0, 1000.): (10, vmin_max, vmin_step),
                               (3.5, -50, 1000.): (10, vmin_max, vmin_step),
-                              (1.3, -200, 1000.): (10, vmin_max, vmin_step)
+                              (1.3, -200, 1000.): (10, vmin_max, vmin_step),
+                              (1.1, -225, 1000.): (10, vmin_max, vmin_step)
                               }
     elif "DAMA" in exper_name:
         vmin_step = vmin_min = 1
@@ -107,7 +110,8 @@ def Log_sigma_p(mx, delta, fn):
                        (9., 0, -0.7): -40,
                        (9., 0, -0.8): -39,
                        (3.5, -50, -0.8): -40,
-                       (1.3, -200, -0.8): -41
+                       (1.3, -200, -0.8): -41,
+                       (1.1, -225, -0.7): -42
                        }
     default = -40
     return sigma_p_options.get((mx, delta, fn), default)
@@ -135,6 +139,7 @@ def Steepness(exper_name, mx, delta, mPhi=1000.):
     steepness_options = {(9., 0, 1000.): (1., 2.5, 1),
                          (3.5, -50, 1000.): (0.2, 1, 1),
                          (1.3, -200, 1000.): (0.1, 0.6, 1),
+                         (1.1, -225, 1000.): (0.1, 0.6, 1),
                          }
     default = (1.5, 2.5, 1)
     return steepness_options.get((mx, delta, mPhi), default)
@@ -160,6 +165,7 @@ def Logeta_guess(exper_name, mx, delta, mPhi=1000.):
     logeta_options = {(9., 0, 1000.): -26.,
                       (3.5, -50, 1000.): -24,
                       (1.3, -200, 1000.): -22,
+                      (1.1, -225, 1000.): -22,
                       (38, 50, 1000.): -20,
                       }
     return logeta_options[(mx, delta, mPhi)]
@@ -184,6 +190,7 @@ def Vmin_EHIBand_range(exper_name, mx, delta, mPhi=1000.):
     options = {(9., 0, 1000.): (0, 1000, 100),
                (3.5, -50, 1000.): (0, 1000, 80),
                (1.3, -200, 1000.): (0, 1000, 80),
+               (1.1, -225, 1000.): (0, 1000, 70),
                (38, 50, 1000.): (0, 1000, 80),
                }
     return options[(mx, delta, mPhi)]
@@ -197,5 +204,6 @@ input_list = [(9., 1, 0., 1000.), (9., -0.8, 0., 1000.), (9., -0.7, 0., 1000.), 
               (9., 0, 0., 1000.), (33., 0, 0, 1000), (47., 0, 0, 1000),  # 9 - 11
               (7, 0, 0, 1000), (30.14, 0, 0, 1000), (47.35, 0, 0, 1000),  # 12 - 14, SDPS
               (38, 0, 50, 1000.), (45, 0, 100, 1000),  # 15 - 16, SDPS
-              (40, 0, 50, 1000), (52, 0, 100, 1000), (80, 0, 100, 0)]  # 17 - 19, SDAV
+              (40, 0, 50, 1000), (52, 0, 100, 1000), (80, 0, 100, 0), # 17 - 19, SDAV
+              (1.1, -0.7, -225, 1000)] # 20
 logeta_EHIBand_percent_range = (0.2, 0.2, 30)

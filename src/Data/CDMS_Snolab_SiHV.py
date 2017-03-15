@@ -19,13 +19,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import absolute_import
 from __future__ import division
 import numpy as np
+from scipy.interpolate import interp1d
 pi = np.pi
 
-name = "CDMS_Snolab_GeHV"
+name = "CDMS_Snolab_SiHV"
 modulated = False
 
 energy_resolution_type = "Dirac"
-#energy_resolution_type = "Gaussian"
 
 def EnergyResolution(e):
     return 0.1 * np.ones_like(e)
@@ -37,42 +37,25 @@ FF = {'SI': FFSI,
       'SDAV': FFSD,
       }
 
-target_nuclide_AZC_list = np.array([[70., 32., 0.19608], [72., 32., 0.27040],
-                                    [73., 32., 0.07790], [74., 32., 0.37378],
-                                    [76., 32., 0.08184]])
-target_nuclide_JSpSn_list = \
-    np.array([[0., 0., 0.], [0., 0., 0.],
-              [9./2, 0.0392517 * np.sqrt(((2*9./2 + 1)*(9./2 + 1))/(4*pi*9./2)),
-               .375312 * np.sqrt(((2*9./2 + 1)*(9./2 + 1))/(4*pi*9./2))],
-              [0., 0., 0.], [0., 0., 0.]])
-target_nuclide_mass_list = np.array([65.134, 66.995, 67.9278, 68.8571, 70.7203])
-
+target_nuclide_AZC_list = np.array([[28, 14, 0.918663943428171], [29, 14, 0.04833558589888038],
+                                    [30, 14, 0.03300047067294847]])
+target_nuclide_JSpSn_list = np.array([[0, 0, 0], [1./2, -0.0019 * np.sqrt(3./(2 * pi)),
+                                                  .1334 * np.sqrt(3./(2 * pi))], [0, 0, 0]])
+target_nuclide_mass_list = np.array([26.0603, 26.9914, 27.9204])
 num_target_nuclides = target_nuclide_mass_list.size
 
-def QuenchingFactor(e):
-    try:
-        len(e)
-    except TypeError:
-        e = [e]
-    ret_a = np.zeros(len(e))
-    #k = 0.159
-    k = 0.159
-    for i,ee in enumerate(e):
-        if ee < 0.04:
-            pass
-        else:
-            eps = 11.5 * 32. ** (-7./3.) * ee
-            g = 3.*eps**0.15 + 0.7*eps**0.6 + eps
-            ret_a[i] = k * g / (1. + k * g) * 100. / 3. + 1.
-    return ret_a
+ionyload = np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/si_ion.dat')
+iony = interp1d(ionyload[:,0], ionyload[:,1], kind='linear',
+                      fill_value='extrapolate', bounds_error=False)
 
-#Ethreshold = 0.350
-Ethreshold = 0.040
-Emaximum = 100.0 
+def QuenchingFactor(e):
+    return (iony(e) * 100. / 3.82 + 1.)
+
+Ethreshold = 0.04
+Emaximum = 100.0
 ERmaximum = 2.
 
 #def Efficiency(e): return np.array(1.0) if Ethreshold <= e < Emaximum else np.array(0.)
-
 
 def Efficiency(e,er):
     try:
@@ -85,6 +68,5 @@ def Efficiency_ER(er):
     return np.ones_like(er)
 
 
-#Exposure = 56.0 * 10.
-Exposure = 44.0 * 8.
+Exposure = 9.6 * 4.
 ERecoilList = np.array([])

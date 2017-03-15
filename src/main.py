@@ -31,7 +31,10 @@ def main():
          "CDMSlite2013CoGeNTQ", "CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif",  # 16 - 19
          "SHM_eta0", "SHM_eta1", "SuperCDMSLessT5", "SuperCDMSLikelihood", # 20 - 23
          "LUX2016zero", "LUX2016one" ,"LUX2016five", "LUX2016many", "PandaX", # 24 - 28
-         "CDMSlite2016", "Xenon1T","CDMS_Snolab_GeHV"] # 29 - 31
+         "CDMSlite2016", "Xenon1T","CDMS_Snolab_GeHV","LZ","Darwin","CDMS_Snolab_SiHV", # 29 - 34
+         "CDMS_Snolab_GeiZip", "PICO_500", "DarkSideG2","PICO_60"] # 35-38
+
+    # NOTE: iZip analysis is not correct
 
     # Give input parameters
     
@@ -41,8 +44,8 @@ def main():
     # multiexper_input_indices list
 
     EHI_METHOD = {}
-    # EHI_METHOD['ResponseTables'] = T
-    # EHI_METHOD['OptimalLikelihood'] = T
+    EHI_METHOD['ResponseTables'] = T
+    EHI_METHOD['OptimalLikelihood'] = T
     # EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
     # EHI_METHOD['VminLogetaSamplingTable'] = T
@@ -57,24 +60,24 @@ def main():
     GENERATE_MC = F
 
     # General Commands
-    HALO_DEP = T
-    MULTI_EXPER = F  # Set to True iff EHI_Method should be applied to multiexper_input_indices
+    HALO_DEP = F
+    MULTI_EXPER = T  # Set to True iff EHI_Method should be applied to multiexper_input_indices
     plot_dots = F
     RUN_PROGRAM = T
-    MAKE_LIMITS = T
+    MAKE_LIMITS = F
     MAKE_REGIONS = F
     MAKE_CROSSES = F
-    MAKE_PLOT = T
-    EXPORT_PLOT = T
+    MAKE_PLOT = F
+    EXPORT_PLOT = F
 
     scattering_types = ['SI']  # may be 'SI', 'SDAV', 'SDPS'
     # indices of input_list which can be found in input files
-    input_indices = [0]
+    input_indices = [20]
     # indices of implemented_exper_list
-    exper_indices = [10] # [0, 1, 9, 11, 16, 17, 24, 28, 29]
+    exper_indices = []
     # indices to be used in multiexperiment EHI anlysis
     # make sure experiments being used have functioning likelihood subroutine
-    multiexper_input_indices = [] # e.g. 17,22
+    multiexper_input_indices = [17] # e.g. 17,22
 
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]
@@ -101,8 +104,8 @@ def main():
     try:
         plt.close()
         #xlim = None
-        xlim = [5, 100.]
-        ylim = [-48,-40]
+        xlim = [0.5, 2.]
+        ylim = [-50,-40]
         #ylim = [-26, -20]
         #ylim = None
         inp.RunProgram(EXPORT_PLOT=EXPORT_PLOT, xlim=xlim, ylim=ylim)

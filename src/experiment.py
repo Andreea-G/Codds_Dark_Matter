@@ -538,7 +538,7 @@ class Extended_likelihood(Experiment):
 
         log_like_call = minimize(lambda x: 2. * (10. ** x * pred + self.bkg -
                                                  np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()),
-                                 np.array([-40.]),
+                                 np.array([-43.]),
                                  method='SLSQP', bounds=[(-50., -20.)])
         log_likelihood_max = log_like_call.fun
         sigma_fit = log_like_call.x
@@ -585,13 +585,13 @@ class Extended_likelihood(Experiment):
                                                       np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()) -
                                                 self.logL_target),
                                np.array([sigma-0.1]),
-                               bounds=[(sigma-4., sigma)], method='SLSQP', tol=0.01).x
+                               bounds=[(sigma-8., sigma)], method='SLSQP', tol=0.01).x
 
             sig_high = minimize(lambda x: np.abs(2. * (10. ** x * pred + self.bkg -
                                                        np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()) -
                                                  self.logL_target),
                                np.array([sigma+0.1]),
-                               bounds=[(sigma, sigma+4.)], method='SLSQP', tol=0.01).x
+                               bounds=[(sigma, sigma+8.)], method='SLSQP', tol=0.01).x
                                
             print('Mass, Sigma_low, Sigma_high: ', mx, sig_low, sig_high)
             return [[np.log10(mx), sig_low],

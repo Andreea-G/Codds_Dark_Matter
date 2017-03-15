@@ -21,7 +21,7 @@ from __future__ import division
 import numpy as np
 pi = np.pi
 
-name = "CDMS_Snolab_GeHV"
+name = "CDMS_Snolab_GeiZip"
 modulated = False
 
 energy_resolution_type = "Dirac"
@@ -49,27 +49,30 @@ target_nuclide_mass_list = np.array([65.134, 66.995, 67.9278, 68.8571, 70.7203])
 
 num_target_nuclides = target_nuclide_mass_list.size
 
+
+
+Ethreshold = 0.272
+Emaximum = 100.0
+ERmaximum = 50.
+
+
 def QuenchingFactor(e):
     try:
         len(e)
     except TypeError:
         e = [e]
     ret_a = np.zeros(len(e))
-    #k = 0.159
     k = 0.159
     for i,ee in enumerate(e):
-        if ee < 0.04:
+        if ee < Ethreshold:
             pass
         else:
             eps = 11.5 * 32. ** (-7./3.) * ee
             g = 3.*eps**0.15 + 0.7*eps**0.6 + eps
-            ret_a[i] = k * g / (1. + k * g) * 100. / 3. + 1.
+            ret_a[i] = k * g / (1. + k * g) * 6. / 3. + 1.
     return ret_a
 
-#Ethreshold = 0.350
-Ethreshold = 0.040
-Emaximum = 100.0 
-ERmaximum = 2.
+
 
 #def Efficiency(e): return np.array(1.0) if Ethreshold <= e < Emaximum else np.array(0.)
 
@@ -85,6 +88,6 @@ def Efficiency_ER(er):
     return np.ones_like(er)
 
 
-#Exposure = 56.0 * 10.
-Exposure = 44.0 * 8.
-ERecoilList = np.array([])
+Exposure = 56.0 * 10.
+
+ERecoilList = np.array([.3, .4, .5, .7])
