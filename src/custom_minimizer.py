@@ -40,6 +40,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
                                        logetaStar=None,
                                        index=None, vmin_err=15.0, logeta_err=0.02):
 
+        vmin_max = 1200.
         if vminStar is not None:
 
             vmin_list_reduced = x0[: len(x0)/2]
@@ -117,7 +118,7 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
         logeta_bnd = (-40.0, -12.0)
         bnd = [logeta_bnd] * vmin_list_reduced.size
 
-        vmin_bnd = (0, 1000)
+        vmin_bnd = (0, vmin_max)
         bnd_vmin = [vmin_bnd] * vmin_list_reduced.size
 
         while ni < 10 and not check:

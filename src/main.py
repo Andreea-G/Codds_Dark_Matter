@@ -45,7 +45,7 @@ def main():
 
     EHI_METHOD = {}
     EHI_METHOD['ResponseTables'] = T
-    EHI_METHOD['OptimalLikelihood'] = T
+    # EHI_METHOD['OptimalLikelihood'] = T
     # EHI_METHOD['ImportOptimalLikelihood'] = T
     # EHI_METHOD['ConstrainedOptimalLikelihood'] = T
     # EHI_METHOD['VminLogetaSamplingTable'] = T
@@ -61,10 +61,10 @@ def main():
 
     # General Commands
     HALO_DEP = F
-    MULTI_EXPER = T  # Set to True iff EHI_Method should be applied to multiexper_input_indices
+    MULTI_EXPER = F  # Set to True iff EHI_Method should be applied to multiexper_input_indices
     plot_dots = F
     RUN_PROGRAM = T
-    MAKE_LIMITS = F
+    MAKE_LIMITS = T
     MAKE_REGIONS = F
     MAKE_CROSSES = F
     MAKE_PLOT = F
@@ -72,12 +72,12 @@ def main():
 
     scattering_types = ['SI']  # may be 'SI', 'SDAV', 'SDPS'
     # indices of input_list which can be found in input files
-    input_indices = [20]
+    input_indices = [0]
     # indices of implemented_exper_list
-    exper_indices = []
+    exper_indices = [17]
     # indices to be used in multiexperiment EHI anlysis
     # make sure experiments being used have functioning likelihood subroutine
-    multiexper_input_indices = [17] # e.g. 17,22
+    multiexper_input_indices = [] # e.g. 17,22
 
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]

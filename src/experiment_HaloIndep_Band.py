@@ -40,7 +40,7 @@ from scipy.interpolate import interp1d
 
 DEBUG = T
 DEBUG_FULL = F
-USE_BASINHOPPING = T
+USE_BASINHOPPING = F
 ADAPT_KWARGS = F
 ALLOW_MOVE = T
 
@@ -292,22 +292,30 @@ class Experiment_EHI(Experiment_HaloIndep):
         return
 
     def VminIntegratedResponseTable(self, vmin_list):
-        vmin_list[vmin_list > 1000.] = 1000.
+        vmin_max = 1200.
+        vmin_list[vmin_list > vmin_max] = vmin_max
         tab = np.zeros((vmin_list.size-1) * self.ERecoilList.size)
         tab = tab.reshape((self.ERecoilList.size, vmin_list.size-1))
 
-        tab = np.array([[integrate.quad(self.diff_response_interp[i],
-                                         vmin_list[a], vmin_list[a + 1],
-                                         epsrel=PRECISSION, epsabs=0)[0]
-                        for a in range(vmin_list.size - 1)]
-                        for i in range(self.ERecoilList.size)])
+        for a in range(vmin_list.size - 1):
+            for i in range(self.ERecoilList.size):
+                if (vmin_list[a+1] - vmin_list[a]) > 1.0:
+                    tab[i,a] = integrate.quad(self.diff_response_interp[i],
+                                      vmin_list[a], vmin_list[a + 1],
+                                      epsrel=PRECISSION, epsabs=0)[0]
+        
+        #tab = np.array([[integrate.quad(self.diff_response_interp[i],
+        #                                 vmin_list[a], vmin_list[a + 1],
+        #                                 epsrel=PRECISSION, epsabs=0)[0]
+        #                for a in range(vmin_list.size - 1)]
+        #                for i in range(self.ERecoilList.size)])
 
         return tab
 
     def IntegratedResponseTable(self, vmin_list):
         tab = np.zeros(vmin_list.size - 1)
         for a in range(vmin_list.size - 1):
-            if (vmin_list[a+1] - vmin_list[a]) > 0.5:
+            if (vmin_list[a+1] - vmin_list[a]) > 0.1:
                 tab[a] = integrate.quad(self.response_interp,
                                         vmin_list[a], vmin_list[a + 1],
                                         epsrel=PRECISSION, epsabs=0)[0]

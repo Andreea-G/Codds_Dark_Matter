@@ -339,6 +339,7 @@ class RunProgram:
                      vmin_index_list, logeta_index_range, extra_tail):
         """(Re-)compute the data.
         """
+        
         output_file = self.output_file_no_extension + "_temp.dat"
         f_handle = open(output_file, 'w')   # clear the file first
         f_handle.close()
