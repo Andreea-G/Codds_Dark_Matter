@@ -299,7 +299,7 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         for a in range(vmin_list.size - 1):
             for i in range(self.ERecoilList.size):
-                if (vmin_list[a+1] - vmin_list[a]) > 1.0:
+                if (vmin_list[a+1] - vmin_list[a]) > 1.0 and (vmin_list[a+1] < 1000.):
                     tab[i,a] = integrate.quad(self.diff_response_interp[i],
                                       vmin_list[a], vmin_list[a + 1],
                                       epsrel=PRECISSION, epsabs=0)[0]
@@ -315,7 +315,7 @@ class Experiment_EHI(Experiment_HaloIndep):
     def IntegratedResponseTable(self, vmin_list):
         tab = np.zeros(vmin_list.size - 1)
         for a in range(vmin_list.size - 1):
-            if (vmin_list[a+1] - vmin_list[a]) > 0.1:
+            if (vmin_list[a+1] - vmin_list[a]) > 0.1 and (vmin_list[a+1] < 1000.):
                 tab[a] = integrate.quad(self.response_interp,
                                         vmin_list[a], vmin_list[a + 1],
                                         epsrel=PRECISSION, epsabs=0)[0]
@@ -435,12 +435,12 @@ class Experiment_EHI(Experiment_HaloIndep):
         """
 
         if vminStar is None:
-            vmin_list_w0 = vars_list[: vars_list.size/2]
-            logeta_list = vars_list[vars_list.size/2:]
+            vmin_list_w0 = vars_list[: int(vars_list.size/2)]
+            logeta_list = vars_list[int(vars_list.size/2):]
         else:
-            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+            vmin_list_w0 = np.insert(vars_list[: int(vars_list.size/2)],
                                      vminStar_index, vminStar)
-            logeta_list = np.insert(vars_list[vars_list.size/2:],
+            logeta_list = np.insert(vars_list[int(vars_list.size/2):],
                                     vminStar_index, logetaStar)
 
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)

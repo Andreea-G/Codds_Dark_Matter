@@ -43,15 +43,15 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
         vmin_max = 1200.
         if vminStar is not None:
 
-            vmin_list_reduced = x0[: len(x0)/2]
+            vmin_list_reduced = x0[: int(len(x0)/2)]
             vmin_list = np.sort(np.append(vmin_list_reduced, vminStar))
 
             index_hold = np.argwhere(vmin_list == vminStar)[0, 0]
-            logeta_list_reduced = x0[len(x0)/2:]
+            logeta_list_reduced = x0[int(len(x0)/2):]
             logeta_list = np.insert(logeta_list_reduced, index_hold, logetaStar)
         else:
-            vmin_list = x0[: len(x0)/2]
-            logeta_list = x0[len(x0)/2:]
+            vmin_list = x0[: int(len(x0)/2)]
+            logeta_list = x0[int(len(x0)/2):]
             logeta_list_reduced = logeta_list
             vmin_list_reduced = vmin_list
             index_hold = None
