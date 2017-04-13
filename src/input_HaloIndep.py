@@ -40,7 +40,10 @@ def Vmin_range(exper_name, mx, delta, mPhi=1000., quenching=None, EHI_METHOD=Fal
     """
     vmin_range_options = {}
     if exper_name == "CDMSSi2012" and EHI_METHOD:
-        vmin_step = vmin_min = 2 # switch back to 1 later
+        vmin_step = vmin_min = 1
+        vmin_max = 1000
+    elif exper_name == '3BinXe' and EHI_METHOD:
+        vmin_step = vmin_min = 1
         vmin_max = 1000
     elif "LUX2013" in exper_name:
         vmin_step = vmin_min = 1
@@ -142,6 +145,9 @@ def Steepness(exper_name, mx, delta, mPhi=1000.):
                          (1.3, -200, 1000.): (0.1, 0.6, 1),
                          (1.2, -225, 1000.): (0.1, 0.6, 1),
                          (1.25, -220, 1000.): (0.1, 0.6, 1),
+                         (4., -100, 1000.): (0.1, 0.6, 1),
+                         (5., -100, 1000.): (0.1, 0.6, 1),
+                         (2.2, -150, 1000.): (0.1, 0.6, 1),
                          }
     default = (1.5, 2.5, 1)
     return steepness_options.get((mx, delta, mPhi), default)
@@ -162,27 +168,30 @@ def Logeta_guess(exper_name, mx, delta, mPhi=1000.):
     Returns:
         logeta_guess: float
     """
-    if exper_name != "CDMSSi2012":
-        return None
-    logeta_options = {(9., 0, 1000.): -26.,
-                      (3.5, -50, 1000.): -24,
-                      (1.3, -200, 1000.): -22,
-                      (1.2, -225, 1000.): -22,
-                      (38, 50, 1000.): -20,
+    if exper_name == "CDMSSi2012":
 
-                      (2.2, -100, 1000.): -24,
-                      (3., -100, 1000.): -24,
-                      (4., -100, 1000.): -24,
-                      (5., -100, 1000.): -24,
+        logeta_options = {(9., 0, 1000.): -26.,
+                          (3.5, -50, 1000.): -24,
+                          (1.3, -200, 1000.): -22,
+                          (1.2, -225, 1000.): -22,
+                          (38, 50, 1000.): -20,
 
-                      (1.5, -150, 1000.): -24,
-                      (1.8, -150, 1000.): -24,
-                      (2.2, -150, 1000.): -24,
+                          (2.2, -100, 1000.): -24,
+                          (3., -100, 1000.): -24,
+                          (4., -100, 1000.): -24,
+                          (5., -100, 1000.): -24,
 
-                      (1.3, -180, 1000.): -24,
-                      (1.5, -180, 1000.): -24,
+                          (1.5, -150, 1000.): -24,
+                          (1.8, -150, 1000.): -24,
+                          (2.2, -150, 1000.): -24,
 
-                      }
+                          (1.3, -180, 1000.): -24,
+                          (1.5, -180, 1000.): -24,
+
+                          }
+    elif exper_name == '3BinXe':
+        logeta_options = {(9., 0, 1000.): -30.}
+
     return logeta_options[(mx, delta, mPhi)]
 
 
