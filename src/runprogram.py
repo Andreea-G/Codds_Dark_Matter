@@ -848,6 +848,7 @@ class RunProgram_Multiexperiment:
         print('Multiexperiment input list ', multiexper_input)
         num_exper = len(multiexper_input)
         class_name = [None] * num_exper
+        pois_main = False
         for x in range(0, num_exper):
             # initialize the experiment class
             print('name = ', multiexper_input[x])
@@ -862,6 +863,10 @@ class RunProgram_Multiexperiment:
             elif multiexper_input[x] in Poisson_Like:
                 print('Poisson Binned Likelihood')
                 class_name[x] = Poisson_Likelihood(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in EHI_Pois:
+                print('Poisson EHI')
+                pois_main = True
+                class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching, pois=True)
             elif multiexper_input[x] == "CDMSSi2012":
                 class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
             else:
@@ -870,9 +875,13 @@ class RunProgram_Multiexperiment:
         # obtain likelihood
         if RUN_PROGRAM:
             (vmin_min, vmin_max, vmin_step) = vmin_range
-
-            output_file_CDMS = Output_file_name("CDMSSi2012", scattering_type, mPhi, mx, fp, fn, delta, HALO_DEP,
-                                                filename_tail, OUTPUT_MAIN_DIR, quenching=None)
+            if not pois_main:
+                output_file_CDMS = Output_file_name(multiexper_input[0], scattering_type, mPhi, mx, fp, fn, delta,
+                                                    HALO_DEP, filename_tail, OUTPUT_MAIN_DIR, quenching=None)
+            else:
+                output_dir = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
+                output_file_CDMS = output_dir + '/MultiExp_NoEHI_'+ multiexper_input[0] +\
+                                   '_mx_{:.2}GeV_fnfp_{:.2f}'.format(mx, fn/fp)
             f_handle = open(output_file_CDMS+"_temp.dat", 'w')   # clear the file first
             f_handle.close()
 
@@ -880,7 +889,9 @@ class RunProgram_Multiexperiment:
                 class_name[0].ResponseTables(vmin_min, vmin_max, vmin_step, mx,
                                              fp, fn, delta, output_file_CDMS)
 
+
             class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
+
 
             output_file = MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
                                                       filename_tail, OUTPUT_MAIN_DIR, quenching=None)
@@ -892,18 +903,23 @@ class RunProgram_Multiexperiment:
                 nsteps_bin = 1
                 class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
                                                                fp, fn, delta, output_file,
-                                                               output_file_CDMS, logeta_guess,nsteps_bin)
+                                                               output_file_CDMS, logeta_guess, nsteps_bin)
+
 
             if EHI_METHOD.ImportOptimalLikelihood:
-                    class_name[0].ImportResponseTables(output_file_CDMS,
-                                                       plot=False)
+                    class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
-
-                    class_name[0].PlotQ_KKT_Multi(class_name, mx, fp, fn, delta, output_file, False)
+                    if pois_main:
+                        kkpt = True
+                    else:
+                        kkpt = False
+                    class_name[0].PlotQ_KKT_Multi(class_name, mx, fp, fn, delta, output_file, kkpt)
 
             if EHI_METHOD.ConstrainedOptimalLikelihood:
                     # Tests for delta = 0:
-                    (vminStar, logetaStar) = (800., -21.)
+                    #print([chi_squared1(c) for c in confidence_levels])
+                    
+                    (vminStar, logetaStar) = (500, -28.)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -1008,8 +1024,7 @@ class RunProgram_Multiexperiment:
                 print('L_constrained_2;max = ', constr_val)
 
             if EHI_METHOD.LogLikelihoodList:
-                    print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max,
-                          vmin_Band_numsteps)
+                    print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max, vmin_Band_numsteps)
                     print("logeta_EHIBand_percent_range =", logeta_percent_minus,
                           logeta_percent_plus, logeta_num_steps)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)

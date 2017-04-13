@@ -91,6 +91,7 @@ class Input:
 
         self.implemented_exper_list = np.array(implemented_exper_list)
         self.SetExperList(exper_indices)
+
         self.scattering_type_list = scattering_types \
             if isinstance(scattering_types, list) \
             else [scattering_types]
@@ -179,7 +180,7 @@ class Input:
             self.log_sigma_p = None
 
             for self.exper_name in self.exper_list:
-                if (self.exper_name == "CDMSSi2012" and np.any(self.EHI_METHOD) and not self.MULTI_EXPER):
+                if self.exper_name == "CDMSSi2012" and np.any(self.EHI_METHOD) and not self.MULTI_EXPER:
 
                     self.vmin_EHIBand_range = \
                         module.Vmin_EHIBand_range(self.exper_name, self.mx,
@@ -211,24 +212,18 @@ class Input:
                     run_program(**kwargs)
 
             if self.MULTI_EXPER and (self.multiexper_input).size != 0:
+
                 self.vmin_EHIBand_range = \
-                    module.Vmin_EHIBand_range("CDMSSi2012", self.mx,
-                                              self.delta, self.mPhi)
+                    module.Vmin_EHIBand_range("CDMSSi2012", self.mx, self.delta, self.mPhi)
                 self.logeta_EHIBand_percent_range = \
                     module.logeta_EHIBand_percent_range
-                self.steepness = module.Steepness("CDMSSi2012", self.mx,
-                                                  self.delta, self.mPhi)
-                self.logeta_guess = module.Logeta_guess("CDMSSi2012", self.mx,
-                                                        self.delta, self.mPhi)
+                self.steepness = module.Steepness("CDMSSi2012", self.mx, self.delta, self.mPhi)
+                self.logeta_guess = module.Logeta_guess(self.multiexper_input[0], self.mx, self.delta, self.mPhi)
 
                 self.vmin_range = \
-                    module.Vmin_range("CDMSSi2012", self.mx,
-                                      self.delta, mPhi=self.mPhi,
-                                      quenching=1.0,
-                                      EHI_METHOD=np.any(self.EHI_METHOD))
-                self.vmin_EHIBand_range = \
-                    module.Vmin_EHIBand_range("CDMSSi2012",
-                                              self.mx, self.delta, self.mPhi)
+                    module.Vmin_range("CDMSSi2012", self.mx, self.delta, mPhi=self.mPhi,
+                                      quenching=1.0, EHI_METHOD=np.any(self.EHI_METHOD))
+                self.vmin_EHIBand_range = module.Vmin_EHIBand_range("CDMSSi2012", self.mx, self.delta, self.mPhi)
                 print(self.vmin_range)
                 kwargs = self._GetKwargs()
                 run_program = RunProgram_Multiexperiment()

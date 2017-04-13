@@ -65,6 +65,7 @@ Crosses_exper = ["CDMSSi2012", "DAMA2010Na", "DAMA2010I"]
 DAMALimit_exper = ["DAMA2010Na_TotRateLimit"]
 Poisson_exper = ["SIMPLEModeStage2"]
 EHImethod_exper = ["CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif"]
+EHI_Pois = ["3BinXe","3BinXe2"]
 SHM_line = ["SHM_eta0", "SHM_eta1"]
 Extended_Like = ["CDMSSi2012"]
 Poisson_Like = ["SuperCDMSLessT5", "SuperCDMSLikelihood","LUX2016zero"]
@@ -89,7 +90,8 @@ Color = {"SuperCDMS": 'peru',
          "LUX2016one": 'navy', "CDMSlite2016": 'green', "Xenon1T": 'royalblue',
          "CDMS_Snolab_GeHV": 'darkturquoise',
          "LZ": 'black',"Darwin":'black', "CDMS_Snolab_SiHV":'darkturquoise',
-         "CDMS_Snolab_GeiZip":'darkturquoise', "PICO_500":'black', "DarkSideG2":'black',"PICO_60":'green'}
+         "CDMS_Snolab_GeiZip":'darkturquoise', "PICO_500":'black', "DarkSideG2":'black',"PICO_60":'green',
+         "3BinXe":'black',"3BinXe2":'black'}
 
 """ Linestyles get cicled through for each experiment name.
 """
@@ -128,8 +130,8 @@ legend_names = OrderedDict([("DAMA$_0", ["DAMA2010Na_TotRateLimit"]),
                             ("CDMS_Snolab_SiHV", ["CDMS Snolab Si HV"]),
                             ("CDMS_Snolab_GeiZip", ["CDMS Snolab Ge iZip"]),
                             ("PICO_500", ["PICO(500L)"]),("DarkSideG2", ["DarkSide G2"]),
-                            ("PICO_60", ["PICO(60L)"])
-                            ])
+                            ("PICO_60", ["PICO(60L)"]), ("3BinXe", ["3BinXe"]),
+                            ("3BinXe2", ["3BinXe2"])])
 """ Transparency parameter for filling regions, depending on the quenching factor.
 """
 transp_list = [0.6, 0.4]

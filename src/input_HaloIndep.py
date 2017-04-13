@@ -138,20 +138,31 @@ def Steepness(exper_name, mx, delta, mPhi=1000.):
         steepness: tuple, optional
             (steepness_vmin, steepness_vmin_center, steepness_logeta)
     """
-    if exper_name != "CDMSSi2012":
-        return None
-    steepness_options = {(9., 0, 1000.): (1., 2.5, 1),
-                         (3.5, -50, 1000.): (0.2, 1, 1),
-                         (1.3, -200, 1000.): (0.1, 0.6, 1),
-                         (1.2, -225, 1000.): (0.1, 0.6, 1),
-                         (1.25, -220, 1000.): (0.1, 0.6, 1),
-                         (4., -100, 1000.): (0.1, 0.6, 1),
-                         (5., -100, 1000.): (0.1, 0.6, 1),
-                         (2.2, -150, 1000.): (0.1, 0.6, 1),
-                         }
-    default = (1.5, 2.5, 1)
-    return steepness_options.get((mx, delta, mPhi), default)
+    if exper_name == "CDMSSi2012":
 
+        steepness_options = {(9., 0, 1000.): (1., 2.5, 1),
+                             (3.5, -50, 1000.): (0.2, 1, 1),
+                             (1.3, -200, 1000.): (0.1, 0.6, 1),
+                             (1.2, -225, 1000.): (0.1, 0.6, 1),
+                             (1.25, -220, 1000.): (0.1, 0.6, 1),
+                             (4., -100, 1000.): (0.1, 0.6, 1),
+                             (5., -100, 1000.): (0.1, 0.6, 1),
+                             (2.2, -150, 1000.): (0.1, 0.6, 1),
+                             }
+        default = (1.5, 2.5, 1)
+        return steepness_options.get((mx, delta, mPhi), default)
+    elif "3BinXe" in exper_name:
+        steepness_options = {(9., 0, 1000.): (1., 2.5, 1),
+                             (3.5, -50, 1000.): (0.2, 1, 1),
+                             (1.3, -200, 1000.): (0.1, 0.6, 1),
+                             (1.2, -225, 1000.): (0.1, 0.6, 1),
+                             (1.25, -220, 1000.): (0.1, 0.6, 1),
+                             (4., -100, 1000.): (0.1, 0.6, 1),
+                             (5., -100, 1000.): (0.1, 0.6, 1),
+                             (2.2, -150, 1000.): (0.1, 0.6, 1),
+                             }
+        default = (1.5, 2.5, 1)
+        return steepness_options.get((mx, delta, mPhi), default)
 
 def Logeta_guess(exper_name, mx, delta, mPhi=1000.):
     """ Guessing value of logeta for the best-fit piecewise-constant logeta(vmin)
@@ -189,7 +200,7 @@ def Logeta_guess(exper_name, mx, delta, mPhi=1000.):
                           (1.5, -180, 1000.): -24,
 
                           }
-    elif exper_name == '3BinXe':
+    elif '3BinXe' in exper_name:
         logeta_options = {(9., 0, 1000.): -30.}
 
     return logeta_options[(mx, delta, mPhi)]
@@ -209,28 +220,30 @@ def Vmin_EHIBand_range(exper_name, mx, delta, mPhi=1000.):
     Returns:
         (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps): tuple (float, float, int)
     """
-    if exper_name != "CDMSSi2012":
-        return None
-    options = {(9., 0, 1000.): (0, 1200, 100),
-               (3.5, -50, 1000.): (0, 1200, 80),
-               (1.3, -200, 1000.): (0, 1200, 80),
-               (1.2, -225, 1000.): (0, 1200, 70),
-               (38, 50, 1000.): (0, 1200, 80),
+    if exper_name == "CDMSSi2012":
 
-               (2.2, -100, 1000.): (0, 800, 20),
-               (3., -100, 1000.): (0, 800, 20),
-               (4., -100, 1000.): (0, 800, 20),
-               (5., -100, 1000.): (0, 800, 20),
+        options = {(9., 0, 1000.): (0, 1200, 100),
+                   (3.5, -50, 1000.): (0, 1200, 80),
+                   (1.3, -200, 1000.): (0, 1200, 80),
+                   (1.2, -225, 1000.): (0, 1200, 70),
+                   (38, 50, 1000.): (0, 1200, 80),
 
-               (1.5, -150, 1000.): (0, 800, 20),
-               (1.8, -150, 1000.): (0, 800, 20),
-               (2.2, -150, 1000.): (0, 800, 20),
+                   (2.2, -100, 1000.): (0, 800, 20),
+                   (3., -100, 1000.): (0, 800, 20),
+                   (4., -100, 1000.): (0, 800, 20),
+                   (5., -100, 1000.): (0, 800, 20),
 
-               (1.3, -180, 1000.): (0, 800, 20),
-               (1.5, -180, 1000.): (0, 800, 20),
-               }
-    return options[(mx, delta, mPhi)]
+                   (1.5, -150, 1000.): (0, 800, 20),
+                   (1.8, -150, 1000.): (0, 800, 20),
+                   (2.2, -150, 1000.): (0, 800, 20),
 
+                   (1.3, -180, 1000.): (0, 800, 20),
+                   (1.5, -180, 1000.): (0, 800, 20),
+                   }
+        return options[(mx, delta, mPhi)]
+    elif exper_name == "3BinXe":
+        options = {(9., 0, 1000.): (0, 1200, 100)}
+        return options[(mx, delta, mPhi)]
 
 """ List of input values of the form (mx, fn, delta, mPhi).
 """

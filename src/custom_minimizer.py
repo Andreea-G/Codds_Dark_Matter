@@ -37,8 +37,8 @@ Currently this only functions for a single extended likelihood (CDMS-Si) and
 
 
 def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminStar=None,
-                                       logetaStar=None,
-                                       index=None, vmin_err=15.0, logeta_err=0.02):
+                                       logetaStar=None, index=None, vmin_err=15.0,
+                                       logeta_err=0.02, pois=False):
 
         vmin_max = 1200.
         if vminStar is not None:
@@ -88,8 +88,12 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
         def optimize_logeta(logeta_list, vmin_list, class_name, mx, fp, fn, delta,
                             vminStar=None, logetaStar=None, index_hold=None):
             # CDMS-Si Likelihood
-            optimize_func = class_name[0]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
-                                                              vminStar, logetaStar, index_hold)
+            if not pois:
+                optimize_func = class_name[0]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
+                                                                  vminStar, logetaStar, index_hold)
+            else:
+                optimize_func = class_name[0]._MinusLogLikelihood_P(np.append(vmin_list, logeta_list),
+                                                                    vminStar, logetaStar, index_hold)
 
             # Add in other likelihoods
             for i in range(1, len(class_name)):
@@ -102,8 +106,12 @@ def Custom_SelfConsistent_Minimization(class_name, x0, mx, fp, fn, delta, vminSt
         def minimize_over_vmin(vmin_list, logeta_list, class_name, mx, fp, fn, delta,
                                vminStar=None, logetaStar=None, index_hold=None):
             # CDMS-Si Likelihood
-            optimize_func = class_name[0]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
-                                                              vminStar, logetaStar, index_hold)
+            if not pois:
+                optimize_func = class_name[0]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
+                                                                  vminStar, logetaStar, index_hold)
+            else:
+                optimize_func = class_name[0]._MinusLogLikelihood_P(np.append(vmin_list, logeta_list),
+                                                                  vminStar, logetaStar, index_hold)
 
             # Add in other likelihoods
             for i in range(1, len(class_name)):

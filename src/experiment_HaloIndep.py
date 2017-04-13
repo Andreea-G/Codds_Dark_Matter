@@ -137,7 +137,10 @@ class Experiment_HaloIndep(Experiment):
             q = self.QuenchingFactor(ER)
             qER = q * ER
             integrated_delta = np.array([1. if Eee1 <= i < Eee2 else 0. for i in qER])
-            efficiencyEee = self.Efficiency(Eee1, qER)
+            try:
+                efficiencyEee = self.Efficiency(Eee1, qER)
+            except TypeError:
+                efficiencyEee = 1.
 #            efficiencyER = self.Efficiency_ER(qER)
             efficiencyER = np.array(list(map(self.Efficiency_ER, qER)))
             r_list = kilogram/SpeedOfLight**2 * \
@@ -504,7 +507,7 @@ class Poisson_Likelihood(Experiment_HaloIndep):
 
     def _PoissonUpperBound(self, vmin, mx, fp, fn, delta):
         int_response = \
-            np.array(list(map(lambda i, j:
+            np.array(list(map(lambda i,j:
                               self.IntegratedResponse(0, vmin, i, j, mx, fp, fn, delta),
                               self.BinEdges_left, self.BinEdges_right)))
         result = [i for i in self.Expected_limit / int_response if i > 0]
