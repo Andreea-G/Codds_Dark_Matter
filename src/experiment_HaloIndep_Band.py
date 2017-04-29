@@ -938,7 +938,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                     prefac[i] = 1. - self.BinData[i] / tot_ev
                     q_tab += (1. - self.BinData[i] / tot_ev) * self.xi_tab[:, i]
             print('Prefactors: ', prefac)
-            if np.any(prefac < 1e-3):
+            if np.any(np.abs(prefac) < 1e-3):
                 print('BF Not Unique!')
                 self.uniqueBF = False
             file = output_file + "KKT_Q.dat"
