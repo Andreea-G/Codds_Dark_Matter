@@ -528,7 +528,9 @@ class Experiment_EHI(Experiment_HaloIndep):
                 resp_integr = self.IntegratedResponseTable(vmin_list_w0, i=i)
                 bin_ev = self.BinExp[i] * np.dot(10 ** logeta_list, resp_integr)
                 tot_ev = (bin_ev + self.Binbkg[i])
+
                 result += 2.0 * (tot_ev - self.BinData[i] * np.log(tot_ev))
+
         return result
 
 
@@ -823,15 +825,15 @@ class Experiment_EHI(Experiment_HaloIndep):
         if DEBUG:
             print("***constr =", repr(constr))
             print("tf =", repr(constr < 0))
-
-
-
         return constr
 
-    def pois_jac(self, x0, class_name, mx, fp, fn, delta):
-
+    def pois_jac(self, x0, class_name, mx, fp, fn, delta, vminStar=None, logetaStar=None, vminStar_index=None):
         vmin_l = x0[:int(x0.size/2)]
         eta_l = x0[int(x0.size/2):]
+
+        if vminStar is not None:
+            vmin_l = np.insert(vmin_l, vminStar_index, vminStar)
+            eta_l = np.insert(eta_l, vminStar_index, logetaStar)
 
         vmin_list_w0 = np.insert(vmin_l, 0, 0)
         eta_l_w0 = np.append(eta_l, np.array([-100.]))
@@ -926,14 +928,19 @@ class Experiment_EHI(Experiment_HaloIndep):
                 vmin_list_w0 = np.insert(vmin_list, 0, 0)
                 print(vmin_list_w0, logeta_list)
                 xi_interp = self.xi_interp[0]
+                prefac = np.zeros(len(self.BinData))
                 for i in range(len(self.BinData)):
                     resp_integr = self.IntegratedResponseTable(vmin_list_w0, i=i)
                     bin_ev = self.BinExp[i] * np.dot(10 ** logeta_list, resp_integr)
-                    print(bin_ev)
+                    #print(bin_ev)
                     tot_ev = (bin_ev + self.Binbkg[i])
-                    print('Pre-factor in Bin ', i+1,' of ', len(self.BinData), ' is: ', 1. - self.BinData[i] / tot_ev)
+                    #print('Pre-factor in Bin ', i+1,' of ', len(self.BinData), ' is: ', 1. - self.BinData[i] / tot_ev)
+                    prefac[i] = 1. - self.BinData[i] / tot_ev
                     q_tab += (1. - self.BinData[i] / tot_ev) * self.xi_tab[:, i]
-
+            print('Prefactors: ', prefac)
+            if np.any(prefac < 1e-3):
+                print('BF Not Unique!')
+                self.uniqueBF = False
             file = output_file + "KKT_Q.dat"
             f_handle = open(file, 'wb')   # clear the file first
             np.savetxt(f_handle, q_tab)
@@ -1408,9 +1415,12 @@ class Experiment_EHI(Experiment_HaloIndep):
             vmin_bnd = (0, 1000.)
             bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
             bnd = bnd_vmin + bnd_eta
+
             opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta, vminStar,
                                                                    logetaStar, vminStar_index),
-                           method='SLSQP', bounds=bnd, constraints=constr)
+                           jac=self.pois_jac,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-3,
+                           options={'maxiter': 100, 'disp': False})
             print(opt)
             constr_optimum_log_likelihood = [opt.x, opt.fun]
 

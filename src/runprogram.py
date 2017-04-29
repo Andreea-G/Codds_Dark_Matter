@@ -907,7 +907,9 @@ class RunProgram_Multiexperiment:
                 class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
                                                                fp, fn, delta, output_file,
                                                                output_file_CDMS, logeta_guess, nsteps_bin)
-
+                # var_g = np.loadtxt(output_file+"_GloballyOptimalLikelihood.dat")[1:]
+                # print(class_name[0]._MinusLogLikelihood(var_g))
+                # exit()
 
             if EHI_METHOD.ImportOptimalLikelihood:
                     class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
@@ -1041,6 +1043,9 @@ class RunProgram_Multiexperiment:
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS)
                     interpolation_order = 2
                     delta_logL = [chi_squared1(c) for c in confidence_levels]
+                    if pois_main:
+                        if not class_name[0].uniqueBF:
+                            delta_logL = [1e-3]
                     for d_logL in delta_logL:
                         class_name[0].ConfidenceBand(output_file, d_logL,
                                                      interpolation_order,
