@@ -385,6 +385,10 @@ class Experiment_EHI(Experiment_HaloIndep):
         return tab
 
 
+    def diffRespPois(self, vmin, i=-1):
+        return self.response_interp[i](vmin)
+
+
     def ExpectedNumEvents(self, minfunc, mx, fp, fn, delta):
 
         vmin_list_w0 = minfunc[:(minfunc.size / 2)]
@@ -801,8 +805,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         print("vars_guess =", repr(vars_guess))
         file = output_file_tail + "_GloballyOptimalLikelihood.dat"
         print(file)
-        np.savetxt(file, np.append([fun_val],
-                                   optimum_log_likelihood))
+        np.savetxt(file, np.append([fun_val], optimum_log_likelihood))
         return
 
     def constr_func(self, x, vmin_max=1000.):
@@ -825,34 +828,33 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         return constr
 
-    def dif_resp_p(self, v, i):
-        return (self.response_interp[i](v + 0.1) - self.response_interp[i](v - 0.1)) / 0.2
-
     def pois_jac(self, x0, class_name, mx, fp, fn, delta):
 
         vmin_l = x0[:int(x0.size/2)]
         eta_l = x0[int(x0.size/2):]
 
         vmin_list_w0 = np.insert(vmin_l, 0, 0)
+        eta_l_w0 = np.append(eta_l, np.array([-100.]))
+
+        dm_deta = np.zeros(len(eta_l))
+        dm_dv = np.zeros(len(vmin_l))
         for cname in class_name:
+            resp_integr = np.zeros(len(cname.BinData) * len(eta_l)).reshape((len(cname.BinData),
+                                                                                    len(eta_l)))
             npre = np.zeros(len(cname.BinData))
             for i in range(len(cname.BinData)):
-                resp_integr = cname.IntegratedResponseTable(vmin_list_w0, i=i)
-                npre[i] = cname.BinExp[i] * np.dot(10 ** eta_l, resp_integr)
+                resp_integr[i] = cname.IntegratedResponseTable(vmin_list_w0, i=i)
+                npre[i] = cname.BinExp[i] * np.dot(10 ** eta_l, resp_integr[i])
             coef = 2. * (1. - cname.BinData / (cname.Binbkg + npre))
-            dm_deta = np.zeros(len(vmin_l))
-            dm_dv = np.zeros(len(vmin_l))
+
             for i in range(len(vmin_l)):
+                dm_deta[i] += coef[i] * cname.Exposure * np.log(10.) * 10.**eta_l[i] * resp_integr[:, i].sum()
                 for j in range(int(cname.Nbins)):
-                    try:
-                        dm_deta[i] += coef[i] * cname.Exposure * cname.response_interp[j](vmin_l[i]) * 10 ** eta_l[i]
-                        dm_dv[i] += coef[i] * cname.Exposure * cname.dif_resp_p(vmin_l[i], j) *\
-                                    (10.**eta_l[i] - 10.**eta_l[i+1])
-                    except IndexError:
-                        dm_deta[i] += coef[i] * cname.Exposure * cname.response_interp[j](vmin_l[i])* 10 ** eta_l[i]
-                        dm_dv[i] += coef[i] * cname.Exposure * cname.dif_resp_p(vmin_l[i], j) * 10. ** eta_l[i]
+                    dm_dv[i] += coef[i] * cname.Exposure * \
+                                self.diffRespPois(vmin_l[i], i=j)*(10**eta_l_w0[i] - 10**eta_l_w0[i+1])
 
         ret = np.concatenate((dm_dv, dm_deta))
+
         return ret
 
     def poisson_wrapper(self, x0, class_name, mx, fp, fn, delta,

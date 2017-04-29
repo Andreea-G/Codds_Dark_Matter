@@ -77,7 +77,7 @@ def main():
     exper_indices = []
     # indices to be used in multiexperiment EHI anlysis
     # make sure experiments being used have functioning likelihood subroutine
-    multiexper_input_indices = [39,40]  # e.g. 17,22 ** Only element 0 can use EHI class
+    multiexper_input_indices = [40]  # e.g. 17,22 ** Only element 0 can use EHI class
 
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]
