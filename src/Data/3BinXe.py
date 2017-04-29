@@ -26,21 +26,19 @@ import numpy as np
 from scipy.interpolate import interp1d
 pi = np.pi
 
-name = "Darwin"
+name = "3BinXe"
 modulated = False
 
-#energy_resolution_type = "Poisson"
-#energy_resolution_type = "Dirac"
-energy_resolution_type = "Gaussian"
+energy_resolution_type = "Dirac"
 
 def EnergyResolution(e):
-    return np.ones_like(e) * e * 0.15
+    return np.ones_like(e)
 
 FFSD = 'GaussianFFSD'
 FFSI = 'HelmFF'
 FF = {'SI': FFSI,
-    'SDPS': FFSD,
-        'SDAV': FFSD,
+      'SDPS': FFSD,
+      'SDAV': FFSD,
         }
 target_nuclide_AZC_list = \
     np.array([[124, 54, 0.0008966], [126, 54, 0.0008535], [128, 54, 0.018607],
@@ -55,10 +53,6 @@ target_nuclide_mass_list = np.array([115.418, 117.279, 119.141, 120.074, 121.004
                                      121.937, 122.868, 124.732, 126.597])
 num_target_nuclides = target_nuclide_mass_list.size
 
-#QuenchingFactor = \
-#    interp1d(np.array([0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 40, 1000]),
-#             np.array([0, 0.394922, 0.714621, 0.861934, 0.944993, 1.01551, 1.08134,
-#                       1.13507, 1.19417, 1.23701, 1.28068, 1.31812, 1.35872, 1.4, 1.4]))
 
 QuenchingFactor = \
     interp1d(np.array([0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 40, 1000]),
@@ -66,9 +60,9 @@ QuenchingFactor = \
                        1., 1., 1., 1., 1., 1., 1., 1.]))
 
 
-Ethreshold = 5.
+Ethreshold = 3.
 Emaximum = 100.
-ERmaximum = 20.5
+ERmaximum = 30.
 
 def Efficiency_ER(er):
     try:
@@ -77,32 +71,23 @@ def Efficiency_ER(er):
         er = [er]
     return np.ones_like(er)
 
-
-
-Eff_ER_interp = \
-    interp1d(np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Lux2016.dat')[:,0],
-             np.loadtxt('/Users/SamWitte/Desktop/Codds_DarkMatter/src/Data/eff_Lux2016.dat')[:,1],
-             kind='cubic', bounds_error=False, fill_value=0.)
-
-
 def Efficiency(er):
     try:
         len(er)
     except TypeError:
         er = [er]
-    return np.array([0.3 if ee > Ethreshold and ee < ERmaximum else 0. for ee in er])
+    return np.ones_like(er)
 
 
+Exposure = 1. * 1000. * 365.24
+#ERecoilList = np.array([])
+#Expected_limit = 1.
 
-Exposure = 200. * 1000. * 365.24
-ERecoilList = np.array([])
-Expected_limit = 1.
-
-BinData = np.array([0.])
-BinEdges_left = np.array([1.])
-BinEdges_right = np.array([70.0])
-BinBkgr=np.array([0.])
-BinSize=100.
-BinExposure = np.array([Exposure])
-
+BinData = np.array([6., 4., 1.])
+BinEdges_left = np.array([2., 4., 6.])
+BinEdges_right = np.array([4., 6., 8.])
+BinBkgr = np.array([1., 1., 1.])
+BinSize = 3.
+BinExposure = np.array([Exposure, Exposure, Exposure])
+Nbins=3.
 

@@ -81,12 +81,14 @@ class ConstraintsFunction(object):
                                       x[self.vminStar_index: hxsz] - self.vminStar,
                                       x[hxsz: hxsz + self.vminStar_index] - self.logetaStar,
                                       self.logetaStar - x[hxsz + self.vminStar_index:]])
+
         if close:
             is_not_close = np.logical_not(np.isclose(constraints, np.zeros_like(constraints), atol=1e-5))
             is_not_close[:3 * hxsz] = True
             constraints = np.where(is_not_close, constraints, np.abs(constraints))
         if np.any(np.isnan(constraints)):
             raise ValueError
+
         return constraints
 
 
@@ -137,7 +139,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         if not self.Poisson and not self.Gaussian:
             self.vmin_sorted_list = np.sort(VMin(self.ERecoilList, self.mT[0], mx, delta))
         else:
-            self.vmin_sorted_list = np.sort(VMin(self.BinEdges_r, self.mT[0], mx, delta))
+            self.vmin_sorted_list = np.sort(VMin(self.BinEdges_r, self.mT[-1], mx, delta))
         return
 
     def ResponseTables(self, vmin_min, vmin_max, vmin_step, mx, fp, fn, delta,
@@ -257,6 +259,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             print(file)
             np.savetxt(file, self.xi_tab)
 
+
         self.vmin_linspace = np.insert(self.vmin_linspace, 0, 0)
         file = output_file_tail + "_VminLinspace.dat"
         print(file)
@@ -369,12 +372,13 @@ class Experiment_EHI(Experiment_HaloIndep):
 
     def IntegratedResponseTable(self, vmin_list, i=-1):
         if self.Poisson:
-            self.response_interp = interp1d(self.vmin_linspace, self.response_tab[:, i])
-
+            response_interp = self.response_interp[i]
+        else:
+            response_interp = self.response_interp
         tab = np.zeros(vmin_list.size - 1)
         for a in range(vmin_list.size - 1):
             if (vmin_list[a+1] - vmin_list[a]) > 0.1 and (vmin_list[a+1] < 1000.):
-                tab[a] = integrate.quad(self.response_interp,
+                tab[a] = integrate.quad(response_interp,
                                         vmin_list[a], vmin_list[a + 1],
                                         epsrel=PRECISSION, epsabs=0)[0]
 
@@ -763,7 +767,8 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         self.ImportResponseTables(output_file_CDMS, plot=False)
 
-        addsteps = self.vmin_sorted_list[-1]* np.ones(nsteps_bin * (len(multiexper_input) - 1))
+
+        addsteps = self.vmin_sorted_list[-1]* np.ones(nsteps_bin)
         vminhold = np.append(self.vmin_sorted_list,addsteps)
         vmin_list = np.sort(vminhold)
 
@@ -783,8 +788,11 @@ class Experiment_EHI(Experiment_HaloIndep):
             vmin_bnd = (0, vmin_max)
             bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
             bnd = bnd_vmin + bnd_eta
+
             opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta),
-                           method='SLSQP', bounds=bnd, constraints=constr)
+                           jac=self.pois_jac,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
+                           options={'maxiter':100, 'disp':False})
             optimum_log_likelihood = opt.x
             fun_val = opt.fun
 
@@ -812,7 +820,40 @@ class Experiment_EHI(Experiment_HaloIndep):
         if DEBUG:
             print("***constr =", repr(constr))
             print("tf =", repr(constr < 0))
+
+
+
         return constr
+
+    def dif_resp_p(self, v, i):
+        return (self.response_interp[i](v + 0.1) - self.response_interp[i](v - 0.1)) / 0.2
+
+    def pois_jac(self, x0, class_name, mx, fp, fn, delta):
+
+        vmin_l = x0[:int(x0.size/2)]
+        eta_l = x0[int(x0.size/2):]
+
+        vmin_list_w0 = np.insert(vmin_l, 0, 0)
+        for cname in class_name:
+            npre = np.zeros(len(cname.BinData))
+            for i in range(len(cname.BinData)):
+                resp_integr = cname.IntegratedResponseTable(vmin_list_w0, i=i)
+                npre[i] = cname.BinExp[i] * np.dot(10 ** eta_l, resp_integr)
+            coef = 2. * (1. - cname.BinData / (cname.Binbkg + npre))
+            dm_deta = np.zeros(len(vmin_l))
+            dm_dv = np.zeros(len(vmin_l))
+            for i in range(len(vmin_l)):
+                for j in range(int(cname.Nbins)):
+                    try:
+                        dm_deta[i] += coef[i] * cname.Exposure * cname.response_interp[j](vmin_l[i]) * 10 ** eta_l[i]
+                        dm_dv[i] += coef[i] * cname.Exposure * cname.dif_resp_p(vmin_l[i], j) *\
+                                    (10.**eta_l[i] - 10.**eta_l[i+1])
+                    except IndexError:
+                        dm_deta[i] += coef[i] * cname.Exposure * cname.response_interp[j](vmin_l[i])* 10 ** eta_l[i]
+                        dm_dv[i] += coef[i] * cname.Exposure * cname.dif_resp_p(vmin_l[i], j) * 10. ** eta_l[i]
+
+        ret = np.concatenate((dm_dv, dm_deta))
+        return ret
 
     def poisson_wrapper(self, x0, class_name, mx, fp, fn, delta,
                         vminStar=None, logetaStar=None, index=None):
@@ -835,10 +876,13 @@ class Experiment_EHI(Experiment_HaloIndep):
         optimize_func = self._MinusLogLikelihood(np.append(vmin_list, logeta_list), vminStar, logetaStar, index_hold)
 
         for i in range(1, len(class_name)):
-            optimize_func += class_name[i]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
-                                                               mx, fp, fn, delta, vminStar,
-                                                               logetaStar, index_hold)
-
+            try:
+                optimize_func += class_name[i]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
+                                                                   mx, fp, fn, delta, vminStar,
+                                                                   logetaStar, index_hold)
+            except:
+                optimize_func += class_name[i]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
+                                                                   vminStar, logetaStar, index_hold)
         return optimize_func
 
     def PlotQ_KKT_Multi(self, class_name, mx, fp, fn, delta, output_file, plot=False):

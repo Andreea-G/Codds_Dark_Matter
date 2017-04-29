@@ -900,7 +900,10 @@ class RunProgram_Multiexperiment:
             f_handle.close()
 
             if EHI_METHOD.OptimalLikelihood:
-                nsteps_bin = 1
+                nsteps_bin = 0
+                for i in range(1, len(class_name)):
+                    nsteps_bin += class_name[i].Nbins
+
                 class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
                                                                fp, fn, delta, output_file,
                                                                output_file_CDMS, logeta_guess, nsteps_bin)
