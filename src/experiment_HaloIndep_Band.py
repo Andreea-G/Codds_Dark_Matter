@@ -774,34 +774,47 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         self.ImportResponseTables(output_file_CDMS, plot=False)
 
-
-        addsteps = self.vmin_sorted_list[-1]* np.ones(nsteps_bin)
-        vminhold = np.append(self.vmin_sorted_list,addsteps)
-        vmin_list = np.sort(vminhold)
+        if not self.Poisson:
+            addsteps = self.vmin_sorted_list[-1]* np.ones(nsteps_bin)
+            vminhold = np.append(self.vmin_sorted_list,addsteps)
+            vmin_list = np.sort(vminhold)
+        else:
+            vminhold = np.array([self.vmin_sorted_list])
+            for i in range(0, len(class_name)):
+                if i == 0:
+                    continue
+                vminhold = np.append(vminhold, class_name[i]._VMinSortedList(mx, fp, fn, delta))
+            print(vminhold)
+            vmin_list = np.sort(vminhold)
 
         vars_guess = np.append(vmin_list, logeta_guess * np.ones(vmin_list.size))
         print("vars_guess = ", vars_guess)
+
         vmin_max = self.vmin_linspace[-1]
 
-        constr = ({'type': 'ineq', 'fun': self.constr_func})
+
 
         if not self.Poisson:
+            constr = ({'type': 'ineq', 'fun': self.constr_func})
             optimum_log_likelihood, fun_val = \
                     Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
 
         else:
+
             logeta_bnd = (-40.0, -12.0)
             bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
             vmin_bnd = (0, vmin_max)
             bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
             bnd = bnd_vmin + bnd_eta
-
-            opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta),
+            len_eta = len(vars_guess) / 2
+            constr = ({'type': 'ineq', 'fun': self.constr_func_eta})
+            opt = minimize(self.poisson_wrapper, vars_guess[len_eta:],
+                           args=(vars_guess[:len_eta], class_name, mx, fp, fn, delta),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-6,
+                           method='SLSQP', bounds=bnd_eta, constraints=constr, tol=1e-6,
                            options={'maxiter':100, 'disp':False})
-            #print(opt)
-            optimum_log_likelihood = opt.x
+
+            optimum_log_likelihood = np.concatenate((vars_guess[:len_eta], opt.x))
             fun_val = opt.fun
 
         print(optimum_log_likelihood)
@@ -829,7 +842,28 @@ class Experiment_EHI(Experiment_HaloIndep):
             print("tf =", repr(constr < 0))
         return constr
 
-    def pois_jac(self, x0, class_name, mx, fp, fn, delta, vminStar=None, logetaStar=None, vminStar_index=None):
+    def constr_func_eta(self, x, vminStar=None, logetaStar=None, vminStar_index=None):
+        """ 0 -  8: bounds: 3 * (x.size/2) constraints = 9 for x.size/2 = 3
+            9 - 12: sorted array: 2 * (x.size/2 - 1) constraints = 4 for x.size/2 = 3
+        """
+
+        if vminStar_index is not None:
+            x = np.insert(x, vminStar_index, logetaStar)
+        constraints = np.concatenate([-x[int(x.size/2):], np.diff(-x[int(x.size/2):])])
+
+        is_not_close = np.logical_not(
+            np.isclose(constraints, np.zeros_like(constraints), atol=1e-3))
+        is_not_close[:3 * int(x.size/2)] = T
+        constr = np.where(is_not_close, constraints, np.abs(constraints))
+        if DEBUG:
+            print("***constr =", repr(constr))
+            print("tf =", repr(constr < 0))
+        return constr
+
+    def pois_jac(self, eta,vmin, class_name, mx, fp, fn, delta,
+                 vminStar=None, logetaStar=None, vminStar_index=None):
+        x0 = np.concatenate((vmin, eta))
+
         vmin_l = x0[:int(x0.size/2)]
         eta_l = x0[int(x0.size/2):]
 
@@ -864,11 +898,13 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         ret = np.concatenate((dm_dv, dm_deta))
 
-        return ret
+        #return ret
+        return dm_deta
 
-    def poisson_wrapper(self, x0, class_name, mx, fp, fn, delta,
+    def poisson_wrapper(self, eta, vmin, class_name, mx, fp, fn, delta,
                         vminStar=None, logetaStar=None, index=None):
         vmin_max = 1000.
+        x0 = np.concatenate((vmin, eta))
 
         if vminStar is not None:
             vmin_list_reduced = x0[: int(len(x0) / 2)]
@@ -1317,23 +1353,27 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                    vminStar, logetaStar, vminStar_index,
                                                    vmin_err=10.0, logeta_err=0.05)
         else:
-            constr = ({'type': 'ineq', 'fun': ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
+            constr = ({'type': 'ineq', 'fun': self.constr_func_eta, 'args': (vminStar, logetaStar, vminStar_index)})
             logeta_bnd = (-40.0, -12.0)
             bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
             vmin_bnd = (self.minVmin, 1000.)
             bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
             bnd = bnd_vmin + bnd_eta
-            opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta, vminStar,
-                                                                   logetaStar, vminStar_index),
+
+            len_eta = len(vars_guess) / 2
+
+            opt = minimize(self.poisson_wrapper, vars_guess[len_eta:],
+                           args=(vars_guess[:len_eta], class_name, mx, fp, fn, delta,
+                                 vminStar, logetaStar, vminStar_index),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
-                           options={'maxiter': 200, 'disp': False})
+                           method='SLSQP', bounds=bnd_eta, constraints=constr, tol=1e-6,
+                           options={'maxiter': 100, 'disp': False})
 
             if not opt.success:
                 opt.fun = 1e5
             if (vminStar < self.minVmin) and (logetaStar > self.optimal_logeta[0]):
                 opt.fun = self.optimal_logL
-            constr_optimum_log_likelihood = [opt.x, opt.fun]
+            constr_optimum_log_likelihood = [np.concatenate((vars_guess[:len_eta], opt.x)), opt.fun]
 
         vars_list = constr_optimum_log_likelihood[0]
         if (np.any(np.ones(int(vars_list.size/2) - 1) * (-0.01) > np.diff(vars_list[:int(vars_list.size/2)])) or
@@ -1424,20 +1464,23 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                    vminStar, logetaStar, vminStar_index,
                                                    vmin_err=9.0, logeta_err=0.02)
         else:
-            constr = ({'type': 'ineq', 'fun': ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
+            constr = ({'type': 'ineq', 'fun': self.constr_func_eta, 'args': (vminStar, logetaStar, vminStar_index)})
             logeta_bnd = (-40.0, -12.0)
             bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
             vmin_bnd = (0., 1000.)
             bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
             bnd = bnd_vmin + bnd_eta
 
-            opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta, vminStar,
-                                                                   logetaStar, vminStar_index),
-                           jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
-                           options={'maxiter': 200, 'disp': False})
+            len_eta = len(vars_guess) / 2
 
-            constr_optimum_log_likelihood = [opt.x, opt.fun]
+            opt = minimize(self.poisson_wrapper, vars_guess[len_eta:],
+                           args=(vars_guess[:len_eta], class_name, mx, fp, fn, delta,
+                                 vminStar, logetaStar, vminStar_index),
+                           jac=self.pois_jac,
+                           method='SLSQP', bounds=bnd_eta, constraints=constr, tol=1e-6,
+                           options={'maxiter': 100, 'disp': False})
+
+            constr_optimum_log_likelihood = [np.concatenate((vars_guess[:len_eta], opt.x)), opt.fun]
 
         if DEBUG:
             print(constr_optimum_log_likelihood[0])
