@@ -248,7 +248,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                     vmin_prev = vmin
 
                     self.xi_tab[i, j] = xi[j]
-            self.minVmin = self.vmin_linspace[np.argmin(response_tab[:, 0])]
+            self.minVmin = self.vmin_linspace[np.argmin(self.response_tab[:, 0])]
             self.response_tab = np.insert(self.response_tab, 0, 0, axis=0)
             self.xi_tab = np.insert(self.xi_tab, 0, 0, axis=0)
 
