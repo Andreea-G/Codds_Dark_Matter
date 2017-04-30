@@ -244,7 +244,7 @@ def Vmin_EHIBand_range(exper_name, mx, delta, mPhi=1000.):
                    }
         return options[(mx, delta, mPhi)]
     elif exper_name == "3BinXe":
-        options = {(9., 0, 1000.): (0, 1200, 100)}
+        options = {(9., 0, 1000.): (0, 1000, 50)}
         return options[(mx, delta, mPhi)]
 
 """ List of input values of the form (mx, fn, delta, mPhi).
