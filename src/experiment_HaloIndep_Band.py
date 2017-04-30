@@ -797,8 +797,9 @@ class Experiment_EHI(Experiment_HaloIndep):
 
             opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-5,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-6,
                            options={'maxiter':100, 'disp':False})
+            #print(opt)
             optimum_log_likelihood = opt.x
             fun_val = opt.fun
 
@@ -855,8 +856,9 @@ class Experiment_EHI(Experiment_HaloIndep):
                     dm_dv[i] += coef[i] * cname.Exposure * \
                                 self.diffRespPois(vmin_l[i], i=j)*(10**eta_l_w0[i] - 10**eta_l_w0[i+1])
 
-        ret = np.concatenate((dm_dv, dm_deta))
 
+        ret = np.concatenate((dm_dv, dm_deta))
+        #print(ret)
         return ret
 
     def poisson_wrapper(self, x0, class_name, mx, fp, fn, delta,
@@ -1419,7 +1421,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta, vminStar,
                                                                    logetaStar, vminStar_index),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-3,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
                            options={'maxiter': 100, 'disp': False})
             print(opt)
             constr_optimum_log_likelihood = [opt.x, opt.fun]
