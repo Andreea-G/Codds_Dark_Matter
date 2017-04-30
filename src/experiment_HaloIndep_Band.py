@@ -621,7 +621,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             optimum_log_likelihood = minimize(self.MinusLogLikelihood, vars_guess,
                                               args=(constr_func,), constraints=constr)
 
-        print(optimum_log_likelihood)
+        #print(optimum_log_likelihood)
         print("MinusLogLikelihood =", self._MinusLogLikelihood(optimum_log_likelihood.x))
         print("vars_guess =", repr(vars_guess))
         file = output_file_tail + "_GloballyOptimalLikelihood.dat"
@@ -1327,7 +1327,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                            jac=self.pois_jac,
                            method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
                            options={'maxiter': 100, 'disp': False})
-            print(opt)
+            #print(opt)
             constr_optimum_log_likelihood = [opt.x, opt.fun]
 
         vars_list = constr_optimum_log_likelihood[0]
@@ -1430,7 +1430,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                            jac=self.pois_jac,
                            method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
                            options={'maxiter': 100, 'disp': False})
-            print(opt)
+            #print(opt)
             constr_optimum_log_likelihood = [opt.x, opt.fun]
 
         if DEBUG:
