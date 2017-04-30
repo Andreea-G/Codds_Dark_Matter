@@ -1428,7 +1428,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta, vminStar,
                                                                    logetaStar, vminStar_index),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-4,
                            options={'maxiter': 100, 'disp': False})
             #print(opt)
             constr_optimum_log_likelihood = [opt.x, opt.fun]
@@ -1814,29 +1814,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                                                  multiexper_input,
                                                                                  self.class_name, mx,
                                                                                  fp, fn, delta, plot)
-                        if constr_opt < 0.:
-                            print(constr_opt)
-                            print('Passing...')
-                            pass
-                        else:
-                            print("index =", index, "; vminStar =", vminStar,
-                                  "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
-                            table = np.append(table, [[logetaStar, constr_opt]], axis=0)
 
-                            print("vminStar =", vminStar, "; table =", table)
-
-                            print(temp_file)
-                            np.savetxt(temp_file, table)
-            else:
-                for logetaStar in logetaStar_list:
-                    print('V* =', vminStar, 'log(eta)* =', logetaStar)
-                    constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
-                                                                             multiexper_input,
-                                                                             self.class_name, mx,
-                                                                             fp, fn, delta, plot)
-                    if constr_opt < 0.:
-                        pass
-                    else:
                         print("index =", index, "; vminStar =", vminStar,
                               "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
                         table = np.append(table, [[logetaStar, constr_opt]], axis=0)
@@ -1844,8 +1822,24 @@ class Experiment_EHI(Experiment_HaloIndep):
                         print("vminStar =", vminStar, "; table =", table)
 
                         print(temp_file)
-                        print('Saved Line.')
                         np.savetxt(temp_file, table)
+            else:
+                for logetaStar in logetaStar_list:
+                    print('V* =', vminStar, 'log(eta)* =', logetaStar)
+                    constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+                                                                             multiexper_input,
+                                                                             self.class_name, mx,
+                                                                             fp, fn, delta, plot)
+
+                    print("index =", index, "; vminStar =", vminStar,
+                          "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                    table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+
+                    print("vminStar =", vminStar, "; table =", table)
+
+                    print(temp_file)
+                    print('Saved Line.')
+                    np.savetxt(temp_file, table)
         return
 
     def LogLikelihoodList(self, output_file_tail, extra_tail="", processes=None,
