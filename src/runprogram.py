@@ -924,7 +924,7 @@ class RunProgram_Multiexperiment:
                     # Tests for delta = 0:
                     #print([chi_squared1(c) for c in confidence_levels])
                     
-                    (vminStar, logetaStar) = (190., -30.5)
+                    (vminStar, logetaStar) = (116.95511, -28.454)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -932,6 +932,7 @@ class RunProgram_Multiexperiment:
                                                                          multiexper_input, class_name,
                                                                          mx, fp, fn, delta, False)
 
+                    exit()
             if np.any(EHI_METHOD[4:]):
                 (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = \
                     vmin_EHIBand_range

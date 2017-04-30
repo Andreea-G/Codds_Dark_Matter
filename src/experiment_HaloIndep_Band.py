@@ -248,7 +248,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                     vmin_prev = vmin
 
                     self.xi_tab[i, j] = xi[j]
-
+            self.minVmin = self.vmin_linspace[np.argmin(response_tab[:, 0])]
             self.response_tab = np.insert(self.response_tab, 0, 0, axis=0)
             self.xi_tab = np.insert(self.xi_tab, 0, 0, axis=0)
 
@@ -348,7 +348,8 @@ class Experiment_EHI(Experiment_HaloIndep):
             for i in range(len(self.response_tab[1,:])):
                 self.response_interp[i] = unif.interp1d(self.vmin_linspace, self.response_tab[:, i])
                 self.xi_interp[i] = interp1d(self.vmin_linspace, self.xi_tab[:, i])
-
+            tab = next(i for i,x in enumerate(self.response_tab[:, 0]) if x > 0.)
+            self.minVmin = self.vmin_linspace[tab]
         if plot:
             self.PlotTable(self.diff_response_interp, dimension=1)
             self.PlotTable(self.response_interp, dimension=0)
@@ -1319,15 +1320,19 @@ class Experiment_EHI(Experiment_HaloIndep):
             constr = ({'type': 'ineq', 'fun': ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
             logeta_bnd = (-40.0, -12.0)
             bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
-            vmin_bnd = (0, 1000.)
+            vmin_bnd = (self.minVmin, 1000.)
             bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
             bnd = bnd_vmin + bnd_eta
             opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta, vminStar,
                                                                    logetaStar, vminStar_index),
                            jac=self.pois_jac,
                            method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
-                           options={'maxiter': 100, 'disp': False})
-            #print(opt)
+                           options={'maxiter': 200, 'disp': False})
+
+            if not opt.success:
+                opt.fun = 1e5
+            if (vminStar < self.minVmin) and (logetaStar > self.optimal_logeta[0]):
+                opt.fun = self.optimal_logL
             constr_optimum_log_likelihood = [opt.x, opt.fun]
 
         vars_list = constr_optimum_log_likelihood[0]
@@ -1367,9 +1372,10 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                 multiexper_input, class_name, mx,
                                                 fp, fn, delta)
             if vminStar_index == 0:
+                print('LALA', constr_optimum_new)
                 constr_optimum_old = constr_optimum_new[1]
             else:
-                if constr_optimum_new[1] < constr_optimum_old:
+                if (constr_optimum_new[1] < constr_optimum_old):
                     constr_optimum_old = constr_optimum_new[1]
 
         constr_optimal_logl = constr_optimum_old
@@ -1421,7 +1427,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             constr = ({'type': 'ineq', 'fun': ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
             logeta_bnd = (-40.0, -12.0)
             bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
-            vmin_bnd = (0, 1000.)
+            vmin_bnd = (0., 1000.)
             bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
             bnd = bnd_vmin + bnd_eta
 
@@ -1429,8 +1435,8 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                                    logetaStar, vminStar_index),
                            jac=self.pois_jac,
                            method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
-                           options={'maxiter': 100, 'disp': False})
-            #print(opt)
+                           options={'maxiter': 200, 'disp': False})
+
             constr_optimum_log_likelihood = [opt.x, opt.fun]
 
         if DEBUG:
