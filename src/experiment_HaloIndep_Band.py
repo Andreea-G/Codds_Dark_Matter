@@ -841,6 +841,8 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         dm_deta = np.zeros(len(eta_l))
         dm_dv = np.zeros(len(vmin_l))
+
+
         for cname in class_name:
             resp_integr = np.zeros(len(cname.BinData) * len(eta_l)).reshape((len(cname.BinData),
                                                                                     len(eta_l)))
@@ -851,14 +853,16 @@ class Experiment_EHI(Experiment_HaloIndep):
             coef = 2. * (1. - cname.BinData / (cname.Binbkg + npre))
 
             for i in range(len(vmin_l)):
-                dm_deta[i] += coef[i] * cname.Exposure * np.log(10.) * 10.**eta_l[i] * resp_integr[:, i].sum()
                 for j in range(int(cname.Nbins)):
-                    dm_dv[i] += coef[i] * cname.Exposure * \
+                    dm_deta[i] += cname.Exposure * np.log(10.) * 10 ** eta_l[i] * coef[j] * resp_integr[j, i]
+                    dm_dv[i] += coef[j] * cname.Exposure * \
                                 self.diffRespPois(vmin_l[i], i=j)*(10**eta_l_w0[i] - 10**eta_l_w0[i+1])
-
+        if vminStar is not None:
+            dm_deta = np.delete(dm_deta, vminStar_index)
+            dm_dv = np.delete(dm_dv, vminStar_index)
 
         ret = np.concatenate((dm_dv, dm_deta))
-        #print(ret)
+
         return ret
 
     def poisson_wrapper(self, x0, class_name, mx, fp, fn, delta,
@@ -1320,7 +1324,10 @@ class Experiment_EHI(Experiment_HaloIndep):
             bnd = bnd_vmin + bnd_eta
             opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta, vminStar,
                                                                    logetaStar, vminStar_index),
-                           method='SLSQP', bounds=bnd, constraints=constr)
+                           jac=self.pois_jac,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
+                           options={'maxiter': 100, 'disp': False})
+            print(opt)
             constr_optimum_log_likelihood = [opt.x, opt.fun]
 
         vars_list = constr_optimum_log_likelihood[0]
