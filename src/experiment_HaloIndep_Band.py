@@ -815,7 +815,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                            method='SLSQP', bounds=bnd, constraints=constr, tol=1e-6,
                            options={'maxiter':100, 'disp':False})
 
-            optimum_log_likelihood = np.concatenate((vars_guess[:len_eta], opt.x))
+            optimum_log_likelihood = opt.x
             fun_val = opt.fun
 
         print(optimum_log_likelihood)
@@ -1336,7 +1336,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                    vminStar, logetaStar, vminStar_index,
                                                    vmin_err=10.0, logeta_err=0.05)
         else:
-            constr = ({'type': 'ineq', 'fun': self.ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
+            constr = ({'type': 'ineq', 'fun': ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
             logeta_bnd = (-40.0, -12.0)
             bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
             vmin_bnd = (self.minVmin, 1000.)
@@ -1444,7 +1444,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                                                    vminStar, logetaStar, vminStar_index,
                                                    vmin_err=9.0, logeta_err=0.02)
         else:
-            constr = ({'type': 'ineq', 'fun': self.ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
+            constr = ({'type': 'ineq', 'fun': ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
             logeta_bnd = (-40.0, -12.0)
             bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
             vmin_bnd = (0., 1000.)
