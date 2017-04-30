@@ -1428,7 +1428,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             opt = minimize(self.poisson_wrapper, vars_guess, args=(class_name, mx, fp, fn, delta, vminStar,
                                                                    logetaStar, vminStar_index),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-4,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
                            options={'maxiter': 100, 'disp': False})
             #print(opt)
             constr_optimum_log_likelihood = [opt.x, opt.fun]
