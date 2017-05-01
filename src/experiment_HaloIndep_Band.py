@@ -167,6 +167,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 self.vmin_sorted_list, self.diff_response_tab and self.response_tab
                 are each written to files.
         """
+
         self._VMinSortedList(mx, fp, fn, delta)
         file = output_file_tail + "_VminSortedList.dat"
         print(file)
@@ -240,8 +241,11 @@ class Experiment_EHI(Experiment_HaloIndep):
                     for sign in branches:
                         (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
 
-                        self.response_tab[i, j] += self._Response_Dirac(vmin, self.BinEdges_l[j],
-                                                                        self.BinEdges_r[j], mx, fp, fn, delta)
+                        # self.response_tab[i, j] += self._Response_Dirac(vmin, self.BinEdges_l[j],
+                        #                                                 self.BinEdges_r[j], mx, fp, fn, delta)
+                        self.response_tab[i, j] += self._Response_Finite(vmin, self.BinEdges_l[j],
+                                                                          self.BinEdges_r[j], mx, fp, fn, delta)
+                        #print(vmin, ERecoilBranch(vmin, 120., mx, delta, 1.), self.BinEdges_l[j], self.response_tab[i, j])
 
                     xi[j] += self.Exposure * np.trapz(self.response_tab[:i,j], self.vmin_linspace[:i])
 
@@ -812,8 +816,8 @@ class Experiment_EHI(Experiment_HaloIndep):
             opt = minimize(self.poisson_wrapper, vars_guess,
                            args=(class_name, mx, fp, fn, delta),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-6,
-                           options={'maxiter':100, 'disp':False})
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-4,
+                           options={'maxiter':200, 'disp':False})
 
             optimum_log_likelihood = opt.x
             fun_val = opt.fun
@@ -1346,7 +1350,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             opt = minimize(self.poisson_wrapper, vars_guess,
                            args=(class_name, mx, fp, fn, delta, vminStar, logetaStar, vminStar_index),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-6,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-4,
                            options={'maxiter': 100, 'disp': False})
 
             if not opt.success:
@@ -1455,7 +1459,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                            args=(class_name, mx, fp, fn, delta,
                                  vminStar, logetaStar, vminStar_index),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-6,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-4,
                            options={'maxiter': 100, 'disp': False})
 
             constr_optimum_log_likelihood = [opt.x, opt.fun]

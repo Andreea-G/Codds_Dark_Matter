@@ -29,10 +29,10 @@ pi = np.pi
 name = "3BinXe"
 modulated = False
 
-energy_resolution_type = "Dirac"
+energy_resolution_type = "Gaussian"
 
 def EnergyResolution(e):
-    return np.ones_like(e)
+    return np.ones_like(e)*.2
 
 FFSD = 'GaussianFFSD'
 FFSI = 'HelmFF'
@@ -54,11 +54,8 @@ target_nuclide_mass_list = np.array([115.418, 117.279, 119.141, 120.074, 121.004
 num_target_nuclides = target_nuclide_mass_list.size
 
 
-QuenchingFactor = \
-    interp1d(np.array([0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 40, 1000]),
-             np.array([1., 1., 1., 1., 1., 1., 1.,
-                       1., 1., 1., 1., 1., 1., 1., 1.]))
-
+def QuenchingFactor(x):
+    return np.ones_like(x)
 
 Ethreshold = 3.
 Emaximum = 100.
