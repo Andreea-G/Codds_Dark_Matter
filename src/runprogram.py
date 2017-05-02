@@ -891,7 +891,11 @@ class RunProgram_Multiexperiment:
 
 
             class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
-
+            if pois_main:
+                for i in range(1, len(class_name)):
+                    fil = output_dir + '/MultiExp_NoEHI_'+ multiexper_input[i] + \
+                           '_mx_{:.2}GeV_fnfp_{:.2f}'.format(mx, fn/fp)
+                    class_name[i].ImportResponseTables(fil, plot=False)
 
             output_file = MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
                                                       filename_tail, OUTPUT_MAIN_DIR, quenching=None)
@@ -924,13 +928,14 @@ class RunProgram_Multiexperiment:
                     # Tests for delta = 0:
                     #print([chi_squared1(c) for c in confidence_levels])
                     
-                    (vminStar, logetaStar) = (116.95511, -28.454)
+                    (vminStar, logetaStar) = (58.2031149302, -29.54)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
                     class_name[0].MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
                                                                          multiexper_input, class_name,
-                                                                         mx, fp, fn, delta, False)
+                                                                         mx, fp, fn, delta, False,
+                                                                         leta_guess=logeta_guess)
 
                     exit()
             if np.any(EHI_METHOD[4:]):
@@ -938,6 +943,7 @@ class RunProgram_Multiexperiment:
                     vmin_EHIBand_range
                 (logeta_percent_minus, logeta_percent_plus, logeta_num_steps) = \
                     logeta_EHIBand_percent_range
+
                 if steepness is not None:
                         (steepness_vmin, steepness_vmin_center, steepness_logeta) = \
                             steepness
@@ -1046,7 +1052,7 @@ class RunProgram_Multiexperiment:
                     delta_logL = [chi_squared1(c) for c in confidence_levels]
                     if pois_main:
                         if not class_name[0].uniqueBF:
-                            delta_logL = [1e-3]
+                            delta_logL = [1e-2]
                     for d_logL in delta_logL:
                         class_name[0].ConfidenceBand(output_file, d_logL,
                                                      interpolation_order,

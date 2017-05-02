@@ -32,7 +32,7 @@ modulated = False
 energy_resolution_type = "Gaussian"
 
 def EnergyResolution(e):
-    return np.ones_like(e)*.2
+    return np.ones_like(e)*.15
 
 FFSD = 'GaussianFFSD'
 FFSI = 'HelmFF'
@@ -81,8 +81,8 @@ Exposure = 1. * 1000. * 365.24
 #Expected_limit = 1.
 
 BinData = np.array([6., 4., 1.])
-BinEdges_left = np.array([2., 4., 6.])
-BinEdges_right = np.array([4., 6., 8.])
+BinEdges_left = np.array([0.5, 1.5, 3.])
+BinEdges_right = np.array([1.5, 3., 4.5])
 BinBkgr = np.array([1., 1., 1.])
 BinSize = 3.
 BinExposure = np.array([Exposure, Exposure, Exposure])

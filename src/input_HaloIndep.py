@@ -152,7 +152,7 @@ def Steepness(exper_name, mx, delta, mPhi=1000.):
         default = (1.5, 2.5, 1)
         return steepness_options.get((mx, delta, mPhi), default)
     elif "3BinXe" in exper_name:
-        steepness_options = {(9., 0, 1000.): (1., 2.5, 1),
+        steepness_options = {(9., 0, 1000.): (0.1, 0.05, 1),
                              (3.5, -50, 1000.): (0.2, 1, 1),
                              (1.3, -200, 1000.): (0.1, 0.6, 1),
                              (1.2, -225, 1000.): (0.1, 0.6, 1),
@@ -221,13 +221,14 @@ def Vmin_EHIBand_range(exper_name, mx, delta, mPhi=1000.):
     Returns:
         (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps): tuple (float, float, int)
     """
+
     if exper_name == "CDMSSi2012":
 
-        options = {(9., 0, 1000.): (0, 1200, 100),
-                   (3.5, -50, 1000.): (0, 1200, 80),
-                   (1.3, -200, 1000.): (0, 1200, 80),
-                   (1.2, -225, 1000.): (0, 1200, 70),
-                   (38, 50, 1000.): (0, 1200, 80),
+        options = {(9., 0, 1000.): (0, 1000, 100),
+                   (3.5, -50, 1000.): (0, 1000, 80),
+                   (1.3, -200, 1000.): (0, 1000, 80),
+                   (1.2, -225, 1000.): (0, 1000, 70),
+                   (38, 50, 1000.): (0, 1000, 80),
 
                    (2.2, -100, 1000.): (0, 800, 20),
                    (3., -100, 1000.): (0, 800, 20),
@@ -244,7 +245,11 @@ def Vmin_EHIBand_range(exper_name, mx, delta, mPhi=1000.):
                    }
         return options[(mx, delta, mPhi)]
     elif exper_name == "3BinXe":
-        options = {(9., 0, 1000.): (0, 1000, 50)}
+        options = {(9., 0, 1000.): (100., 700., 50)}
+        return options[(mx, delta, mPhi)]
+
+    elif exper_name == "3BinXe2":
+        options = {(9., 0, 1000.): (200., 700., 50)}
         return options[(mx, delta, mPhi)]
 
 """ List of input values of the form (mx, fn, delta, mPhi).
@@ -260,4 +265,7 @@ input_list = [(9., 1, 0., 1000.), (9., -0.8, 0., 1000.), (9., -0.7, 0., 1000.), 
               (2.2, -0.7, -100, 1000), (3., -0.7, -100, 1000), (4., -0.7, -100, 1000), # 20-22
               (5., -0.7, -100, 1000), (1.5, -0.7, -150, 1000), (1.8, -0.7, -150, 1000), # 23-25
               (4, -0.7, -80, 1000), (5, -0.7, -80, 1000), (6, -0.7, -80, 1000)] # 26-28
-logeta_EHIBand_percent_range = (0.2, 0.2, 30)
+
+
+logeta_EHIBand_percent_range = (0.1, 0.1, 30)
+# logeta_EHIBand_percent_range = (0.15, 0.15, 20)
