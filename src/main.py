@@ -32,7 +32,7 @@ def main():
          "SHM_eta0", "SHM_eta1", "SuperCDMSLessT5", "SuperCDMSLikelihood",  # 20 - 23
          "LUX2016zero", "LUX2016one" ,"LUX2016five", "LUX2016many", "PandaX",  # 24 - 28
          "CDMSlite2016", "Xenon1T","CDMS_Snolab_GeHV","LZ","Darwin","CDMS_Snolab_SiHV",  # 29 - 34
-         "CDMS_Snolab_GeiZip", "PICO_500", "DarkSideG2","PICO_60", "3BinXe", "3BinXe2"]  # 35 - 40
+         "CDMS_Snolab_GeiZip", "PICO_500", "DarkSideG2","PICO_60", "3BinXe", "3BinXe2", "DAMA_2Bin"]  # 35 - 41
 
     # NOTE: iZip analysis is not correct
 
@@ -44,13 +44,13 @@ def main():
     # multiexper_input_indices list
 
     EHI_METHOD = {}
-    EHI_METHOD['ResponseTables'] = F
-    EHI_METHOD['OptimalLikelihood'] = T
-    EHI_METHOD['ImportOptimalLikelihood'] = T
-    EHI_METHOD['ConstrainedOptimalLikelihood'] = F
-    EHI_METHOD['VminLogetaSamplingTable'] = T
-    EHI_METHOD['LogLikelihoodList'] = T
-    EHI_METHOD['ConfidenceBand'] = F
+    EHI_METHOD['ResponseTables'] = False
+    EHI_METHOD['OptimalLikelihood'] = True
+    EHI_METHOD['ImportOptimalLikelihood'] = False
+    EHI_METHOD['ConstrainedOptimalLikelihood'] = False
+    EHI_METHOD['VminLogetaSamplingTable'] = False
+    EHI_METHOD['LogLikelihoodList'] = False
+    EHI_METHOD['ConfidenceBand'] = False
     # EHI_METHOD['ConfidenceBandPlot'] = T
     
     # Calc constrained loglike list for experiments in multi_exper 
@@ -72,12 +72,12 @@ def main():
 
     scattering_types = ['SI']  # may be 'SI', 'SDAV', 'SDPS'
     # indices of input_list which can be found in input files
-    input_indices = [0]
+    input_indices = [29]
     # indices of implemented_exper_list
     exper_indices = []
     # indices to be used in multiexperiment EHI anlysis
     # make sure experiments being used have functioning likelihood subroutine
-    multiexper_input_indices = [40]  # e.g. 17,22 ** Only element 0 can use EHI class
+    multiexper_input_indices = [41]  # e.g. 17,22 ** Only element 0 can use EHI class
 
     OUTPUT_MAIN_DIR = "../Output_Band/"
     filename_tail_list = [""]

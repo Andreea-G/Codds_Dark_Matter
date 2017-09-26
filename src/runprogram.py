@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from experiment_HaloIndep_Band import *
+from modulation_band import *
 from collections import defaultdict
 from scipy.interpolate import interp1d
 import numpy as np
@@ -869,6 +870,10 @@ class RunProgram_Multiexperiment:
                 class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching, pois=True)
             elif multiexper_input[x] == "CDMSSi2012":
                 class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in MOD_BAND:
+                print('Band Analysis of Modulation')
+                class_name[x] = Experiment_EHI_Modulation(multiexper_input[x], scattering_type, mPhi, quenching, gaus=True)
+                pois_main = True
             else:
                 print("NotImplementedError: This experiment was not implemented!")
 
@@ -907,16 +912,13 @@ class RunProgram_Multiexperiment:
                 nsteps_bin = 0
                 for i in range(1, len(class_name)):
                     nsteps_bin += class_name[i].Nbins
-
+                nsteps_bin -= 1
                 class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
                                                                fp, fn, delta, output_file,
                                                                output_file_CDMS, logeta_guess, nsteps_bin)
-                # var_g = np.loadtxt(output_file+"_GloballyOptimalLikelihood.dat")[1:]
-                # print(class_name[0]._MinusLogLikelihood(var_g))
-                # exit()
 
             if EHI_METHOD.ImportOptimalLikelihood:
-                    class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
+                    #class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
                     if pois_main:
                         kkpt = True
@@ -928,7 +930,7 @@ class RunProgram_Multiexperiment:
                     # Tests for delta = 0:
                     #print([chi_squared1(c) for c in confidence_levels])
                     
-                    (vminStar, logetaStar) = (58.2031149302, -29.54)
+                    (vminStar, logetaStar) = (100., -26.)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -937,7 +939,7 @@ class RunProgram_Multiexperiment:
                                                                          mx, fp, fn, delta, False,
                                                                          leta_guess=logeta_guess)
 
-                    exit()
+
             if np.any(EHI_METHOD[4:]):
                 (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = \
                     vmin_EHIBand_range
@@ -970,14 +972,14 @@ class RunProgram_Multiexperiment:
                                                        vmin_Band_min, vmin_Band_max,
                                                        vmin_Band_numsteps,
                                                        MULTI_EXPER,
-                                                       plot=not np.any(EHI_METHOD[5:]))
+                                                       plot=True)
 
                         class_name[0].VminLogetaSamplingTable(output_file,
                                                               logeta_percent_minus,
                                                               logeta_percent_plus,
                                                               logeta_num_steps,
-                                                              plot=not np.any(EHI_METHOD[5:]))
-
+                                                              plot=True)
+                        exit()
 #################### MC SETTINGS ###########
 
             if GENERATE_MC:
@@ -1052,7 +1054,7 @@ class RunProgram_Multiexperiment:
                     delta_logL = [chi_squared1(c) for c in confidence_levels]
                     if pois_main:
                         if not class_name[0].uniqueBF:
-                            delta_logL = [1e-2]
+                            delta_logL = [5e-2]
                     for d_logL in delta_logL:
                         class_name[0].ConfidenceBand(output_file, d_logL,
                                                      interpolation_order,

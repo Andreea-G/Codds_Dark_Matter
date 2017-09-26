@@ -45,6 +45,9 @@ def Vmin_range(exper_name, mx, delta, mPhi=1000., quenching=None, EHI_METHOD=Fal
     elif exper_name == '3BinXe' and EHI_METHOD:
         vmin_step = vmin_min = 1
         vmin_max = 1000
+    elif exper_name == 'DAMA_2Bin' and EHI_METHOD:
+        vmin_step = vmin_min = 1
+        vmin_max = 1000
     elif "LUX2013" in exper_name:
         vmin_step = vmin_min = 1
         vmin_max = 1000
@@ -202,7 +205,12 @@ def Logeta_guess(exper_name, mx, delta, mPhi=1000.):
 
                           }
     elif '3BinXe' in exper_name:
-        logeta_options = {(9., 0, 1000.): -30.}
+        logeta_options = {(9., 0, 1000.): -29.}
+
+    elif exper_name == 'DAMA_2Bin':
+        logeta_options = {(15., 0, 1000.): -23.,
+                          (9., 0, 1000.): -23.}
+
 
     return logeta_options[(mx, delta, mPhi)]
 
@@ -252,6 +260,12 @@ def Vmin_EHIBand_range(exper_name, mx, delta, mPhi=1000.):
         options = {(9., 0, 1000.): (200., 700., 50)}
         return options[(mx, delta, mPhi)]
 
+    elif exper_name == "DAMA_2Bin":
+        options = {(9., 0, 1000.): (100., 700., 50),
+                   (15., 0, 1000.): (100., 700., 50),
+                              }
+        return options[(mx, delta, mPhi)]
+
 """ List of input values of the form (mx, fn, delta, mPhi).
 """
 input_list = [(9., 1, 0., 1000.), (9., -0.8, 0., 1000.), (9., -0.7, 0., 1000.),  # 0 - 2
@@ -264,8 +278,9 @@ input_list = [(9., 1, 0., 1000.), (9., -0.8, 0., 1000.), (9., -0.7, 0., 1000.), 
               
               (2.2, -0.7, -100, 1000), (3., -0.7, -100, 1000), (4., -0.7, -100, 1000), # 20-22
               (5., -0.7, -100, 1000), (1.5, -0.7, -150, 1000), (1.8, -0.7, -150, 1000), # 23-25
-              (4, -0.7, -80, 1000), (5, -0.7, -80, 1000), (6, -0.7, -80, 1000)] # 26-28
+              (4, -0.7, -80, 1000), (5, -0.7, -80, 1000), (6, -0.7, -80, 1000), # 26-28
+              (15., 1., 0., 1000)] # 29
 
 
-logeta_EHIBand_percent_range = (0.1, 0.1, 30)
+logeta_EHIBand_percent_range = (0.2, 0.2, 20)
 # logeta_EHIBand_percent_range = (0.15, 0.15, 20)

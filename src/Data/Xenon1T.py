@@ -26,8 +26,9 @@ pi = np.pi
 name = "Xenon1T"
 modulated = False
 
-energy_resolution_type = "Poisson"
 #energy_resolution_type = "Gaussian"
+energy_resolution_type = "Poisson"
+
 
 def EnergyResolution(e):
     return 0.5 * np.ones_like(e)
@@ -53,14 +54,42 @@ target_nuclide_mass_list = np.array([115.418, 117.279, 119.141, 120.074, 121.004
                                      121.937, 122.868, 124.732, 126.597])
 num_target_nuclides = target_nuclide_mass_list.size
 
-xq = np.array([0., 0.395837, 0.431065, 0.451241, 0.473339, 0.582546, 0.7747, 0.995997,
-              1.09303, 1.18078, 1.30024, 1.41681, 1.4783, 1.6948, 1.76781, 1.9004,
-              2.01954, 2.14444, 2.23187 ])
-yq = np.array([0., 0.0745321, 0.0792141, 0.0831369, 0.0941459, 0.0999667, 0.116417,
-              0.144003, 0.147293, 0.154252, 0.159694, 0.169311, 0.17665, 0.191076,
-              0.194872, 0.198035, 0.197403, 0.2, 0.2])
 
-QuenchingFactor_interp = interp1d(xq, yq, kind='linear', bounds_error=False, fill_value=0.)
+eff_ld = np.loadtxt('Data/Xenon1T_Eff.dat')
+#eff_sig = np.loadtxt('Data/Xenon1T_Eff2.dat')
+eff = interp1d(eff_ld[:,0], eff_ld[:, 1], kind='linear', fill_value=0., bounds_error=False)
+#eff_s = interp1d(eff_sig[:,0], eff_sig[:, 1], kind='linear', fill_value=0., bounds_error=False)
+
+
+Ethreshold = 1.
+Emaximum = 30.
+ERmaximum = 30.
+
+def Efficiency(e):
+    return np.ones_like(e)
+
+#def Efficiency_ER(er):
+#    try:
+#        len(er)
+#    except TypeError:
+#        er = [er]
+#    return np.array([eff(e) for e in er])
+
+def Efficiency_ER(er):
+    try:
+        len(er)
+    except TypeError:
+        er = [er]
+    return np.array([eff(e) for e in er])
+
+x0 = np.array([0., 0.395837, 0.431065, 0.451241, 0.473339, 0.582546, 0.7747, 0.995997,
+               1.09303, 1.18078, 1.30024, 1.41681, 1.4783, 1.6948, 1.76781, 1.9004,
+               2.01954, 2.14444, 2.23187 ])
+y0 = np.array([0., 0.0745321, 0.0792141, 0.0831369, 0.0941459, 0.0999667, 0.116417,
+               0.144003, 0.147293, 0.154252, 0.159694, 0.169311, 0.17665, 0.191076,
+               0.194872, 0.198035, 0.197403, 0.2, 0.2])
+
+QuenchingFactor_interp = interp1d(x0, y0, kind='linear', bounds_error=False, fill_value=0.)
 
 def QuenchingFactor(e_list):
     Ly = 2.28
@@ -72,30 +101,15 @@ def QuenchingFactor(e_list):
         e_list = [e_list]
     
     q = np.array([0. if e < 1 \
-                  else  QuenchingFactor_interp(np.log10(e)) if np.log10(e) < 2.23 \
+                  else  QuenchingFactor_interp(np.log10(e)) if e < 10**2.23187 \
                   else 0.2
                   for e in e_list])
     return Ly * Snr / See * q
+#
+#QuenchingFactor = \
+#    interp1d(np.array([0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 40, 1000]),
+#             np.array([1., 1., 1., 1., 1., 1., 1.,
+#                       1., 1., 1., 1., 1., 1., 1., 1.]))
 
-
-Ethreshold = 3
-Emaximum = 70
-ERmaximum = 30.
-
-
-
-def Efficiency(e):
-    return 0. if e < Ethreshold else 1.0 if e < Emaximum else 1.
-
-
-
-def Efficiency_ER(er):
-    try:
-        len(er)
-    except TypeError:
-        er = [er]
-    return np.array([0.4 for e in er])
-
-
-Exposure = 1000. * 365. * 2.
+Exposure = 2004. * 34.2 #1042. * 34.2
 ERecoilList = np.array([])

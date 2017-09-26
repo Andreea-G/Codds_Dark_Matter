@@ -83,7 +83,7 @@ class ConstraintsFunction(object):
                                       self.logetaStar - x[hxsz + self.vminStar_index:]])
 
         if close:
-            is_not_close = np.logical_not(np.isclose(constraints, np.zeros_like(constraints), atol=1e-5))
+            is_not_close = np.logical_not(np.isclose(constraints, np.zeros_like(constraints), atol=1e-9))
             is_not_close[:3 * hxsz] = True
             constraints = np.where(is_not_close, constraints, np.abs(constraints))
 
@@ -122,7 +122,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.mu_BKG_interp = interp1d(self.ERecoilList, self.mu_BKG_i, bounds_error=False)
             self.Poisson = False
             self.Gaussian = False
-        elif pois:
+        else:
             self.BinData = module.BinData
             self.BinEdges_l = module.BinEdges_left
             self.BinEdges_r = module.BinEdges_right
@@ -140,7 +140,9 @@ class Experiment_EHI(Experiment_HaloIndep):
         if not self.Poisson and not self.Gaussian:
             self.vmin_sorted_list = np.sort(VMin(self.ERecoilList, self.mT[0], mx, delta))
         else:
-            self.vmin_sorted_list = np.sort(VMin(self.BinEdges_r, self.mT[-1], mx, delta))
+            # self.vmin_sorted_list = np.sort(VMin(np.mean(np.column_stack((self.BinEdges_r,self.BinEdges_l)),
+            #                                              axis=1), self.mT[0], mx, delta))
+            self.vmin_sorted_list = np.sort(VMin(self.BinEdges_l, self.mT[0], mx, delta))
         return
 
     def ResponseTables(self, vmin_min, vmin_max, vmin_step, mx, fp, fn, delta,
@@ -791,9 +793,12 @@ class Experiment_EHI(Experiment_HaloIndep):
             for i in range(0, len(class_name)):
                 if i == 0:
                     continue
-                vminhold = np.append(vminhold, class_name[i].vmin_sorted_list)
-            print(vminhold)
+                # vminhold = np.append(vminhold, class_name[i].vmin_sorted_list)
+                vminhold = np.append(vminhold, np.array([100., 300., 700.]))
+            #print(vminhold)
+
             vmin_list = np.sort(vminhold)
+
 
         vars_guess = np.append(vmin_list, logeta_guess * np.ones(vmin_list.size))
         print("vars_guess = ", vars_guess)
@@ -820,8 +825,8 @@ class Experiment_EHI(Experiment_HaloIndep):
             opt = minimize(self.poisson_wrapper, vars_guess,
                            args=(class_name, mx, fp, fn, delta),
                            jac=self.pois_jac,
-                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-6,
-                           options={'maxiter':400, 'disp':False})
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-8,
+                           options={'maxiter':300, 'disp':False})
             print(opt)
             optimum_log_likelihood = opt.x
             fun_val = opt.fun
@@ -883,11 +888,13 @@ class Experiment_EHI(Experiment_HaloIndep):
                     dm_deta[i] += cname.Exposure * np.log(10.) * 10 ** eta_l[i] * coef[j] * resp_integr[j, i]
                     dm_dv[i] += coef[j] * cname.Exposure * \
                                 cname.diffRespPois(vmin_l[i], i=j)*(10**eta_l_w0[i] - 10**eta_l_w0[i+1])
+
         if vminStar is not None:
             dm_deta = np.delete(dm_deta, vminStar_index)
             dm_dv = np.delete(dm_dv, vminStar_index)
 
         ret = np.concatenate((dm_dv, dm_deta))
+        #print(ret)
         return ret
 
 
@@ -930,7 +937,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         optimum_steps = np.concatenate((vminlist, logetalist))
         print('optimum_steps', optimum_steps)
         explen = len(class_name)
-
+        q_tab = 0.
         if plot:
 
             if not self.Poisson:
@@ -955,7 +962,8 @@ class Experiment_EHI(Experiment_HaloIndep):
                                title='Xi, H_{sum}', plot_close=False)
 
 
-            else:
+            if self.Poisson:
+
                 prefac = np.array([])
                 uniqueness = np.array([])
                 for x in range(explen):
@@ -969,6 +977,8 @@ class Experiment_EHI(Experiment_HaloIndep):
                 self.uniqueBF = False
             else:
                 self.uniqueBF = True
+            # for x in range(explen):
+            #     q_tab += np.dot(class_name[x].xi_tab, prefac)
             # file = output_file + "KKT_Q.dat"
             # f_handle = open(file, 'wb')   # clear the file first
             # np.savetxt(f_handle, q_tab)
@@ -1367,7 +1377,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 opt = minimize(self.poisson_wrapper, vars_guess,
                                args=(class_name, mx, fp, fn, delta, vminStar, logetaStar, vminStar_index),
                                jac=self.pois_jac,
-                               method='SLSQP', bounds=bnd, constraints=constr, tol=1e-5,
+                               method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
                                options={'maxiter': 300, 'disp': False})
             except ValueError:
                 return [vars_guess, 1e6]

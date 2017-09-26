@@ -17,7 +17,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
     
     
-    Results from arXiv 1607.07400
+    Results from arXiv 1607.07400:::: Updated to 1708.06917
     """
 
 from __future__ import absolute_import
@@ -109,14 +109,14 @@ def Efficiency(e):
 #return Efficiency_interp(e) if 0.700414 <= e < 2.68015 \
 #   else np.array(0.) if e < 0.700414 else np.array(1.)
 
-Exposure = 3.3 * 10 ** 4.
-ERecoilList = np.array([25., 28., 30.5])
+Exposure = 5.4 * 10 ** 4.
+ERecoilList = np.array([28.])
 
 
-BinData = np.array([3.])
+BinData = np.array([1.])
 BinEdges_left = np.array([1.1])
 BinEdges_right = np.array([35.])
-BinBkgr=np.array([4.8])
+BinBkgr=np.array([5.])
 BinSize=80.0
 BinExposure=np.array([Exposure])
 
