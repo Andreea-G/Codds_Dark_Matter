@@ -445,7 +445,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         for i in range(self.Nbins):
             vmin_vals = self.streams[i] - self.v_sun - self.v_Earth([0.21])
             self.optimal_vmin[i] = np.sqrt(np.sum(vmin_vals*vmin_vals))
-
+        self.args_best_fit_sort = np.argsort(self.optimal_vmin)
+        self.optimal_vmin = self.optimal_vmin[self.args_best_fit_sort]
         numx0 = self.optimal_vmin.size
 
         print("x0 =", self.optimal_vmin)
@@ -550,7 +551,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 Whether to plot intermediate results such as the sampling function.
         """
         print(self.optimal_vmin)
-        self.optimal_logeta = self.norms
+        self.optimal_logeta = self.norms[self.args_best_fit_sort]
         print(self.optimal_logeta)
 
         logeta_num_steps_minus = logeta_num_steps * \

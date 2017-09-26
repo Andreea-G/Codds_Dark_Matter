@@ -972,14 +972,14 @@ class RunProgram_Multiexperiment:
                                                        vmin_Band_min, vmin_Band_max,
                                                        vmin_Band_numsteps,
                                                        MULTI_EXPER,
-                                                       plot=True)
+                                                       plot=False)
 
                         class_name[0].VminLogetaSamplingTable(output_file,
                                                               logeta_percent_minus,
                                                               logeta_percent_plus,
                                                               logeta_num_steps,
-                                                              plot=True)
-                        exit()
+                                                              plot=False)
+
 #################### MC SETTINGS ###########
 
             if GENERATE_MC:
