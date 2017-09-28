@@ -33,7 +33,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.target_mass = module.target_nuclide_mass_list
 
         self.unique = True
-        self.vmin_linspace_galactic = np.linspace(1., vesc, vesc / 10)
+        self.vmin_linspace_galactic = np.linspace(1., vesc, 200)
         self.vmin_max = self.vmin_linspace_galactic[-1]
         self.v_sun = np.array([11., 232., 7.])
 
@@ -44,15 +44,16 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         return vE
 
     def _VMin_Guess(self):
-        self.vmin_sorted_list = random.rand(self.Nbins, 3) * (vesc / 3.)
-        for i in range(self.Nbins):
-            mag = np.sqrt(np.sum(self.vmin_sorted_list[i] * self.vmin_sorted_list[i]))
-            if mag > vesc:
-                self.vmin_sorted_list[i] /= 2.
-            vsort_e = self.vmin_sorted_list[i] - self.v_sun - self.v_Earth([0.])
-            mag_earth = np.sqrt(np.sum(vsort_e * vsort_e))
-            if mag_earth < self.min_v_min:
-                self.vmin_sorted_list[i] += 120.
+        self.vmin_sorted_list = random.rand(self.Nbins, 3) * vesc
+        # self.vmin_sorted_list = random.rand(self.Nbins, 3) * (vesc / 3.)
+        # for i in range(self.Nbins):
+        #     mag = np.sqrt(np.sum(self.vmin_sorted_list[i] * self.vmin_sorted_list[i]))
+        #     if mag > vesc:
+        #         self.vmin_sorted_list[i] /= 2.
+        #     vsort_e = self.vmin_sorted_list[i] - self.v_sun - self.v_Earth([0.])
+        #     mag_earth = np.sqrt(np.sum(vsort_e * vsort_e))
+        #     if mag_earth < self.min_v_min:
+        #         self.vmin_sorted_list[i] += 120.
         return
 
     def _VMin_Guess_Constrained(self):
@@ -192,7 +193,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         return
 
-    def del_curlH_modamp(self, bin, axis, stream, epsilon=10.):
+    def del_curlH_modamp(self, bin, axis, stream, epsilon=3.):
         perturb = np.array([0., 0., 0.])
         perturb[axis] += epsilon
         v1 = stream + perturb
@@ -231,15 +232,14 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         # print(opt)
         # print('\n')
 
-        # opt = minimize(self.gaussian_m_ln_likelihood, vars_guess,
-        #                jac=self.gaussian_jacobian,
-        #                #method='SLSQP',
-        #                method='L-BFGS-B',
-        #                tol=1e-4, bounds=bnd,
-        #                #constraints=constr,
-        #                options={'maxiter': 50, 'disp': False})
-        # print(opt)
-        # print('\n')
+        opt = minimize(self.gaussian_m_ln_likelihood, vars_guess,
+                       jac=self.gaussian_jacobian,
+                       method='SLSQP',
+                       tol=1e-8, bounds=bnd,
+                       #constraints=constr,
+                       options={'maxiter': 200, 'disp': True})
+        print(opt)
+        print('\n')
 
         opt = minimize(self.gaussian_m_ln_likelihood, vars_guess,
                        method='SLSQP', tol=1e-4,
@@ -295,7 +295,10 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             eta_star = np.dot(vh_bar, np.power(10., norms))
             #print(np.log10(eta_star), etaStar)
             if include_penalty:
-                m2_ln_like += (np.log10(eta_star) - etaStar)**2. / 0.1**2.
+                if eta_star > 0.:
+                    m2_ln_like += (np.log10(eta_star) - etaStar)**2. / 0.1**2.
+                else:
+                    m2_ln_like += etaStar ** 2. / 0.1 ** 2.
             else:
                 print('EtaStar: ', np.log10(eta_star), 'EtaStar Goal: ', etaStar)
 
@@ -329,7 +332,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 stream_jac[j][1] += 2. * (mag - vesc) / 50. ** 2. * str[1] / mag
                 stream_jac[j][2] += 2. * (mag - vesc) / 50. ** 2. * str[2] / mag
 
-        # print('Jac: ', stream_jac, norms_jac)
+        print('Jac: ', stream_jac, norms_jac)
         return np.append(stream_jac.flatten(), norms_jac).flatten()
 
 
@@ -421,6 +424,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         #print(np.dot(vh_bar, farr))
         eta_star = coefC * np.dot(vh_bar, farr)
         #print(np.log10(eta_star), etaStar)
+        if eta_star <= 0.:
+            return -1.
         if np.abs(np.log10(eta_star) - etaStar) < 1e-2:
             return 1.
         else:
