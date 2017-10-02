@@ -62,5 +62,7 @@ Exposure = 1.33 * 1000 * 365.25
 ERecoilList = np.array([])
 
 BinEdges = np.array([2., 6., 14.])
-BinData = np.array([0.0106 * 10.0, 0.0001 * 20.0])  # Table 6 of 1308.5109 in units of counts / (kg * day)
-BinError = np.array([0.0012 * 10.0, 0.0007 * 20.0])
+BinData_C = np.array([0.0106 * 10.0, 0.0001 * 20.0])  # Table 6 of 1308.5109 in units of counts / (kg * day)
+BinError_C = np.array([0.0012 * 10.0, 0.0007 * 20.0])
+BinData_S = np.array([-0.0006 * 10.0, 0.0000 * 20.0])
+BinError_S = np.array([0.0012 * 10.0, 0.0005 * 20.0])
