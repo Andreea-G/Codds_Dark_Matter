@@ -107,8 +107,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             self.curh_interp[i] = interp1d(self.vmin_linspace, self.curH_V[:, i], kind='cubic',
                                            bounds_error=False, fill_value=0)
 
-        self.curH_V_modamp_C = np.zeros((len(self.BinData_C), self.vmin_linspace_galactic.shape[0]**3, 4))
-        self.curH_V_modamp_S = np.zeros((len(self.BinData_S), self.vmin_linspace_galactic.shape[0] ** 3, 4))
+        self.curH_V_modamp_C = np.zeros((len(self.BinData_C), self.vmin_linspace_galactic.shape[0]**3))
+        self.curH_V_modamp_S = np.zeros((len(self.BinData_S), self.vmin_linspace_galactic.shape[0]**3))
         time_vals = np.linspace(0., 1., 100)
         for bin in range(len(self.BinData_C)):
             cnt = 0
@@ -121,8 +121,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                         projection_c = 2.*np.trapz(self.curh_interp[bin](speed)*np.cos(2.*np.pi*time_vals), time_vals)
                         projection_s = 2.*np.trapz(self.curh_interp[bin](speed)*np.sin(2.*np.pi*time_vals), time_vals)
                         #print(speed, projection)
-                        self.curH_V_modamp_C[bin, cnt] = [ux, uy, uz, projection_c]
-                        self.curH_V_modamp_S[bin, cnt] = [ux, uy, uz, projection_s]
+                        self.curH_V_modamp_C[bin, cnt] = projection_c
+                        self.curH_V_modamp_S[bin, cnt] = projection_s
                         cnt += 1
 
             file_S = file_output + "_ModH_SIN_Tab_Bin_{:.0f}.dat".format(bin)
@@ -186,9 +186,9 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         self.curh_interp = np.zeros(len(self.BinData_C), dtype=object)
         self.curH_modamp_interp_C = np.zeros(len(self.BinData_C), dtype=object)
-        self.curH_V_modamp_C = np.zeros((len(self.BinData_C), self.vmin_linspace_galactic.shape[0] ** 3, 4))
+        self.curH_V_modamp_C = np.zeros((len(self.BinData_C), self.vmin_linspace_galactic.shape[0] ** 3))
         self.curH_modamp_interp_S = np.zeros(len(self.BinData_S), dtype=object)
-        self.curH_V_modamp_S = np.zeros((len(self.BinData_S), self.vmin_linspace_galactic.shape[0] ** 3, 4))
+        self.curH_V_modamp_S = np.zeros((len(self.BinData_S), self.vmin_linspace_galactic.shape[0] ** 3))
         for i in range(len(self.BinData_C)):
             self.curh_interp[i] = interp1d(self.vmin_linspace, self.curH_V[:, i], kind='cubic',
                                            bounds_error=False, fill_value=0)
@@ -204,16 +204,15 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             self.curH_modamp_interp_C[i] = RegularGridInterpolator((self.vmin_linspace_galactic,
                                                                   self.vmin_linspace_galactic,
                                                                   self.vmin_linspace_galactic),
-                                                              self.curH_V_modamp_C[i][:, 3].reshape(num_vmin,
-                                                                                                  num_vmin,num_vmin),
+                                                              self.curH_V_modamp_C[i].reshape(num_vmin, num_vmin,
+                                                                                              num_vmin),
                                                                  bounds_error=False,
                                                                  fill_value=0)
             self.curH_modamp_interp_S[i] = RegularGridInterpolator((self.vmin_linspace_galactic,
                                                                     self.vmin_linspace_galactic,
                                                                     self.vmin_linspace_galactic),
-                                                                   self.curH_V_modamp_S[i][:, 3].reshape(num_vmin,
-                                                                                                         num_vmin,
-                                                                                                         num_vmin),
+                                                                   self.curH_V_modamp_S[i].reshape(num_vmin, num_vmin,
+                                                                                                   num_vmin),
                                                                    bounds_error=False,
                                                                    fill_value=0)
 
