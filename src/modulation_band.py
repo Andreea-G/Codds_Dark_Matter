@@ -517,13 +517,9 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 m2_ln_like += ((rfake_sin**2. - rc_sin**2. + 2.*self.BinData_S[i] * 
                                (rc_sin - rfake_sin)) / (stream_pert * self.BinErr_S[i])**2.)**2.
                 
-                #print('Str Contrib: ', m2_ln_like)
-                rfake_cos = self.rate_calculation(i, [stre], [norms[j]+norm_pert], CorS='C')
-                rfake_sin = self.rate_calculation(i, [stre], [norms[j]+norm_pert], CorS='S')
-                m2_ln_like += ((rfake_cos**2. - rc_cos**2. + 2.*self.BinData_C[i] * 
-                               (rc_cos - rfake_cos)) / (norm_pert * self.BinErr_C[i])**2.)**2.
-                m2_ln_like += ((rfake_sin**2. - rc_sin**2. + 2.*self.BinData_S[i] * 
-                               (rc_sin - rfake_sin)) / (norm_pert * self.BinErr_S[i])**2.)**2.
+                
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*np.log(10.)*rc_cos / self.BinErr_C**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*np.log(10.)*rc_sin / self.BinErr_S**2.)**2.
                 
         rate_contrib = copy.copy(m2_ln_like)
         print('Rate Contrib: ', -np.sqrt(rate_contrib))
