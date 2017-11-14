@@ -492,6 +492,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 rc_cos = self.rate_calculation(i, [stre], [norms[j]], CorS='C')
                 rc_sin = self.rate_calculation(i, [stre], [norms[j]], CorS='S')
                 
+                
                 strm_ep = stre + np.array([stream_pert, 0., 0.])
                 rfake_cos = self.rate_calculation(i, [strm_ep], [norms[j]], CorS='C')
                 rfake_sin = self.rate_calculation(i, [strm_ep], [norms[j]], CorS='S')
@@ -523,7 +524,10 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                                (rc_cos - rfake_cos)) / (norm_pert * self.BinErr_C[i])**2.)**2.
                 m2_ln_like += ((rfake_sin**2. - rc_sin**2. + 2.*self.BinData_S[i] * 
                                (rc_sin - rfake_sin)) / (norm_pert * self.BinErr_S[i])**2.)**2.
-                #print('Eta Contrib: ', m2_ln_like)
+                
+        rate_contrib = copy.copy(m2_ln_like)
+        print('Rate Contrib: ', -np.sqrt(rate_contrib))
+                
         vh_bar_N = np.zeros(streams.shape[0])
         vh_bar = np.zeros_like(streams)
         vh_bar_per = np.zeros_like(streams)
@@ -551,12 +555,6 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             strm_ep = stre + np.array([0., 0., stream_pert])
             vh_bar[j][2] = self.v_bar_modulation(vMinStar, time_arr, str)
             vh_bar_per[j][2] = self.v_bar_modulation(vMinStar, time_arr, str+strm_ep)
-            
-            if np.sum(vh_bar[j]) > 0.: 
-                m2_ln_like += (lag_mult * np.log10(np.sum(vh_bar_per[j])/np.sum(vh_bar[j])) / stream_pert)**2.
-                m2_ln_like += (lag_mult * np.log10(np.dot(np.power(10., np.ones(3) * norm_pert), vh_bar[j])) / norm_pert) ** 2.
-            else: 
-                m2_ln_like += 1e5
           
             
             vh_bar_N[j] = self.v_bar_modulation(vMinStar, time_arr, str)
@@ -565,7 +563,13 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 
         eta_calc = np.dot(vh_bar_N, np.power(10., norms))
         m2_ln_like += (np.log10(eta_calc) - etaStar)**2.
-        #print('Lambda Term Contrib: ', m2_ln_like)
+        for j,str in enumerate(streams):
+            m2_ln_like += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][0] - vh_bar[j][0]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][1] - vh_bar[j][1]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][2] - vh_bar[j][2]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like += (lag_mult)**2.
+        
+        print('Lambda Term Contrib: ', -np.sqrt(m2_ln_like - rate_contrib))
         print('Eta Star Calc:', np.log10(eta_calc), ' Eta Star: ', etaStar, ' Val: ', -np.sqrt(m2_ln_like))
       
         return np.sqrt(m2_ln_like)
@@ -637,7 +641,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.constr_info = {'vstar': vminStar, 'letastar': logetaStar}
         
         pymultinest.run(self.loglike_total_multinest_wrapper_constr, self.prior_func, 
-                        len(self.param_names), resume=False, n_live_points=500)
+                        len(self.param_names), resume=False, n_live_points=2000)
         bf_test = self.global_bestfit()
         print (bf_test)
         
