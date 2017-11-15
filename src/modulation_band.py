@@ -111,6 +111,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.curH_V_modamp_C = np.zeros((len(self.BinData_C), self.vmin_linspace_galactic.shape[0]**3))
         self.curH_V_modamp_S = np.zeros((len(self.BinData_S), self.vmin_linspace_galactic.shape[0]**3))
         time_vals = np.linspace(0., 1., 100)
+        t0DAMA = 0.4178
         for bin in range(len(self.BinData_C)):
             cnt = 0
             for i,ux in enumerate(self.vmin_linspace_galactic):
@@ -118,9 +119,9 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                     for k,uz in enumerate(self.vmin_linspace_galactic):
                         speed = np.sqrt(np.sum((np.array([ux, uy, uz]) - self.v_sun -
                                                 self.v_Earth(time_vals))**2., axis=1))
-
-                        projection_c = 2.*np.trapz(self.curh_interp[bin](speed)*np.cos(2.*np.pi*time_vals), time_vals)
-                        projection_s = 2.*np.trapz(self.curh_interp[bin](speed)*np.sin(2.*np.pi*time_vals), time_vals)
+                        
+                        projection_c = 2.*np.trapz(self.curh_interp[bin](speed)*np.cos(2.*np.pi*(time_vals - t0DAMA)), time_vals)
+                        projection_s = 2.*np.trapz(self.curh_interp[bin](speed)*np.sin(2.*np.pi*(time_vals - t0DAMA)), time_vals)
                         #print(speed, projection)
                         self.curH_V_modamp_C[bin, cnt] = projection_c
                         self.curH_V_modamp_S[bin, cnt] = projection_s
@@ -488,20 +489,20 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 rc_sin = self.rate_calculation(i, [stre], [norms[j]], CorS='S')                
                 
                 strm_ep = stre + np.array([stream_pert, 0., 0.])
-                diff_c = (self.curH_modamp_interp_C[i](strm_ep) - self.curH_modamp_interp_C[i](stre)) / stream_pert
-                diff_s = (self.curH_modamp_interp_S[i](strm_ep) - self.curH_modamp_interp_S[i](stre)) / stream_pert
+                diff_c = self.del_curlH_modamp(i, 0, stre, CorS='C', epsilon=4.)
+                diff_s = self.del_curlH_modamp(i, 0, stre, CorS='S', epsilon=4.)
                 m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
                 m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
                 
                 strm_ep = stre + np.array([0., stream_pert, 0.])
-                diff_c = (self.curH_modamp_interp_C[i](strm_ep) - self.curH_modamp_interp_C[i](stre)) / stream_pert
-                diff_s = (self.curH_modamp_interp_S[i](strm_ep) - self.curH_modamp_interp_S[i](stre)) / stream_pert
+                diff_c = self.del_curlH_modamp(i, 1, stre, CorS='C', epsilon=4.)
+                diff_s = self.del_curlH_modamp(i, 1, stre, CorS='S', epsilon=4.)
                 m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
                 m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
                 
                 strm_ep = stre + np.array([0., 0., stream_pert])
-                diff_c = (self.curH_modamp_interp_C[i](strm_ep) - self.curH_modamp_interp_C[i](stre)) / stream_pert
-                diff_s = (self.curH_modamp_interp_S[i](strm_ep) - self.curH_modamp_interp_S[i](stre)) / stream_pert
+                diff_c = self.del_curlH_modamp(i, 2, stre, CorS='C', epsilon=4.)
+                diff_s = self.del_curlH_modamp(i, 2, stre, CorS='S', epsilon=4.)
                 m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
                 m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
                 
@@ -544,7 +545,10 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             vh_bar_N[j] = self.v_bar_modulation(vMinStar, time_arr, str)
             if vh_bar_N[j] == 0:
                 vh_bar_N[j] = 1e-100
-                
+        
+        print('vhBars: ', vh_bar_N)
+        print('Norms: ', norms)
+        print('Vstar: ', vMinStar)
         eta_calc = np.dot(vh_bar_N, np.power(10., norms))
         m2_ln_like2 += (np.log10(eta_calc) - etaStar)**2.
         for j,str in enumerate(streams):
