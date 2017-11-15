@@ -36,7 +36,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.target_mass = module.target_nuclide_mass_list
 
         self.unique = True
-        self.vmin_linspace_galactic = np.linspace(1., vesc, 250)
+        self.vmin_linspace_galactic = np.linspace(-vesc, vesc, 250)
         self.vmin_max = self.vmin_linspace_galactic[-1]
         self.v_sun = np.array([11., 232., 7.])
 
@@ -243,21 +243,16 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         cube_val = cube_val * (cube_max - cube_min) + cube_min
         return cube_val
 
-    def logflat_prior(self, cube_val, cube_max=533., cube_min=1.):
-        power = (np.log10(cube_max) - np.log10(cube_min))*cube_val + np.log10(cube_min)
-        cube_val = 10**power                                                                                        
-        return cube_val
                                                                 
     def prior_func(self, cube, ndim, nparams):
         params = self.param_names
         for i in range(ndim):
             if params[i] == "velocity":
-                cube[i] = self.flat_prior(cube[i], cube_max=533., cube_min=0.)
-                #cube[i] = self.logflat_prior(cube[i])
+                cube[i] = self.flat_prior(cube[i], cube_max=vesc, cube_min=-vesc)
             elif params[i] == "mag":
                 cube[i] = self.flat_prior(cube[i])
             else:
-                cube[i] = self.flat_prior(cube[i], cube_max=10000., cube_min=-10000.)
+                cube[i] = self.flat_prior(cube[i], cube_max=1000., cube_min=-1000.)
             # print(params[i], cube[i])
         return
 
@@ -490,40 +485,33 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         for i in range(int(self.Nbins / 2)):
             for j,stre in enumerate(streams):
                 rc_cos = self.rate_calculation(i, [stre], [norms[j]], CorS='C')
-                rc_sin = self.rate_calculation(i, [stre], [norms[j]], CorS='S')
-                
+                rc_sin = self.rate_calculation(i, [stre], [norms[j]], CorS='S')                
                 
                 strm_ep = stre + np.array([stream_pert, 0., 0.])
-                rfake_cos = self.rate_calculation(i, [strm_ep], [norms[j]], CorS='C')
-                rfake_sin = self.rate_calculation(i, [strm_ep], [norms[j]], CorS='S')
-                m2_ln_like += ((rfake_cos**2. - rc_cos**2. + 2.*self.BinData_C[i] * 
-                               (rc_cos - rfake_cos)) / (stream_pert * self.BinErr_C[i])**2.)**2.
-                m2_ln_like += ((rfake_sin**2. - rc_sin**2. + 2.*self.BinData_S[i] * 
-                               (rc_sin - rfake_sin)) / (stream_pert * self.BinErr_S[i])**2.)**2.
-                               
+                diff_c = (self.curH_modamp_interp_C[i](strm_ep) - self.curH_modamp_interp_C[i](stre)) / stream_pert
+                diff_s = (self.curH_modamp_interp_S[i](strm_ep) - self.curH_modamp_interp_S[i](stre)) / stream_pert
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
+                
                 strm_ep = stre + np.array([0., stream_pert, 0.])
-                rfake_cos = self.rate_calculation(i, [strm_ep], [norms[j]], CorS='C')
-                rfake_sin = self.rate_calculation(i, [strm_ep], [norms[j]], CorS='S')
-                m2_ln_like += ((rfake_cos**2. - rc_cos**2. + 2.*self.BinData_C[i] * 
-                               (rc_cos - rfake_cos)) / (stream_pert * self.BinErr_C[i])**2.)**2.
-                m2_ln_like += ((rfake_sin**2. - rc_sin**2. + 2.*self.BinData_S[i] * 
-                               (rc_sin - rfake_sin)) / (stream_pert * self.BinErr_S[i])**2.)**2.
-                               
+                diff_c = (self.curH_modamp_interp_C[i](strm_ep) - self.curH_modamp_interp_C[i](stre)) / stream_pert
+                diff_s = (self.curH_modamp_interp_S[i](strm_ep) - self.curH_modamp_interp_S[i](stre)) / stream_pert
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
+                
                 strm_ep = stre + np.array([0., 0., stream_pert])
-                rfake_cos = self.rate_calculation(i, [strm_ep], [norms[j]], CorS='C')
-                rfake_sin = self.rate_calculation(i, [strm_ep], [norms[j]], CorS='S')
-                m2_ln_like += ((rfake_cos**2. - rc_cos**2. + 2.*self.BinData_C[i] * 
-                               (rc_cos - rfake_cos)) / (stream_pert * self.BinErr_C[i])**2.)**2.
-                m2_ln_like += ((rfake_sin**2. - rc_sin**2. + 2.*self.BinData_S[i] * 
-                               (rc_sin - rfake_sin)) / (stream_pert * self.BinErr_S[i])**2.)**2.
+                diff_c = (self.curH_modamp_interp_C[i](strm_ep) - self.curH_modamp_interp_C[i](stre)) / stream_pert
+                diff_s = (self.curH_modamp_interp_S[i](strm_ep) - self.curH_modamp_interp_S[i](stre)) / stream_pert
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
                 
                 
-                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*np.log(10.)*rc_cos / self.BinErr_C**2.)**2.
-                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*np.log(10.)*rc_sin / self.BinErr_S**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*np.log(10.)*rc_cos / self.BinErr_C[i]**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*np.log(10.)*rc_sin / self.BinErr_S[i]**2.)**2.
                 
         rate_contrib = copy.copy(m2_ln_like)
         print('Rate Contrib: ', -np.sqrt(rate_contrib))
-                
+        m2_ln_like2 = 0.
         vh_bar_N = np.zeros(streams.shape[0])
         vh_bar = np.zeros_like(streams)
         vh_bar_per = np.zeros_like(streams)
@@ -537,7 +525,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 val1 = (mag - vesc)**2. / 50.**2.
             if mag2 > vesc:
                 val2 = (mag2 - vesc)**2. / 50.**2.
-            m2_ln_like += ((val2**2. - val1**2. + vesc*(val1 - val2)) / stream_pert **2.)**2.
+            m2_ln_like2 += ((val2**2. - val1**2. + vesc*(val1 - val2)) / stream_pert **2.)**2.
 
             time_arr = np.linspace(0., 1., 60)
             strm_ep = stre + np.array([stream_pert, 0., 0.])
@@ -555,20 +543,20 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             
             vh_bar_N[j] = self.v_bar_modulation(vMinStar, time_arr, str)
             if vh_bar_N[j] == 0:
-                vh_bar_N[j] = 1e-30
+                vh_bar_N[j] = 1e-100
                 
         eta_calc = np.dot(vh_bar_N, np.power(10., norms))
-        m2_ln_like += (np.log10(eta_calc) - etaStar)**2.
+        m2_ln_like2 += (np.log10(eta_calc) - etaStar)**2.
         for j,str in enumerate(streams):
-            m2_ln_like += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][0] - vh_bar[j][0]) / (np.log(10.) * eta_calc * stream_pert))**2.
-            m2_ln_like += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][1] - vh_bar[j][1]) / (np.log(10.) * eta_calc * stream_pert))**2.
-            m2_ln_like += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][2] - vh_bar[j][2]) / (np.log(10.) * eta_calc * stream_pert))**2.
-            m2_ln_like += (lag_mult)**2.
+            m2_ln_like2 += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][0] - vh_bar[j][0]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like2 += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][1] - vh_bar[j][1]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like2 += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][2] - vh_bar[j][2]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like2 += (lag_mult)**2.
         
-        print('Lambda Term Contrib: ', -np.sqrt(m2_ln_like - rate_contrib))
-        print('Eta Star Calc:', np.log10(eta_calc), ' Eta Star: ', etaStar, ' Val: ', -np.sqrt(m2_ln_like))
+        print('Lambda Term Contrib: ', -np.sqrt(m2_ln_like2))
+        print('Eta Star Calc:', np.log10(eta_calc), ' Eta Star: ', etaStar, ' Val: ', -np.sqrt(m2_ln_like+m2_ln_like2))
       
-        return np.sqrt(m2_ln_like)
+        return np.log10(np.sqrt(m2_ln_like+m2_ln_like2))
 
 
     def ImportMultiOptimalLikelihood(self, output_file, output_file_CDMS, plot=False):
@@ -625,6 +613,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         #               options={'maxiter': 1000, 'disp': False})
         #print(opt)
 
+        
+
         self.param_names = []
         for i in range(n_streams):
             self.param_names.append("velocity")
@@ -635,6 +625,17 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             
         self.param_names.append("X")
         self.constr_info = {'vstar': vminStar, 'letastar': logetaStar}
+        
+        bftest = np.append(self.streams, np.array([1.,1.,1.]))
+        bftest = np.append(bftest, self.norms)
+        bftest = np.append(bftest, [-50.])
+        bftest = np.append(bftest, 0.).flatten()
+        print(bftest)
+        test = -self.constrained_gaussian_jacobian(bftest, vMinStar=self.constr_info['vstar'], 
+                                                  etaStar=self.constr_info['letastar'], add_streams=1,
+                                                  p_etastar=True)
+        print('TEST', test)
+        exit()
         
         pymultinest.run(self.loglike_total_multinest_wrapper_constr, self.prior_func, 
                         len(self.param_names), resume=False, n_live_points=2000)
@@ -670,7 +671,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
     def v_bar_modulation(self, vmin, tarray, stream):
         speed = np.sqrt(np.sum((stream - self.v_sun - self.v_Earth(tarray)) ** 2., axis=1))
-        #print('Speed: ', speed, 'VStar: ', vmin)
+        print('Speed: ', speed, 'VStar: ', vmin)
         integrnd = 1. / speed
         integrnd[speed < vmin] = 0.
         val_v = np.trapz(integrnd, tarray)
