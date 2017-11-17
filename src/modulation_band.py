@@ -253,7 +253,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             elif params[i] == "mag":
                 cube[i] = self.flat_prior(cube[i])
             else:
-                cube[i] = self.flat_prior(cube[i], cube_max=1000., cube_min=-1000.)
+                cube[i] = self.flat_prior(cube[i], cube_max=10., cube_min=-10.)
             # print(params[i], cube[i])
         return
 
@@ -287,13 +287,19 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             self.param_names.append("mag")
 
         pymultinest.run(self.loglike_total_multinest_wrapper, self.prior_func, len(self.param_names), resume=False,
-                                                n_live_points=2000)
+                                                n_live_points=1000)
         bf_test = self.global_bestfit()
         print (bf_test)
         print (self.gaussian_m_ln_likelihood(bf_test))
         streams, norms = self.unpack_streams_norms(bf_test)
+        
+        vh_bar = np.zeros(len(streams))
+        for j, strm in enumerate(streams):
+            time_arr = np.linspace(0., 1., 60)
+            vh_bar[j] = self.v_bar_modulation(100., time_arr, strm)
+        #print('CHECK: ', np.dot(vh_bar, np.power(10., norms)))
+        
         #logeta_bnd = (-40.0, -15.0)
-        #bnd_eta = [logeta_bnd] * self.n_streams
         #vmin_bnd = (0, self.vmin_max)
         #bnd_vmin = [vmin_bnd] * (self.n_streams * 3)
         #bnd = bnd_vmin + bnd_eta
@@ -368,7 +374,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                     m2_ln_like += etaStar ** 2. / (0.001)**2.
             else:
                 print('EtaStar: ', np.log10(eta_star), 'EtaStar Goal: ', etaStar)
-
+        
         return m2_ln_like
 
     def gaussian_jacobian(self, streams_norms, vMinStar=None, etaStar=None, add_streams=0, include_penalty=False):
@@ -447,6 +453,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         for i in range(int(self.Nbins / 2)):
             m2_ln_like += ((self.BinData_C[i] - self.rate_calculation(i, streams, norms, CorS='C')) / self.BinErr_C[i])**2.
             m2_ln_like += ((self.BinData_S[i] - self.rate_calculation(i, streams, norms, CorS='S')) / self.BinErr_S[i]) ** 2.
+            print('Bin [COS]: ', i, self.rate_calculation(i, streams, norms, CorS='C'))
+            print('Bin [SIN]: ', i, self.rate_calculation(i, streams, norms, CorS='S'))
 
         for str in streams:
             mag = np.sqrt(np.sum(str * str))
@@ -467,7 +475,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         #print('Lag', lag_mult, m2_ln_like)
         if p_etastar:
             print('EtaStar: ', np.log10(eta_star), 'EtaStar Goal: ', etaStar)
-
+            
         return m2_ln_like
 
     def constrained_gaussian_jacobian(self, variables, vMinStar=None, etaStar=None, add_streams=0,
@@ -511,7 +519,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*np.log(10.)*rc_sin / self.BinErr_S[i]**2.)**2.
                 
         rate_contrib = copy.copy(m2_ln_like)
-        print('Rate Contrib: ', -np.sqrt(rate_contrib))
+        #print('Rate Contrib: ', -np.sqrt(rate_contrib))
         m2_ln_like2 = 0.
         vh_bar_N = np.zeros(streams.shape[0])
         vh_bar = np.zeros_like(streams)
@@ -523,11 +531,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             val1 = 0.
             val2 = 0.
             if mag > vesc:
-                val1 = (mag - vesc)**2. / 50.**2.
-            if mag2 > vesc:
-                val2 = (mag2 - vesc)**2. / 50.**2.
-            m2_ln_like2 += ((val2**2. - val1**2. + vesc*(val1 - val2)) / stream_pert **2.)**2.
-
+                m2_ln_like2 += (2. * (mag - vesc) / (50.** 2.*mag) * np.sum(str))**2.
+            
             time_arr = np.linspace(0., 1., 60)
             strm_ep = stre + np.array([stream_pert, 0., 0.])
             vh_bar[j][0] = self.v_bar_modulation(vMinStar, time_arr, str)
@@ -546,9 +551,9 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             if vh_bar_N[j] == 0:
                 vh_bar_N[j] = 1e-100
         
-        print('vhBars: ', vh_bar_N)
-        print('Norms: ', norms)
-        print('Vstar: ', vMinStar)
+        #print('vhBars: ', vh_bar_N)
+        #print('Norms: ', norms)
+        #print('Vstar: ', vMinStar)
         eta_calc = np.dot(vh_bar_N, np.power(10., norms))
         m2_ln_like2 += (np.log10(eta_calc) - etaStar)**2.
         for j,str in enumerate(streams):
@@ -557,10 +562,11 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             m2_ln_like2 += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][2] - vh_bar[j][2]) / (np.log(10.) * eta_calc * stream_pert))**2.
             m2_ln_like2 += (lag_mult)**2.
         
-        print('Lambda Term Contrib: ', -np.sqrt(m2_ln_like2))
+        #print('Lambda Term Contrib: ', -np.sqrt(m2_ln_like2))
+        #test = self.eta_BF_time_avg_Constr(streams_norms, vMinStar ,add_streams=1)
         print('Eta Star Calc:', np.log10(eta_calc), ' Eta Star: ', etaStar, ' Val: ', -np.sqrt(m2_ln_like+m2_ln_like2))
       
-        return np.log10(np.sqrt(m2_ln_like+m2_ln_like2))
+        return 10.** m2_ln_like+m2_ln_like2 #np.exp(m2_ln_like+m2_ln_like2) #(m2_ln_like+m2_ln_like2)**10. 
 
 
     def ImportMultiOptimalLikelihood(self, output_file, output_file_CDMS, plot=False):
@@ -616,7 +622,6 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         #               bounds=bnd,  args=(vminStar, logetaStar, 1, False), #constraints=constr,
         #               options={'maxiter': 1000, 'disp': False})
         #print(opt)
-
         
 
         self.param_names = []
@@ -630,19 +635,19 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.param_names.append("X")
         self.constr_info = {'vstar': vminStar, 'letastar': logetaStar}
         
-        bftest = np.append(self.streams, np.array([1.,1.,1.]))
-        bftest = np.append(bftest, self.norms)
-        bftest = np.append(bftest, [-50.])
-        bftest = np.append(bftest, 0.).flatten()
-        print(bftest)
-        test = -self.constrained_gaussian_jacobian(bftest, vMinStar=self.constr_info['vstar'], 
-                                                  etaStar=self.constr_info['letastar'], add_streams=1,
-                                                  p_etastar=True)
-        print('TEST', test)
-        exit()
+#        bftest = np.append(self.streams, np.array([1.,1.,1.]))
+#        bftest = np.append(bftest, self.norms)
+#        bftest = np.append(bftest, [-50.])
+#        bftest = np.append(bftest, 0.).flatten()
+#        print(bftest)
+#        test = -self.constrained_gaussian_jacobian(bftest, vMinStar=self.constr_info['vstar'], 
+#                                                  etaStar=self.constr_info['letastar'], add_streams=1,
+#                                                  p_etastar=True)
+#        print('TEST', test)
+#        exit()
         
         pymultinest.run(self.loglike_total_multinest_wrapper_constr, self.prior_func, 
-                        len(self.param_names), resume=False, n_live_points=2000)
+                        len(self.param_names), resume=False, n_live_points=3000)
         bf_test = self.global_bestfit()
         print (bf_test)
         
@@ -653,8 +658,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         print(val, streams, norms)
         return val
 
-    def eta_BF_time_avg(self, streams_norms, output_file):
-        streams, norms = self.unpack_streams_norms(streams_norms)
+    def eta_BF_time_avg(self, streams_norms, output_file, output=True, add_streams=0):
+        streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)
         coefC = np.sum(np.power(10., norms))
         farr = np.power(10., norms) / coefC
 
@@ -669,13 +674,26 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         vmin_arr = np.insert(vmin_arr, 0, 0)
         eta_0_bf = np.insert(eta_0_bf, 0, eta_0_bf[0])
-        file_nme = output_file + '_TimeAverage_Eta_BF.dat'
-        np.savetxt(file_nme, np.column_stack((vmin_arr, eta_0_bf)))
+        if output:
+            file_nme = output_file + '_TimeAverage_Eta_BF.dat'
+            np.savetxt(file_nme, np.column_stack((vmin_arr, eta_0_bf)))
         return
+    
+    def eta_BF_time_avg_Constr(self, streams_norms, vmin, add_streams=0):
+        streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)
+        coefC = np.sum(np.power(10., norms))
+        farr = np.power(10., norms) / coefC
+        time_arr = np.linspace(0., 1., 60)        
+        vh_bar = np.zeros(streams.shape[0])
+        
+        for j,str in enumerate(streams):
+            vh_bar[j] = self.v_bar_modulation(vmin, time_arr, str)
+        eta_0_bf = coefC * np.dot(vh_bar, farr)
+        return eta_0_bf
 
     def v_bar_modulation(self, vmin, tarray, stream):
         speed = np.sqrt(np.sum((stream - self.v_sun - self.v_Earth(tarray)) ** 2., axis=1))
-        print('Speed: ', speed, 'VStar: ', vmin)
+        #print('Speed: ', speed, 'VStar: ', vmin)
         integrnd = 1. / speed
         integrnd[speed < vmin] = 0.
         val_v = np.trapz(integrnd, tarray)
