@@ -13,6 +13,7 @@ import numpy as np
 from scipy.interpolate import interp1d, interpn, LinearNDInterpolator, RegularGridInterpolator
 from scipy.integrate import quad, dblquad
 import copy
+import pymultinest
 
 # TODO: This is only functioning for 2 bin analysis of DAMA...
 
@@ -35,7 +36,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.target_mass = module.target_nuclide_mass_list
 
         self.unique = True
-        self.vmin_linspace_galactic = np.linspace(1., vesc, vesc-1)
+        self.vmin_linspace_galactic = np.linspace(-vesc, vesc, 250)
         self.vmin_max = self.vmin_linspace_galactic[-1]
         self.v_sun = np.array([11., 232., 7.])
 
@@ -46,14 +47,14 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         return vE
 
     def _VMin_Guess(self):
-        self.vmin_sorted_list = random.rand(self.Nbins, 3) * vesc
+        self.vmin_sorted_list = random.rand(int(self.Nbins), 3) * vesc
 
         return
 
     def _VMin_Guess_Constrained(self, vminStar):
         print('Looking for viable streams...')
-        vmin_sorted_list = np.zeros((self.Nbins + 1, 3))
-        for i in range(self.Nbins + 1):
+        vmin_sorted_list = np.zeros((int(self.Nbins) + 1, 3))
+        for i in range(self.Nbins / 2 + 1):
             found_it = False
             cnt = 0
             while not found_it:
@@ -110,6 +111,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.curH_V_modamp_C = np.zeros((len(self.BinData_C), self.vmin_linspace_galactic.shape[0]**3))
         self.curH_V_modamp_S = np.zeros((len(self.BinData_S), self.vmin_linspace_galactic.shape[0]**3))
         time_vals = np.linspace(0., 1., 100)
+        t0DAMA = 0.4178
         for bin in range(len(self.BinData_C)):
             cnt = 0
             for i,ux in enumerate(self.vmin_linspace_galactic):
@@ -117,9 +119,9 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                     for k,uz in enumerate(self.vmin_linspace_galactic):
                         speed = np.sqrt(np.sum((np.array([ux, uy, uz]) - self.v_sun -
                                                 self.v_Earth(time_vals))**2., axis=1))
-
-                        projection_c = 2.*np.trapz(self.curh_interp[bin](speed)*np.cos(2.*np.pi*time_vals), time_vals)
-                        projection_s = 2.*np.trapz(self.curh_interp[bin](speed)*np.sin(2.*np.pi*time_vals), time_vals)
+                        
+                        projection_c = 2.*np.trapz(self.curh_interp[bin](speed)*np.cos(2.*np.pi*(time_vals - t0DAMA)), time_vals)
+                        projection_s = 2.*np.trapz(self.curh_interp[bin](speed)*np.sin(2.*np.pi*(time_vals - t0DAMA)), time_vals)
                         #print(speed, projection)
                         self.curH_V_modamp_C[bin, cnt] = projection_c
                         self.curH_V_modamp_S[bin, cnt] = projection_s
@@ -218,7 +220,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         return
 
-    def del_curlH_modamp(self, bin, axis, stream, CorS='C', epsilon=3.):
+    def del_curlH_modamp(self, bin, axis, stream, CorS='C', epsilon=2.):
         perturb = np.array([0., 0., 0.])
         perturb[axis] += epsilon
         v1 = stream + perturb
@@ -231,13 +233,38 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
     def rate_calculation(self, bin, streams, ln10_norms, CorS='C'):
         val = 0.
-        #print(ln10_norms)
         for i,str in enumerate(streams):
             if CorS == 'C':
                 val += np.power(10., ln10_norms[i]) * self.curH_modamp_interp_C[bin](str)
             else:
                 val += np.power(10., ln10_norms[i]) * self.curH_modamp_interp_S[bin](str)
         return val
+
+    def flat_prior(self, cube_val, cube_max=-1., cube_min=-50.):
+        cube_val = cube_val * (cube_max - cube_min) + cube_min
+        return cube_val
+
+                                                                
+    def prior_func(self, cube, ndim, nparams):
+        params = self.param_names
+        for i in range(ndim):
+            if params[i] == "velocity":
+                cube[i] = self.flat_prior(cube[i], cube_max=vesc, cube_min=-vesc)
+            elif params[i] == "mag":
+                cube[i] = self.flat_prior(cube[i])
+            else:
+                cube[i] = self.flat_prior(cube[i], cube_max=10., cube_min=-10.)
+            # print(params[i], cube[i])
+        return
+
+    def global_bestfit(self):
+        """
+        Returns maximum a posteriori values for parameters. 
+        """
+        samples = np.loadtxt(os.getcwd() + '/chains/1-post_equal_weights.dat')
+        posterior = samples[:,-1]
+        max_index = posterior.argmax()
+        return samples[max_index,:-1]
 
     def MultiExperimentOptimalLikelihood(self, multiexper_input, class_name, mx, fp, fn, delta, output_file,
                                          output_file_CDMS, logeta_guess, nsteps_bin):
@@ -246,31 +273,52 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         #self.ImportResponseTables(output_file_CDMS, plot=False)
         streams = self.vmin_sorted_list
-        self.n_streams = len(self.vmin_sorted_list)
+        #self.n_streams = len(self.vmin_sorted_list)
+        self.n_streams = 1
         vars_guess = np.append(streams, logeta_guess * np.ones(self.n_streams))
-        print("vars_guess = ", vars_guess)
+        #print("vars_guess = ", vars_guess)
 
-        logeta_bnd = (-40.0, -15.0)
-        bnd_eta = [logeta_bnd] * self.n_streams
-        vmin_bnd = (0, self.vmin_max)
-        bnd_vmin = [vmin_bnd] * (self.n_streams * 3)
-        bnd = bnd_vmin + bnd_eta
+        self.param_names = []
+        for i in range(self.n_streams):
+            self.param_names.append("velocity")
+            self.param_names.append("velocity")
+            self.param_names.append("velocity")
+        for i in range(self.n_streams):
+            self.param_names.append("mag")
 
-        opt = minimize(self.gaussian_m_ln_likelihood, vars_guess,
-                       jac=self.gaussian_jacobian,
-                       method='SLSQP',
-                       tol=1e-8, bounds=bnd,
-                       #constraints=constr,
-                       options={'maxiter': 200, 'disp': True})
-        print(opt)
-        print('\n')
+        pymultinest.run(self.loglike_total_multinest_wrapper, self.prior_func, len(self.param_names), resume=False,
+                                                n_live_points=1000)
+        bf_test = self.global_bestfit()
+        print (bf_test)
+        print (self.gaussian_m_ln_likelihood(bf_test))
+        streams, norms = self.unpack_streams_norms(bf_test)
+        
+        vh_bar = np.zeros(len(streams))
+        for j, strm in enumerate(streams):
+            time_arr = np.linspace(0., 1., 60)
+            vh_bar[j] = self.v_bar_modulation(100., time_arr, strm)
+        #print('CHECK: ', np.dot(vh_bar, np.power(10., norms)))
+        
+        #logeta_bnd = (-40.0, -15.0)
+        #vmin_bnd = (0, self.vmin_max)
+        #bnd_vmin = [vmin_bnd] * (self.n_streams * 3)
+        #bnd = bnd_vmin + bnd_eta
+
+        #opt = minimize(self.gaussian_m_ln_likelihood, vars_guess,
+        #               jac=self.gaussian_jacobian,
+        #               method='SLSQP',
+        #               tol=1e-10, bounds=bnd,
+        #               #constraints=constr,
+        #               options={'maxiter': 300, 'disp': True})
+        #print(opt)
+        #print('\n')
         #
-        # opt = minimize(self.gaussian_m_ln_likelihood, vars_guess,
-        #                method='SLSQP', tol=1e-4,
-        #                bounds=bnd, #constraints=constr,
-        #                options={'maxiter': 200, 'disp': False})
-        # print(opt)
-        streams, norms = self.unpack_streams_norms(opt.x)
+        #opt = minimize(self.gaussian_m_ln_likelihood, vars_guess,
+        #               method='SLSQP', tol=1e-4,
+        #               bounds=bnd, #constraints=constr,
+        #               options={'maxiter': 200, 'disp': False})
+        #print(opt)
+        #streams, norms = self.unpack_streams_norms(opt.x)
         for i in range(int(self.Nbins / 2)):
             if (np.abs(self.rate_calculation(i, streams, norms, CorS='C') - self.BinData_C[i]) < 1e-3) and \
                     (np.abs(self.rate_calculation(i, streams, norms, CorS='S') - self.BinData_S[i]) < 1e-3):
@@ -281,9 +329,9 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         file = output_file + "_GloballyOptimalLikelihood.dat"
         print(file)
-        np.savetxt(file, np.append([opt.fun], opt.x))
-
-        self.eta_BF_time_avg(opt.x, output_file)
+        #np.savetxt(file, np.append([opt.fun], opt.x))
+        np.savetxt(file, np.append([self.gaussian_m_ln_likelihood(bf_test)], bf_test))
+        self.eta_BF_time_avg(bf_test, output_file)
         return
 
     def unpack_streams_norms(self, full_vec, add_streams=0):
@@ -291,10 +339,16 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         streams = full_vec[:-(self.n_streams + add_streams)].reshape(self.n_streams + add_streams, 3)
         return streams, norms
 
+    def loglike_total_multinest_wrapper(self, cube, ndim, nparams):
+        streams_norms = np.zeros(ndim)
+        for i in range(ndim):
+            streams_norms[i] = cube[i]
+        return -self.gaussian_m_ln_likelihood(streams_norms)
+    
     def gaussian_m_ln_likelihood(self, streams_norms, vMinStar=None, etaStar=None, add_streams=0,
                                  include_penalty=False):
         # Note that I've had to insert penalty terms for the escape velocity and for constrained minimization
-
+        
         streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)
         m2_ln_like = 0.
         for i in range(int(self.Nbins / 2)):
@@ -320,7 +374,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                     m2_ln_like += etaStar ** 2. / (0.001)**2.
             else:
                 print('EtaStar: ', np.log10(eta_star), 'EtaStar Goal: ', etaStar)
-
+        
         return m2_ln_like
 
     def gaussian_jacobian(self, streams_norms, vMinStar=None, etaStar=None, add_streams=0, include_penalty=False):
@@ -399,6 +453,8 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         for i in range(int(self.Nbins / 2)):
             m2_ln_like += ((self.BinData_C[i] - self.rate_calculation(i, streams, norms, CorS='C')) / self.BinErr_C[i])**2.
             m2_ln_like += ((self.BinData_S[i] - self.rate_calculation(i, streams, norms, CorS='S')) / self.BinErr_S[i]) ** 2.
+            print('Bin [COS]: ', i, self.rate_calculation(i, streams, norms, CorS='C'))
+            print('Bin [SIN]: ', i, self.rate_calculation(i, streams, norms, CorS='S'))
 
         for str in streams:
             mag = np.sqrt(np.sum(str * str))
@@ -415,11 +471,11 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         #print(np.log10(eta_star), etaStar)
         if eta_star <= 0.:
             eta_star = 1e-50
-        m2_ln_like += lag_mult * (np.log10(eta_star) - etaStar)
+        m2_ln_like -= lag_mult * np.abs(np.log10(eta_star) - etaStar)
         #print('Lag', lag_mult, m2_ln_like)
         if p_etastar:
             print('EtaStar: ', np.log10(eta_star), 'EtaStar Goal: ', etaStar)
-
+            
         return m2_ln_like
 
     def constrained_gaussian_jacobian(self, variables, vMinStar=None, etaStar=None, add_streams=0,
@@ -430,71 +486,87 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)
         stream_jac = np.zeros_like(streams)
         norms_jac = np.zeros_like(norms)
-
+        m2_ln_like = 0.
+        
+        stream_pert = 5.
+        norm_pert = 0.001
+        
         for i in range(int(self.Nbins / 2)):
-            for j in range(len(norms)):
-                # print('test: ', self.del_curlH_modamp(i, 0, streams[j]), streams, norms)
-                norms_jac[j] += -2. * (self.BinData_C[i] - self.rate_calculation(i, streams, norms, CorS='C')) / \
-                                self.BinErr_C[i] ** 2. * self.curH_modamp_interp_C[i](streams[j]) *\
-                                10.**norms[j] * np.log(10.)
-                norms_jac[j] += -2. * (self.BinData_S[i] - self.rate_calculation(i, streams, norms, CorS='S')) / \
-                                self.BinErr_S[i] ** 2. * self.curH_modamp_interp_S[i](streams[j]) * \
-                                10. ** norms[j] * np.log(10.)
-                stream_jac[j][0] += 2. * (self.BinData_C[i] - self.rate_calculation(i, streams, norms, CorS='C')) / \
-                                self.BinErr_C[i] ** 2. * 10.**norms[j] * \
-                                self.del_curlH_modamp(i, 0, streams[j], CorS='C')
-                stream_jac[j][0] += 2. * (self.BinData_S[i] - self.rate_calculation(i, streams, norms, CorS='S')) / \
-                                    self.BinErr_S[i] ** 2. * 10. ** norms[j] * \
-                                    self.del_curlH_modamp(i, 0, streams[j], CorS='S')
-                stream_jac[j][1] += 2. * (self.BinData_C[i] - self.rate_calculation(i, streams, norms, CorS='C')) / \
-                                   self.BinErr_C[i] ** 2. * 10.**norms[j] * \
-                                   self.del_curlH_modamp(i, 1, streams[j], CorS='C')
-                stream_jac[j][1] += 2. * (self.BinData_S[i] - self.rate_calculation(i, streams, norms, CorS='S')) / \
-                                    self.BinErr_S[i] ** 2. * 10. ** norms[j] * \
-                                    self.del_curlH_modamp(i, 1, streams[j], CorS='S')
-                stream_jac[j][2] += 2. * (self.BinData_C[i] - self.rate_calculation(i, streams, norms, CorS='C')) / \
-                                   self.BinErr_C[i] ** 2. * 10.**norms[j] * \
-                                   self.del_curlH_modamp(i, 2, streams[j], CorS='C')
-                stream_jac[j][2] += 2. * (self.BinData_S[i] - self.rate_calculation(i, streams, norms, CorS='S')) / \
-                                    self.BinErr_S[i] ** 2. * 10. ** norms[j] * \
-                                    self.del_curlH_modamp(i, 2, streams[j], CorS='S')
-
-        for j,str in enumerate(streams):
-            mag = np.sqrt(np.sum(str * str))
-            if mag > vesc:
-                stream_jac[j][0] += 2. * (mag - vesc) / 50.**2. * str[0] / mag
-                stream_jac[j][1] += 2. * (mag - vesc) / 50. ** 2. * str[1] / mag
-                stream_jac[j][2] += 2. * (mag - vesc) / 50. ** 2. * str[2] / mag
-
-
+            for j,stre in enumerate(streams):
+                rc_cos = self.rate_calculation(i, [stre], [norms[j]], CorS='C')
+                rc_sin = self.rate_calculation(i, [stre], [norms[j]], CorS='S')                
+                
+                strm_ep = stre + np.array([stream_pert, 0., 0.])
+                diff_c = self.del_curlH_modamp(i, 0, stre, CorS='C', epsilon=4.)
+                diff_s = self.del_curlH_modamp(i, 0, stre, CorS='S', epsilon=4.)
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
+                
+                strm_ep = stre + np.array([0., stream_pert, 0.])
+                diff_c = self.del_curlH_modamp(i, 1, stre, CorS='C', epsilon=4.)
+                diff_s = self.del_curlH_modamp(i, 1, stre, CorS='S', epsilon=4.)
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
+                
+                strm_ep = stre + np.array([0., 0., stream_pert])
+                diff_c = self.del_curlH_modamp(i, 2, stre, CorS='C', epsilon=4.)
+                diff_s = self.del_curlH_modamp(i, 2, stre, CorS='S', epsilon=4.)
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*10.**norms[j]*diff_c/self.BinErr_C[i]**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*10.**norms[j]*diff_s/self.BinErr_S[i]**2.)**2.
+                
+                
+                m2_ln_like += (-2.*(self.BinData_C[i] - rc_cos)*np.log(10.)*rc_cos / self.BinErr_C[i]**2.)**2.
+                m2_ln_like += (-2.*(self.BinData_S[i] - rc_sin)*np.log(10.)*rc_sin / self.BinErr_S[i]**2.)**2.
+                
+        rate_contrib = copy.copy(m2_ln_like)
+        #print('Rate Contrib: ', -np.sqrt(rate_contrib))
+        m2_ln_like2 = 0.
         vh_bar_N = np.zeros(streams.shape[0])
         vh_bar = np.zeros_like(streams)
-        for j, str in enumerate(streams):
+        vh_bar_per = np.zeros_like(streams)
+        for j,str in enumerate(streams):
+            mag = np.sqrt(np.sum(str * str))
+            str2 = str + np.array([stream_pert, 0., 0.])
+            mag2 = np.sqrt(np.sum(str2 * str2))
+            val1 = 0.
+            val2 = 0.
+            if mag > vesc:
+                m2_ln_like2 += (2. * (mag - vesc) / (50.** 2.*mag) * np.sum(str))**2.
+            
             time_arr = np.linspace(0., 1., 60)
-            vh_bar[j][0] = self.v_bar_modulation_jac(vMinStar, time_arr, str, 0)
-            vh_bar[j][1] = self.v_bar_modulation_jac(vMinStar, time_arr, str, 1)
-            vh_bar[j][2] = self.v_bar_modulation_jac(vMinStar, time_arr, str, 2)
+            strm_ep = stre + np.array([stream_pert, 0., 0.])
+            vh_bar[j][0] = self.v_bar_modulation(vMinStar, time_arr, str)
+            vh_bar_per[j][0] = self.v_bar_modulation(vMinStar, time_arr, str+strm_ep)
+            
+            strm_ep = stre + np.array([0., stream_pert, 0.])
+            vh_bar[j][1] = self.v_bar_modulation(vMinStar, time_arr, str)
+            vh_bar_per[j][1] = self.v_bar_modulation(vMinStar, time_arr, str+strm_ep)
+            
+            strm_ep = stre + np.array([0., 0., stream_pert])
+            vh_bar[j][2] = self.v_bar_modulation(vMinStar, time_arr, str)
+            vh_bar_per[j][2] = self.v_bar_modulation(vMinStar, time_arr, str+strm_ep)
+          
+            
             vh_bar_N[j] = self.v_bar_modulation(vMinStar, time_arr, str)
             if vh_bar_N[j] == 0:
-                vh_bar_N[j] = 1e-30
-
-        for j in range(len(norms)):
-            norms_jac[j] += lag_mult
-            stream_jac[j][0] += lag_mult * vh_bar[j][0] / (np.log(10.) * vh_bar_N[j])
-            stream_jac[j][1] += lag_mult * vh_bar[j][1] / (np.log(10.) * vh_bar_N[j])
-            stream_jac[j][2] += lag_mult * vh_bar[j][2] / (np.log(10.) * vh_bar_N[j])
-
+                vh_bar_N[j] = 1e-100
+        
+        #print('vhBars: ', vh_bar_N)
+        #print('Norms: ', norms)
+        #print('Vstar: ', vMinStar)
         eta_calc = np.dot(vh_bar_N, np.power(10., norms))
-        if eta_calc <= 0.:
-            print('Problems...')
-            eta_calc = 1e-50
-        lambda_jac = np.log10(eta_calc) - etaStar
-        # print('Jac: ', stream_jac, norms_jac)
-        #print(stream_jac, norms_jac, lambda_jac)
-        ret_jac = np.append(stream_jac.flatten(), norms_jac)
-        ret_jac = np.append(ret_jac, lambda_jac).flatten()
-        #print(ret_jac)
-        return ret_jac
+        m2_ln_like2 += (np.log10(eta_calc) - etaStar)**2.
+        for j,str in enumerate(streams):
+            m2_ln_like2 += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][0] - vh_bar[j][0]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like2 += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][1] - vh_bar[j][1]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like2 += (lag_mult * np.power(10., norms[j])* (vh_bar_per[j][2] - vh_bar[j][2]) / (np.log(10.) * eta_calc * stream_pert))**2.
+            m2_ln_like2 += (lag_mult)**2.
+        
+        #print('Lambda Term Contrib: ', -np.sqrt(m2_ln_like2))
+        #test = self.eta_BF_time_avg_Constr(streams_norms, vMinStar ,add_streams=1)
+        print('Eta Star Calc:', np.log10(eta_calc), ' Eta Star: ', etaStar, ' Val: ', -np.sqrt(m2_ln_like+m2_ln_like2))
+      
+        return 10.** m2_ln_like+m2_ln_like2 #np.exp(m2_ln_like+m2_ln_like2) #(m2_ln_like+m2_ln_like2)**10. 
 
 
     def ImportMultiOptimalLikelihood(self, output_file, output_file_CDMS, plot=False):
@@ -503,49 +575,91 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         with open(file, 'r') as f_handle:
             optimal_result = np.loadtxt(f_handle)
         self.max_like = optimal_result[0]
-        self.n_streams = self.Nbins
+        self.n_streams = 1
+        
         self.streams, self.norms = self.unpack_streams_norms(optimal_result[1:])
         return
 
 
     def PlotQ_KKT_Multi(self, class_name, mx, fp, fn, delta, output_file, kkpt):
         return
-
+    
+    def loglike_total_multinest_wrapper_constr(self, cube, ndim, nparams):
+        streams_norms = np.zeros(ndim)
+        for i in range(ndim):
+            streams_norms[i] = cube[i]
+        #return -self.constrained_gaussian_m_ln_likelihood(streams_norms, self.constr_info['vstar'], 
+        #                                                  self.constr_info['letastar'], 1, True)
+        #return -self.gaussian_m_ln_likelihood(streams_norms, vMinStar=self.constr_info['vstar'],
+        #                                      etaStar=self.constr_info['letastar'], add_streams=1,
+        #                                      include_penalty=True)
+        return -self.constrained_gaussian_jacobian(streams_norms, vMinStar=self.constr_info['vstar'], 
+                                                  etaStar=self.constr_info['letastar'], add_streams=1,
+                                                  p_etastar=True)
+    
     def MultiExperConstrainedOptimalLikelihood(self, vminStar, logetaStar, multiexper_input, class_name,
                                                mx, fp, fn, delta, plot=False, leta_guess=-26.):
-        streams = self._VMin_Guess_Constrained(vminStar)
-
+        #streams = self._VMin_Guess_Constrained(vminStar)
+        
         #self.ImportResponseTables(output_file_CDMS, plot=False)
-        n_streams = len(streams)
-        vars_guess = np.append(streams, leta_guess * np.ones(n_streams))
-        vars_guess = np.append(vars_guess, np.array([1.]))
-        print("vars_guess = ", vars_guess)
-
-        logeta_bnd = (-60.0, -10.0)
-        bnd_eta = [logeta_bnd] * n_streams
-        vmin_bnd = (0, self.vmin_max)
-        bnd_vmin = [vmin_bnd] * (n_streams * 3)
-        bnd = bnd_vmin + bnd_eta + [(-100., 100.)]
+        n_streams = self.n_streams + 1
+        #vars_guess = np.append(streams, leta_guess * np.ones(n_streams))
+        #vars_guess = np.append(vars_guess, np.array([1.]))
+        #print("vars_guess = ", vars_guess)
+        
+        #logeta_bnd = (-60.0, -10.0)
+        #bnd_eta = [logeta_bnd] * n_streams
+        #vmin_bnd = (0, self.vmin_max)
+        #bnd_vmin = [vmin_bnd] * (n_streams * 3)
+        #bnd = bnd_vmin + bnd_eta + [(-100., 100.)]
         #constr = ({'type':'ineq', 'fun': lambda x: self.constr_func_Constrained(x, vminStar,
         #                                                                       logetaStar, add_streams=1)})
 
 
-        opt = minimize(self.constrained_gaussian_m_ln_likelihood, vars_guess,
-                       method='SLSQP', tol=1e-8,
-                       jac=self.constrained_gaussian_jacobian,
-                       bounds=bnd,  args=(vminStar, logetaStar, 1, False), #constraints=constr,
-                       options={'maxiter': 1000, 'disp': False})
-        print(opt)
+        #opt = minimize(self.constrained_gaussian_m_ln_likelihood, vars_guess,
+        #               method='SLSQP', tol=1e-8,
+        #               jac=self.constrained_gaussian_jacobian,
+        #               bounds=bnd,  args=(vminStar, logetaStar, 1, False), #constraints=constr,
+        #               options={'maxiter': 1000, 'disp': False})
+        #print(opt)
+        
 
-        val = self.constrained_gaussian_m_ln_likelihood(opt.x, vMinStar=vminStar, etaStar=logetaStar,
+        self.param_names = []
+        for i in range(n_streams):
+            self.param_names.append("velocity")
+            self.param_names.append("velocity")
+            self.param_names.append("velocity")
+        for i in range(n_streams):
+            self.param_names.append("mag")
+            
+        self.param_names.append("X")
+        self.constr_info = {'vstar': vminStar, 'letastar': logetaStar}
+        
+#        bftest = np.append(self.streams, np.array([1.,1.,1.]))
+#        bftest = np.append(bftest, self.norms)
+#        bftest = np.append(bftest, [-50.])
+#        bftest = np.append(bftest, 0.).flatten()
+#        print(bftest)
+#        test = -self.constrained_gaussian_jacobian(bftest, vMinStar=self.constr_info['vstar'], 
+#                                                  etaStar=self.constr_info['letastar'], add_streams=1,
+#                                                  p_etastar=True)
+#        print('TEST', test)
+#        exit()
+        
+        pymultinest.run(self.loglike_total_multinest_wrapper_constr, self.prior_func, 
+                        len(self.param_names), resume=False, n_live_points=3000)
+        bf_test = self.global_bestfit()
+        print (bf_test)
+        
+        val = self.constrained_gaussian_m_ln_likelihood(bf_test, vMinStar=vminStar, etaStar=logetaStar,
                                             add_streams=1, p_etastar=True)
 
-        streams, norms = self.unpack_streams_norms(opt.x[:-1], add_streams=1)
+        streams, norms = self.unpack_streams_norms(bf_test[:-1], add_streams=1)
         print(val, streams, norms)
         return val
 
-    def eta_BF_time_avg(self, streams_norms, output_file):
-        streams, norms = self.unpack_streams_norms(streams_norms)
+    def eta_BF_time_avg(self, streams_norms, output_file, output=True, add_streams=0):
+        streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)
         coefC = np.sum(np.power(10., norms))
         farr = np.power(10., norms) / coefC
 
@@ -560,9 +674,22 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         vmin_arr = np.insert(vmin_arr, 0, 0)
         eta_0_bf = np.insert(eta_0_bf, 0, eta_0_bf[0])
-        file_nme = output_file + '_TimeAverage_Eta_BF.dat'
-        np.savetxt(file_nme, np.column_stack((vmin_arr, eta_0_bf)))
+        if output:
+            file_nme = output_file + '_TimeAverage_Eta_BF.dat'
+            np.savetxt(file_nme, np.column_stack((vmin_arr, eta_0_bf)))
         return
+    
+    def eta_BF_time_avg_Constr(self, streams_norms, vmin, add_streams=0):
+        streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)
+        coefC = np.sum(np.power(10., norms))
+        farr = np.power(10., norms) / coefC
+        time_arr = np.linspace(0., 1., 60)        
+        vh_bar = np.zeros(streams.shape[0])
+        
+        for j,str in enumerate(streams):
+            vh_bar[j] = self.v_bar_modulation(vmin, time_arr, str)
+        eta_0_bf = coefC * np.dot(vh_bar, farr)
+        return eta_0_bf
 
     def v_bar_modulation(self, vmin, tarray, stream):
         speed = np.sqrt(np.sum((stream - self.v_sun - self.v_Earth(tarray)) ** 2., axis=1))
