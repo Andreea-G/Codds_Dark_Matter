@@ -261,8 +261,8 @@ def Vmin_EHIBand_range(exper_name, mx, delta, mPhi=1000.):
         return options[(mx, delta, mPhi)]
 
     elif exper_name == "DAMA_2Bin":
-        options = {(9., 0, 1000.): (100., 700., 30),
-                   (15., 0, 1000.): (100., 700., 30),
+        options = {(9., 0, 1000.): (50., 700., 30),
+                   (15., 0, 1000.): (50., 700., 30),
                               }
         return options[(mx, delta, mPhi)]
 
@@ -282,5 +282,5 @@ input_list = [(9., 1, 0., 1000.), (9., -0.8, 0., 1000.), (9., -0.7, 0., 1000.), 
               (15., 1., 0., 1000)] # 29
 
 
-logeta_EHIBand_percent_range = (0.2, 0.2, 15)
+logeta_EHIBand_percent_range = (0.4, 0.4, 15)
 # logeta_EHIBand_percent_range = (0.15, 0.15, 20)

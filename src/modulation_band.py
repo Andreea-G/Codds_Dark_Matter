@@ -877,6 +877,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 Atuple (index0, index1) between which logetaStar will be considered.
                 If not given, then the whole list of logetaStar is used.
         """
+        processes=1
         if vmin_index_list is None:
             vmin_index_list = range(0, self.vmin_logeta_sampling_table.shape[0])
         else:
