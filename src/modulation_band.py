@@ -240,7 +240,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 val += np.power(10., ln10_norms[i]) * self.curH_modamp_interp_S[bin](str)
         return val
 
-    def flat_prior(self, cube_val, cube_max=-4., cube_min=-40.):
+    def flat_prior(self, cube_val, cube_max=-15., cube_min=-35.):
         cube_val = cube_val * (cube_max - cube_min) + cube_min
         return cube_val
 
@@ -398,7 +398,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.constr_info = {'vstar': vminStar, 'letastar': logetaStar}
         
         pymultinest.run(self.loglike_total_multinest_wrapper_constr, self.prior_func, 
-                        len(self.param_names), resume=False, n_live_points=2000,
+                        len(self.param_names), resume=False, n_live_points=1000,
                         outputfiles_basename='chains/{:.0f}-'.format(index))
         bf_test = self.global_bestfit(index)
         #print (bf_test)
