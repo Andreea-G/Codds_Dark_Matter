@@ -121,7 +121,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                                              self.vmin_linspace_galactic.shape[0]**3))
             self.curH_V_modamp_S = np.zeros((len(self.BinData_S), 
                                              self.vmin_linspace_galactic.shape[0]**3))
-            
+            time_vals = np.linspace(0., 1., 100)
             for bin in range(len(self.BinData_C)):
                 cnt = 0
                 for i,ux in enumerate(self.vmin_linspace_galactic):
