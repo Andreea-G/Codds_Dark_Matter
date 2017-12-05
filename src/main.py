@@ -48,6 +48,7 @@ def main():
     EHI_METHOD['OptimalLikelihood'] = False
     EHI_METHOD['ImportOptimalLikelihood'] = True
     EHI_METHOD['ConstrainedOptimalLikelihood'] = True
+    EHI_METHOD['Isotropy'] = True
     EHI_METHOD['VminLogetaSamplingTable'] = False
     EHI_METHOD['LogLikelihoodList'] = False
     EHI_METHOD['ConfidenceBand'] = False

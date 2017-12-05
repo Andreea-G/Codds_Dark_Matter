@@ -13,13 +13,15 @@ import numpy as np
 from scipy.interpolate import interp1d, interpn, LinearNDInterpolator, RegularGridInterpolator
 from scipy.integrate import quad, dblquad
 import copy
+from mpmath import *
 import pymultinest
 
 # TODO: This is only functioning for 2 bin analysis of DAMA...
 
 class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
-    def __init__(self, expername, scattering_type, mPhi=mPhiRef, method='SLSQP', pois=False, gaus=False):
+    def __init__(self, expername, scattering_type, isotropic, 
+                 mPhi=mPhiRef, method='SLSQP', pois=False, gaus=False):
         super().__init__(expername, scattering_type, mPhi)
         module = import_file(INPUT_DIR + expername + ".py")
 
@@ -34,9 +36,13 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.Poisson = pois
         self.Quenching = module.QuenchingFactor
         self.target_mass = module.target_nuclide_mass_list
-
+        self.isotropy = isotropic
         self.unique = True
-        self.vmin_linspace_galactic = np.linspace(-vesc, vesc, 250)
+        if not self.isotropy:
+            self.vmin_linspace_galactic = np.linspace(-vesc, vesc, 250)
+        else:
+            self.vmin_linspace_galactic = np.linspace(1., vesc, 533)
+
         self.vmin_max = self.vmin_linspace_galactic[-1]
         self.v_sun = np.array([11., 232., 7.])
 
@@ -108,31 +114,96 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             self.curh_interp[i] = interp1d(self.vmin_linspace, self.curH_V[:, i], kind='cubic',
                                            bounds_error=False, fill_value=0)
 
-        self.curH_V_modamp_C = np.zeros((len(self.BinData_C), self.vmin_linspace_galactic.shape[0]**3))
-        self.curH_V_modamp_S = np.zeros((len(self.BinData_S), self.vmin_linspace_galactic.shape[0]**3))
-        time_vals = np.linspace(0., 1., 100)
-        t0DAMA = 0.4178
-        for bin in range(len(self.BinData_C)):
-            cnt = 0
-            for i,ux in enumerate(self.vmin_linspace_galactic):
-                for j,uy in enumerate(self.vmin_linspace_galactic):
-                    for k,uz in enumerate(self.vmin_linspace_galactic):
-                        speed = np.sqrt(np.sum((np.array([ux, uy, uz]) - self.v_sun -
-                                                self.v_Earth(time_vals))**2., axis=1))
-                        
-                        projection_c = 2.*np.trapz(self.curh_interp[bin](speed)*np.cos(2.*np.pi*(time_vals - t0DAMA)), time_vals)
-                        projection_s = 2.*np.trapz(self.curh_interp[bin](speed)*np.sin(2.*np.pi*(time_vals - t0DAMA)), time_vals)
-                        #print(speed, projection)
-                        self.curH_V_modamp_C[bin, cnt] = projection_c
-                        self.curH_V_modamp_S[bin, cnt] = projection_s
-                        cnt += 1
+        if not self.isotropy:
+            
+            self.curH_V_modamp_C = np.zeros((len(self.BinData_C), 
+                                             self.vmin_linspace_galactic.shape[0]**3))
+            self.curH_V_modamp_S = np.zeros((len(self.BinData_S), 
+                                             self.vmin_linspace_galactic.shape[0]**3))
+            
+            for bin in range(len(self.BinData_C)):
+                cnt = 0
+                for i,ux in enumerate(self.vmin_linspace_galactic):
+                    for j,uy in enumerate(self.vmin_linspace_galactic):
+                        for k,uz in enumerate(self.vmin_linspace_galactic):
+                            speed = np.sqrt(np.sum((np.array([ux, uy, uz]) - self.v_sun -
+                                                    self.v_Earth(time_vals))**2., axis=1))
+                            
+                            projection_c = 2.*np.trapz(self.curh_interp[bin](speed)*np.cos(2.*np.pi*(time_vals - t0DAMA)), time_vals)
+                            projection_s = 2.*np.trapz(self.curh_interp[bin](speed)*np.sin(2.*np.pi*(time_vals - t0DAMA)), time_vals)
+                            #print(speed, projection)
+                            self.curH_V_modamp_C[bin, cnt] = projection_c
+                            self.curH_V_modamp_S[bin, cnt] = projection_s
+                            cnt += 1
+    
+                file_S = file_output + "_ModH_SIN_Tab_Bin_{:.0f}.dat".format(bin)
+                file_C = file_output + "_ModH_COS_Tab_Bin_{:.0f}.dat".format(bin)
+                np.savetxt(file_C, self.curH_V_modamp_C[bin])
+                np.savetxt(file_S, self.curH_V_modamp_S[bin])
+        else:
+            vE = 29.8 * np.array([0.994, 0.1095, 0.003116])
+            self.curH_V_modamp_C = np.zeros((len(self.BinData_C), 
+                                             self.vmin_linspace_galactic.shape[0]))
+            self.curH_V_modamp_S = np.zeros((len(self.BinData_S), 
+                                             self.vmin_linspace_galactic.shape[0]))
+            time_vals = np.linspace(0., 1., 100)
 
-            file_S = file_output + "_ModH_SIN_Tab_Bin_{:.0f}.dat".format(bin)
-            file_C = file_output + "_ModH_COS_Tab_Bin_{:.0f}.dat".format(bin)
-            np.savetxt(file_C, self.curH_V_modamp_C[bin])
-            np.savetxt(file_S, self.curH_V_modamp_S[bin])
+            va = np.sqrt(np.linalg.norm(self.v_sun)**2. + np.linalg.norm(vE)**2.)
+            epsil = 2. * np.dot(self.v_sun, vE) / va**2.
+
+            for bin in range(len(self.BinData_C)):
+                for i,ux in enumerate(self.vmin_linspace_galactic): 
+                    
+                    prefact = - np.dot(self.v_sun, vE) / (2. * ux * va**3.)
+                    #print(prefact)
+                    K1integ = np.zeros(len(self.vmin_linspace))
+                    for iv,vv in enumerate(self.vmin_linspace):
+                        arg1 = ux / va
+                        arg2 = vv / va
+#                        alpha1 = self.alpha_gondolo(arg1 - arg2, epsil)
+#                        alpha2 = self.alpha_gondolo(arg1 + arg2, epsil)
+#                        K1integ[iv] = vv * (self.Im1_gondolo(alpha1, epsil) - 
+#                                       self.Im1_gondolo(alpha2, epsil))
+#                        print(iv, alpha1, alpha2, K1integ[iv])
+                        K1integ[iv] = vv * self.Km_gondolo(arg1, arg2, epsil)
+                    projection_c = prefact*np.trapz(self.curH_V[:, bin] * 
+                                                    K1integ, self.vmin_linspace)
+                    projection_s = 0.
+                    #print(speed, projection)
+                    self.curH_V_modamp_C[bin, i] = projection_c
+                    self.curH_V_modamp_S[bin, i] = projection_s
+   
+                file_S = file_output + "_ModH_SIN_Tab_Bin_{:.0f}_ISOTROPIC.dat".format(bin)
+                file_C = file_output + "_ModH_COS_Tab_Bin_{:.0f}_ISOTROPIC.dat".format(bin)
+                np.savetxt(file_C, self.curH_V_modamp_C[bin])
+                np.savetxt(file_S, self.curH_V_modamp_S[bin])
 
         return
+        
+    def Km_gondolo(self, x, y, epsil):
+        time_vals = np.linspace(0., 1., 100)
+        theta_term = np.zeros_like(time_vals)
+        full_term = np.zeros_like(time_vals)
+        for tk, time in enumerate(time_vals):
+            theta_term[tk] = 1. + epsil*np.cos(2.*np.pi * time)
+            if ((theta_term[tk] <= (x+y)**2.)and(theta_term[tk] >= (x-y)**2.)):
+                full_term[tk] = -4./epsil * np.cos(2.*np.pi*time) / \
+                                np.sqrt(1. + epsil*np.cos(2.*np.pi * time))
+        return np.trapz(full_term, time_vals)
+                                
+    def alpha_gondolo(self, xi, epsil):
+        if np.abs(xi) <= np.sqrt(1.-epsil):
+            return np.pi
+        elif np.abs(xi) >= np.sqrt(1. + epsil):
+            return 0.
+        else:
+            return np.arccos((xi**2. - 1.) / epsil)
+            
+    def Im1_gondolo(self, x, epsil):
+        Fterm = float(ellipf(x / 2., (2.*epsil/(1.+epsil))))
+        Eterm = float(ellipe(x / 2., (2.*epsil/(1.+epsil))))
+        
+        return -8./(np.pi*epsil*np.sqrt(1.+epsil))*(1.+epsil*Eterm-Fterm)
 
     def CurH_Wrap(self, u1, u2, u3, bin, t):
         #uvel = np.array([u1, u2, u3]) - self.v_sun - self.v_Earth(t)
@@ -141,7 +212,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
     def ResponseTables(self, vmin_min, vmin_max, vmin_step, mx, fp, fn, delta,
                        output_file_tail):
-
+        
         self.min_v_min = (self.target_mass + mx) / (mx * self.target_mass) * \
                          np.sqrt(2. * self.BinEdges[0] / self.QuenchingFactor(self.BinEdges[0]) *
                                  self.target_mass * 1e-6) * SpeedOfLight
@@ -162,9 +233,12 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         return
 
-    def ImportResponseTables(self, output_file_tail, plot=False, pois=False):
+    def ImportResponseTables(self, output_file_tail, 
+                             plot=False, pois=False):
         """ Imports the data for the response tables from files.
         """
+
+        
         findmx = output_file_tail.find('_mx_')
         findgev = output_file_tail.find('GeV_')
         mx = float(output_file_tail[findmx + 4:findgev])
@@ -188,36 +262,61 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
         self.curh_interp = np.zeros(len(self.BinData_C), dtype=object)
         self.curH_modamp_interp_C = np.zeros(len(self.BinData_C), dtype=object)
-        self.curH_V_modamp_C = np.zeros((len(self.BinData_C), self.vmin_linspace_galactic.shape[0] ** 3))
         self.curH_modamp_interp_S = np.zeros(len(self.BinData_S), dtype=object)
-        self.curH_V_modamp_S = np.zeros((len(self.BinData_S), self.vmin_linspace_galactic.shape[0] ** 3))
-        for i in range(len(self.BinData_C)):
-            self.curh_interp[i] = interp1d(self.vmin_linspace, self.curH_V[:, i], kind='cubic',
-                                           bounds_error=False, fill_value=0)
-
-            file_S = output_file_tail + "_ModH_SIN_Tab_Bin_{:.0f}.dat".format(i)
-            file_C = output_file_tail + "_ModH_COS_Tab_Bin_{:.0f}.dat".format(i)
-            loadf_S = np.loadtxt(file_S)
-            loadf_C = np.loadtxt(file_C)
-            self.curH_V_modamp_C[i] = loadf_C
-            self.curH_V_modamp_S[i] = loadf_S
-
-            num_vmin = len(self.vmin_linspace_galactic)
-            self.curH_modamp_interp_C[i] = RegularGridInterpolator((self.vmin_linspace_galactic,
-                                                                  self.vmin_linspace_galactic,
-                                                                  self.vmin_linspace_galactic),
-                                                              self.curH_V_modamp_C[i].reshape(num_vmin, num_vmin,
-                                                                                              num_vmin),
-                                                                 bounds_error=False,
-                                                                 fill_value=0)
-            self.curH_modamp_interp_S[i] = RegularGridInterpolator((self.vmin_linspace_galactic,
-                                                                    self.vmin_linspace_galactic,
-                                                                    self.vmin_linspace_galactic),
-                                                                   self.curH_V_modamp_S[i].reshape(num_vmin, num_vmin,
-                                                                                                   num_vmin),
-                                                                   bounds_error=False,
-                                                                   fill_value=0)
-
+        
+        if not self.isotropy:
+            self.curH_V_modamp_C = np.zeros((len(self.BinData_C),
+                                             self.vmin_linspace_galactic.shape[0] ** 3))
+            self.curH_V_modamp_S = np.zeros((len(self.BinData_S), 
+                                             self.vmin_linspace_galactic.shape[0] ** 3))
+            for i in range(len(self.BinData_C)):
+                self.curh_interp[i] = interp1d(self.vmin_linspace, self.curH_V[:, i], kind='cubic',
+                                               bounds_error=False, fill_value=0)
+    
+                file_S = output_file_tail + "_ModH_SIN_Tab_Bin_{:.0f}.dat".format(i)
+                file_C = output_file_tail + "_ModH_COS_Tab_Bin_{:.0f}.dat".format(i)
+                loadf_S = np.loadtxt(file_S)
+                loadf_C = np.loadtxt(file_C)
+                self.curH_V_modamp_C[i] = loadf_C
+                self.curH_V_modamp_S[i] = loadf_S
+    
+                num_vmin = len(self.vmin_linspace_galactic)
+                self.curH_modamp_interp_C[i] = RegularGridInterpolator((self.vmin_linspace_galactic,
+                                                                      self.vmin_linspace_galactic,
+                                                                      self.vmin_linspace_galactic),
+                                                                  self.curH_V_modamp_C[i].reshape(num_vmin, num_vmin,
+                                                                                                  num_vmin),
+                                                                     bounds_error=False,
+                                                                     fill_value=0)
+                self.curH_modamp_interp_S[i] = RegularGridInterpolator((self.vmin_linspace_galactic,
+                                                                        self.vmin_linspace_galactic,
+                                                                        self.vmin_linspace_galactic),
+                                                                       self.curH_V_modamp_S[i].reshape(num_vmin, num_vmin,
+                                                                                                       num_vmin),
+                                                                       bounds_error=False,
+                                                                       fill_value=0)
+        else:
+            self.curH_V_modamp_C = np.zeros((len(self.BinData_C),
+                                             len(self.vmin_linspace_galactic)))
+            self.curH_V_modamp_S = np.zeros((len(self.BinData_S), 
+                                             len(self.vmin_linspace_galactic)))
+            for i in range(len(self.BinData_C)):
+                self.curh_interp[i] = interp1d(self.vmin_linspace, self.curH_V[:, i], kind='cubic',
+                                               bounds_error=False, fill_value=0)
+    
+                file_S = output_file_tail + "_ModH_SIN_Tab_Bin_{:.0f}_ISOTROPIC.dat".format(i)
+                file_C = output_file_tail + "_ModH_COS_Tab_Bin_{:.0f}_ISOTROPIC.dat".format(i)
+                loadf_S = np.loadtxt(file_S)
+                loadf_C = np.loadtxt(file_C)
+                self.curH_V_modamp_C[i] = loadf_C
+                self.curH_V_modamp_S[i] = loadf_S
+                self.curH_modamp_interp_C[i] = interp1d(self.vmin_linspace_galactic, 
+                                                        self.curH_V_modamp_C[i], 
+                                                        bounds_error=False, fill_value=0)
+                self.curH_modamp_interp_S[i] = interp1d(self.vmin_linspace_galactic, 
+                                                        self.curH_V_modamp_S[i], 
+                                                        bounds_error=False, fill_value=0)
+            
         return
 
     def del_curlH_modamp(self, bin, axis, stream, CorS='C', epsilon=2.):
@@ -240,7 +339,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                 val += np.power(10., ln10_norms[i]) * self.curH_modamp_interp_S[bin](str)
         return val
 
-    def flat_prior(self, cube_val, cube_max=-15., cube_min=-35.):
+    def flat_prior(self, cube_val, cube_max=-5., cube_min=-35.):
         cube_val = cube_val * (cube_max - cube_min) + cube_min
         return cube_val
 
@@ -249,7 +348,10 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         params = self.param_names
         for i in range(ndim):
             if params[i] == "velocity":
-                cube[i] = self.flat_prior(cube[i], cube_max=vesc, cube_min=-vesc)
+                if not self.isotropy:
+                    cube[i] = self.flat_prior(cube[i], cube_max=vesc, cube_min=-vesc)
+                else:
+                    cube[i] = self.flat_prior(cube[i], cube_max=vesc, cube_min=1.)
             elif params[i] == "mag":
                 cube[i] = self.flat_prior(cube[i])
             else:
@@ -266,8 +368,10 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         max_index = posterior.argmax()
         return samples[max_index,:-1]
 
-    def MultiExperimentOptimalLikelihood(self, multiexper_input, class_name, mx, fp, fn, delta, output_file,
-                                         output_file_CDMS, logeta_guess, nsteps_bin):
+    def MultiExperimentOptimalLikelihood(self, multiexper_input, class_name, mx, fp, 
+                                         fn, delta, output_file,
+                                         output_file_CDMS, logeta_guess, 
+                                         nsteps_bin):
 
 
 
@@ -281,8 +385,9 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.param_names = []
         for i in range(self.n_streams):
             self.param_names.append("velocity")
-            self.param_names.append("velocity")
-            self.param_names.append("velocity")
+            if not self.isotropy:
+                self.param_names.append("velocity")
+                self.param_names.append("velocity")
         for i in range(self.n_streams):
             self.param_names.append("mag")
 
@@ -293,10 +398,10 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         print (self.gaussian_m_ln_likelihood(bf_test))
         streams, norms = self.unpack_streams_norms(bf_test)
         
-        vh_bar = np.zeros(len(streams))
-        for j, strm in enumerate(streams):
-            time_arr = np.linspace(0., 1., 60)
-            vh_bar[j] = self.v_bar_modulation(100., time_arr, strm)
+#        vh_bar = np.zeros(len(streams))
+#        for j, strm in enumerate(streams):
+#            time_arr = np.linspace(0., 1., 60)
+#            vh_bar[j] = self.v_bar_modulation(100., time_arr, strm)
         
         for i in range(int(self.Nbins / 2)):
             if (np.abs(self.rate_calculation(i, streams, norms, CorS='C') - self.BinData_C[i]) < 1e-3) and \
@@ -315,7 +420,10 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
 
     def unpack_streams_norms(self, full_vec, add_streams=0):
         norms = full_vec[-(self.n_streams + add_streams):]
-        streams = full_vec[:-(self.n_streams + add_streams)].reshape(self.n_streams + add_streams, 3)
+        if not self.isotropy:
+            streams = full_vec[:-(self.n_streams + add_streams)].reshape(self.n_streams + add_streams, 3)
+        else:
+            streams = full_vec[:-(self.n_streams + add_streams)]
         return streams, norms
 
     def loglike_total_multinest_wrapper(self, cube, ndim, nparams):
@@ -328,23 +436,30 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
                                  include_penalty=False):
         # Note that I've had to insert penalty terms for the escape velocity and for constrained minimization
         
-        streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)
+        streams, norms = self.unpack_streams_norms(streams_norms,
+                                                   add_streams=add_streams)
         m2_ln_like = 0.
         for i in range(int(self.Nbins / 2)):
             m2_ln_like += ((self.BinData_C[i] - self.rate_calculation(i, streams, norms, CorS='C')) / self.BinErr_C[i])**2.
             m2_ln_like += ((self.BinData_S[i] - self.rate_calculation(i, streams, norms, CorS='S')) / self.BinErr_S[i])**2.
 
         for str in streams:
-            mag = np.sqrt(np.sum(str * str))
+            if not self.isotropy:
+                mag = np.sqrt(np.sum(str * str))
+            else:
+                mag = str
             if mag > vesc:
                 m2_ln_like += (mag - vesc)**2. / 50.**2.
 
         if etaStar is not None:
-            vh_bar = np.zeros(streams.shape[0])
-            for j, str in enumerate(streams):
-                time_arr = np.linspace(0., 1., 60)
-                vh_bar[j] = self.v_bar_modulation(vMinStar, time_arr, str)
-            eta_star = np.dot(vh_bar, np.power(10., norms))
+            if not self.isotropy:
+                vh_bar = np.zeros(streams.shape[0])
+                for j, str in enumerate(streams):
+                    time_arr = np.linspace(0., 1., 60)
+                    vh_bar[j] = self.v_bar_modulation(vMinStar, time_arr, str)
+                eta_star = np.dot(vh_bar, np.power(10., norms))
+            else:
+                eta_star = self.isotropic_bestfit_eta_TA(streams, norms, [vMinStar])
             #print(np.log10(eta_star), etaStar)
             if include_penalty:
                 if eta_star > 0.:
@@ -389,8 +504,9 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.param_names = []
         for i in range(n_streams):
             self.param_names.append("velocity")
-            self.param_names.append("velocity")
-            self.param_names.append("velocity")
+            if not self.isotropy:
+                self.param_names.append("velocity")
+                self.param_names.append("velocity")
         for i in range(n_streams):
             self.param_names.append("mag")
             
@@ -398,42 +514,72 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.constr_info = {'vstar': vminStar, 'letastar': logetaStar}
         
         pymultinest.run(self.loglike_total_multinest_wrapper_constr, self.prior_func, 
-                        len(self.param_names), resume=False, n_live_points=1000,
+                        len(self.param_names), resume=False, n_live_points=500,
                         outputfiles_basename='chains/{:.0f}-'.format(index))
         bf_test = self.global_bestfit(index)
         #print (bf_test)
-        #eta_check = self.eta_BF_time_avg(bf_test, output_file='', output=False, add_streams=1)
-        #test = interp1d(eta_check[:,0], np.log10(eta_check[:,1]), fill_value=0., bounds_error=False)
-        
-        #print ('Eta Star: ', logetaStar, 'Eta Actual: ', test(vminStar))
+        eta_check = self.eta_BF_time_avg(bf_test, output_file='', output=False, add_streams=1)
+        eta_check = eta_check[eta_check[:,1] > 0]
+        test = interp1d(eta_check[:,0], eta_check[:,1], fill_value=0., bounds_error=False)
+        #print (eta_check)
+        print ('Eta Star: ', logetaStar, 'Eta Actual: ', test(vminStar))
+        val2 = self.gaussian_m_ln_likelihood(bf_test, vMinStar=self.constr_info['vstar'],
+                                             etaStar=self.constr_info['letastar'], add_streams=1,
+                                             include_penalty=True)
 #        val = self.constrained_gaussian_m_ln_likelihood(bf_test, vMinStar=vminStar, etaStar=logetaStar,
 #                                                        add_streams=0, p_etastar=True)
         val = self.gaussian_m_ln_likelihood(bf_test, add_streams=1)
-        #streams, norms = self.unpack_streams_norms(bf_test, add_streams=1)
-        #print(val, streams, norms)
+        streams, norms = self.unpack_streams_norms(bf_test, add_streams=1)
+        print(val, streams, norms, val2)
         return val
 
-    def eta_BF_time_avg(self, streams_norms, output_file, output=True, add_streams=0):
-        streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)
+    def eta_BF_time_avg(self, streams_norms, output_file, 
+                        output=True, add_streams=0):
+        streams, norms = self.unpack_streams_norms(streams_norms,
+                                                   add_streams=add_streams)
         coefC = np.sum(np.power(10., norms))
         farr = np.power(10., norms) / coefC
 
         time_arr = np.linspace(0., 1., 60)
-        vmin_arr = np.logspace(0., np.log10(800), 100)
-        vh_bar = np.zeros((len(vmin_arr), streams.shape[0]))
+        vmin_arr = np.linspace(1., 800, 300)
+        if not self.isotropy:
+            vh_bar = np.zeros((len(vmin_arr), streams.shape[0]))
+            for i,vmin in enumerate(vmin_arr):
+                for j,str in enumerate(streams):
+                    vh_bar[i, j] = self.v_bar_modulation(vmin, time_arr, str)
+            eta_0_bf = coefC * np.dot(vh_bar, farr)
+        else:
+            eta_0_bf = self.isotropic_bestfit_eta_TA(streams, norms, vmin_arr)
 
-        for i,vmin in enumerate(vmin_arr):
-            for j,str in enumerate(streams):
-                vh_bar[i, j] = self.v_bar_modulation(vmin, time_arr, str)
-        eta_0_bf = coefC * np.dot(vh_bar, farr)
-
-        vmin_arr = np.insert(vmin_arr, 0, 0)
-        eta_0_bf = np.insert(eta_0_bf, 0, eta_0_bf[0])
+        #vmin_arr = np.insert(vmin_arr, 0, 0)
+        #eta_0_bf = np.insert(eta_0_bf, 0, eta_0_bf[0])
         if output:
             file_nme = output_file + '_TimeAverage_Eta_BF.dat'
             np.savetxt(file_nme, np.column_stack((vmin_arr, eta_0_bf)))
         else:
             return np.column_stack((vmin_arr, eta_0_bf))
+            
+    def isotropic_bestfit_eta_TA(self, streams, norms, vmin_arr):
+        time_arr = np.linspace(0., 1., 100)
+        #uearth = np.sqrt((self.v_sun + self.v_Earth(time_arr))**2.)
+        eta_avge = np.zeros_like(vmin_arr)
+        for kk,vmin in enumerate(vmin_arr):
+            eta_hold = np.zeros_like(time_arr)
+            for i in range(len(streams)):
+                for j,ti in enumerate(time_arr):
+                    uearth = np.linalg.norm(self.v_sun + self.v_Earth([ti])[0])
+                    
+                    if vmin <= (streams[i] - uearth):
+                        eta_hold[j] += 10.**norms[i] * (1. / streams[i]) * SpeedOfLight
+                    elif vmin >= (streams[i] + uearth):
+                        pass
+                    else:
+                        eta_hold[j] += 10.**norms[i]*((uearth+streams[i]-vmin)
+                                       /(2.*uearth*streams[i])) * SpeedOfLight
+                
+            eta_avge[kk] = np.trapz(eta_hold, time_arr)
+        return eta_avge
+        
     
     def eta_BF_time_avg_Constr(self, streams_norms, vmin, add_streams=0):
         streams, norms = self.unpack_streams_norms(streams_norms, add_streams=add_streams)

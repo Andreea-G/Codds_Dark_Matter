@@ -30,7 +30,7 @@ input_filename_list = {True: "input_HaloDep",
 
 EHIBools = namedtuple('EHIBools', ['ResponseTables', 'OptimalLikelihood',
                                    'ImportOptimalLikelihood',
-                                   'ConstrainedOptimalLikelihood',
+                                   'ConstrainedOptimalLikelihood', 'Isotropy',
                                    'VminLogetaSamplingTable', 'LogLikelihoodList',
                                    'ConfidenceBand', 'ConfidenceBandPlot'])
 len_EHIBools = len(EHIBools._fields)

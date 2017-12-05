@@ -872,7 +872,9 @@ class RunProgram_Multiexperiment:
                 class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
             elif multiexper_input[x] in MOD_BAND:
                 print('Band Analysis of Modulation')
-                class_name[x] = Experiment_EHI_Modulation(multiexper_input[x], scattering_type, mPhi, quenching, gaus=True)
+                class_name[x] = Experiment_EHI_Modulation(multiexper_input[x], 
+                                                          scattering_type, mPhi, 
+                                                          EHI_METHOD.Isotropy, gaus=True)
                 pois_main = True
             else:
                 print("NotImplementedError: This experiment was not implemented!")
@@ -887,6 +889,8 @@ class RunProgram_Multiexperiment:
                 output_dir = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
                 output_file_CDMS = output_dir + '/MultiExp_NoEHI_'+ multiexper_input[0] +\
                                    '_mx_{:.2}GeV_fnfp_{:.2f}'.format(mx, fn/fp)
+                if EHI_METHOD.Isotropy:
+                    output_file_CDMS += '_ISOTROPIC'
             f_handle = open(output_file_CDMS+"_temp.dat", 'w')   # clear the file first
             f_handle.close()
 
@@ -900,11 +904,15 @@ class RunProgram_Multiexperiment:
                 for i in range(1, len(class_name)):
                     fil = output_dir + '/MultiExp_NoEHI_'+ multiexper_input[i] + \
                            '_mx_{:.2}GeV_fnfp_{:.2f}'.format(mx, fn/fp)
+                    if EHI_METHOD.Isotropy:
+                        fil += '_ISOTROPIC'
                     class_name[i].ImportResponseTables(fil, plot=False)
 
             output_file = MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
                                                       filename_tail, OUTPUT_MAIN_DIR, quenching=None)
-
+            if EHI_METHOD.Isotropy:
+                output_file += '_ISOTROPIC'
+            
             f_handle = open(output_file+"_temp.dat", 'w')   # clear the file first
             f_handle.close()
 
@@ -930,7 +938,7 @@ class RunProgram_Multiexperiment:
                     # Tests for delta = 0:
                     #print([chi_squared1(c) for c in confidence_levels])
                     
-                    (vminStar, logetaStar) = (200., -26.)
+                    (vminStar, logetaStar) = (200., -25.5)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)

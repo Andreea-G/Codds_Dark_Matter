@@ -146,7 +146,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         return
 
     def ResponseTables(self, vmin_min, vmin_max, vmin_step, mx, fp, fn, delta,
-                       output_file_tail):
+                       output_file_tail, isotropy):
         """ Computes response tables
             - self.diff_response_tab is a table of [vmin, DifferentialResponse(Eee_i)]
         pairs for each vmin in the range [vminmin, vminmax], corresponding to measured
@@ -318,7 +318,8 @@ class Experiment_EHI(Experiment_HaloIndep):
         if plot_show:
             plt.show()
 
-    def ImportResponseTables(self, output_file_tail, plot=False, pois=False):
+    def ImportResponseTables(self, output_file_tail, isotropy,
+                             plot=False, pois=False):
         """ Imports the data for the response tables from files.
         """
 
@@ -771,7 +772,8 @@ class Experiment_EHI(Experiment_HaloIndep):
                 raise
 
     def MultiExperimentOptimalLikelihood(self, multiexper_input, class_name, mx, fp, fn,
-                                         delta, output_file_tail, output_file_CDMS, logeta_guess, nsteps_bin):
+                                         delta, output_file_tail, output_file_CDMS, 
+                                         logeta_guess, nsteps_bin, isotropy):
         """ Finds the best-fit piecewise constant eta function corresponding to the
         minimum MinusLogLikelihood, and prints the results to file (value of the minimum
         MinusLogLikelihood and the corresponding values of vmin, logeta steps.
