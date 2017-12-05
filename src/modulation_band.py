@@ -37,6 +37,7 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
         self.Quenching = module.QuenchingFactor
         self.target_mass = module.target_nuclide_mass_list
         self.isotropy = isotropic
+        print('Assumed Isotropy: ', self.isotropy)
         self.unique = True
         if not self.isotropy:
             self.vmin_linspace_galactic = np.linspace(-vesc, vesc, 250)

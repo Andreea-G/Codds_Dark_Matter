@@ -869,12 +869,12 @@ class RunProgram_Multiexperiment:
                 pois_main = True
                 class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching, pois=True)
             elif multiexper_input[x] == "CDMSSi2012":
-                class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching)
+                class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, )
             elif multiexper_input[x] in MOD_BAND:
                 print('Band Analysis of Modulation')
                 class_name[x] = Experiment_EHI_Modulation(multiexper_input[x], 
-                                                          scattering_type, mPhi, 
-                                                          EHI_METHOD.Isotropy, gaus=True)
+                                                          scattering_type, EHI_METHOD.Isotropy, mPhi, 
+                                                          quenching, gaus=True)
                 pois_main = True
             else:
                 print("NotImplementedError: This experiment was not implemented!")
