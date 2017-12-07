@@ -385,8 +385,8 @@ class RunProgram:
                     self.exper.ImportOptimalLikelihood(self.output_file_no_extension)
                     self.exper.ConstrainedOptimalLikelihood(vminStar, logetaStar,
                                                             plot=True)
-                if np.any(EHI_METHOD[4:]):
-                    if EHI_METHOD._fields[4] != 'VminLogetaSamplingTable':
+                if np.any(EHI_METHOD[5:]):
+                    if EHI_METHOD._fields[5] != 'VminLogetaSamplingTable':
                         raise AttributeError("EHI_METHOD's attribute is not as expected.")
                     (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = \
                         vmin_EHIBand_range
@@ -403,14 +403,14 @@ class RunProgram:
                                                     vmin_Band_numsteps,
                                                     steepness_vmin, steepness_vmin_center,
                                                     MULTI_EXPER,
-                                                    plot=not np.any(EHI_METHOD[5:]))
+                                                    plot=not np.any(EHI_METHOD[6:]))
                         self.exper.VminLogetaSamplingTable(self.output_file_no_extension,
                                                            self.output_file_no_extension,
                                                            logeta_percent_minus,
                                                            logeta_percent_plus,
                                                            logeta_num_steps,
                                                            steepness_logeta,
-                                                           plot=not np.any(EHI_METHOD[5:]))
+                                                           plot=not np.any(EHI_METHOD[6:]))
                     else:
                         print("Steepness: Default")
                         self.exper.VminSamplingList(self.output_file_no_extension,
@@ -418,13 +418,13 @@ class RunProgram:
                                                     vmin_Band_min, vmin_Band_max,
                                                     vmin_Band_numsteps,
                                                     MULTI_EXPER,
-                                                    plot=not np.any(EHI_METHOD[5:]))
+                                                    plot=not np.any(EHI_METHOD[6:]))
                         self.exper.VminLogetaSamplingTable(self.output_file_no_extension,
                                                            self.output_file_no_extension,
                                                            logeta_percent_minus,
                                                            logeta_percent_plus,
                                                            logeta_num_steps,
-                                                           plot=not np.any(EHI_METHOD[5:]))
+                                                           plot=not np.any(EHI_METHOD[6:]))
 
                 if EHI_METHOD.LogLikelihoodList:
                     print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max,
@@ -938,7 +938,7 @@ class RunProgram_Multiexperiment:
                     # Tests for delta = 0:
                     #print([chi_squared1(c) for c in confidence_levels])
                     
-                    (vminStar, logetaStar) = (200., -25.5)
+                    (vminStar, logetaStar) = (10., -24.78)
                     # Tests for delta = -50:
 #                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
                     class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
@@ -948,7 +948,7 @@ class RunProgram_Multiexperiment:
                                                                          leta_guess=logeta_guess)
 
 
-            if np.any(EHI_METHOD[4:]):
+            if np.any(EHI_METHOD[5:]):
                 (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = \
                     vmin_EHIBand_range
                 (logeta_percent_minus, logeta_percent_plus, logeta_num_steps) = \

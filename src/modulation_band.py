@@ -514,9 +514,12 @@ class Experiment_EHI_Modulation(Experiment_HaloIndep):
             
 #        self.param_names.append("X")
         self.constr_info = {'vstar': vminStar, 'letastar': logetaStar}
-        
+        if not self.isotropy:
+            n_live = 500
+        else:
+            n_live = 1000
         pymultinest.run(self.loglike_total_multinest_wrapper_constr, self.prior_func, 
-                        len(self.param_names), resume=False, n_live_points=500,
+                        len(self.param_names), resume=False, n_live_points=n_live,
                         outputfiles_basename='chains/{:.0f}-'.format(index))
         bf_test = self.global_bestfit(index)
         #print (bf_test)
