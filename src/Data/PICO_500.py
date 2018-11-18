@@ -19,16 +19,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from interp import interp1d
+from globalfnc import ConfidenceLevel, chi_squared1
 pi = np.pi
 
-name = "DAMA2010Na"
-modulated = True
+name = "PICO_500"
+modulated = False
 
-energy_resolution_type = "Gaussian"
+energy_resolution_type = "Dirac"
+# actually Bubble Nucleation, but similar enough to implement like Dirac
 
 def EnergyResolution(e):
-    return 0.448 * np.sqrt(e) + 0.0091 * e
+    return 0.5 * np.ones_like(e)
 
 FFSD = 'GaussianFFSD'
 FFSI = 'HelmFF'
@@ -36,32 +41,29 @@ FF = {'SI': FFSI,
       'SDPS': FFSD,
       'SDAV': FFSD,
       }
-
-target_nuclide_AZC_list = np.array([[23, 11, 0.153373]])
+target_nuclide_AZC_list = np.array([[19, 9, 0.80]])
 target_nuclide_JSpSn_list = \
-    np.array([[3./2, 0.2477 * np.sqrt(5./3 / pi), .0198 * np.sqrt(5./3 / pi)]])
-target_nuclide_mass_list = np.array([21.4148])
+    np.array([[1./2, 0.4751 * np.sqrt(3./2 / pi), -0.0087 * np.sqrt(3./2 / pi)]])
+target_nuclide_mass_list = np.array([17.6969])
 num_target_nuclides = target_nuclide_mass_list.size
 
 def QuenchingFactor(e):
-    return 0.4 * np.ones_like(e)
+    return np.ones_like(e)
 
-def QuenchingFactorOfEee(e):
-    return QuenchingFactor(e)  # since it's a constant function
-
-Ethreshold = 2.
-Emaximum = 1000.
-ERmaximum = 2500.
+Ethreshold = 6.
+Emaximum = 100
+ERmaximum = np.inf
 
 def Efficiency_ER(er):
     return np.ones_like(er)
 
-def Efficiency(e):
-    return np.array(1.) if Ethreshold <= e < Emaximum else np.array(0.)
+alpha = 5.
+def Efficiency(e, er):
+    if er > Ethreshold:
+        return 1.
+    else:
+        return 0.
 
-Exposure = 1.33 * 1000 * 365.25
+Exposure = 250. * 2.0 * 365.24
 ERecoilList = np.array([])
 
-BinEdges = np.array([2., 6., 10.])
-BinData = np.array([0.0116, 0.000])
-BinError = np.array([0.0013])

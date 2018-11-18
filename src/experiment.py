@@ -21,10 +21,13 @@ from globalfnc import *
 from formfactors_eft import *
 import numpy as np
 from numpy import pi
+from math import factorial, log10
+from scipy.special import gamma, gammaincc, gammainc
 from scipy import integrate, interpolate
 from scipy.optimize import fsolve, minimize
 # from scipy.special import lambertw
 from lambertw import *
+from math import log
 import parallel_map as par
 import matplotlib.pyplot as plt
 
@@ -272,6 +275,24 @@ class Experiment:
             self.ResolutionFunction(Eee, qER, self.EnergyResolution(qER))
         return r_list.sum()
 
+    def DifferentialResponseSHM2(self, qER, Eee, mx, delta, fn, fp):
+        """ Differential response function d**2 R / (d Eee d ER)
+        Input:
+            Eee: float or ndarray
+                Measured energy (electron equivalent).
+            qER: float or ndarray
+                q * ER for quenching factor q and recoil energy ER.
+            const_factor: ndarray
+                Factors entering the differential response that do not depend on Eee.
+        """
+        self.count_diffresponse_calls += 1
+        vmin = VMin(qER, self.mT, mx, delta)
+        const_factor = 1.e-6 * \
+                       kilogram * self.CrossSectionFactors(qER, mx, fp, fn, delta)
+        r_list = const_factor * self.Efficiency(qER) * \
+            self.ResolutionFunction(Eee, qER, self.EnergyResolution(qER)) * self.etaMaxwellian(vmin, vobs, v0bar, vesc)
+        return r_list.sum()
+
     def _ResponseSHM_Finite(self, ER, Eee1, Eee2, mx, fp, fn, delta):
         """ Response function: integral over d**2 R / (d Eee d ER) between
         measured energies Eee1 and Eee2, as a function of recoil energy ER.
@@ -281,6 +302,7 @@ class Experiment:
         q = self.QuenchingFactor(ER)
         qER = q * ER
         vmin = VMin(ER, self.mT, mx, delta)
+
         const_factor = 1.e-6 * \
             kilogram * self.CrossSectionFactors(ER, mx, fp, fn, delta) * \
             self.Efficiency_ER(ER) * self.etaMaxwellian(vmin, vobs, v0bar, vesc)
@@ -305,6 +327,7 @@ class Experiment:
         r_list_sum = r_list.sum()
         return r_list_sum
 
+
     def _IntegratedResponseSHM_Finite(self, Eee1, Eee2, mx, fp, fn, delta):
         """ Integrated Response Function between measured energies Eee1 and Eee2,
         and all of recoil energies ER.
@@ -320,6 +343,7 @@ class Experiment:
         ER_plus = min(np.max(ER_plus_list), self.ERmaximum)
         ER_minus = np.min(ER_minus_list)
         midpoints = []
+
         if ER_minus < Eee1 < ER_plus:
             midpoints += [Eee1]
         if ER_minus < Eee2 < ER_plus:
@@ -328,10 +352,7 @@ class Experiment:
             integr = integrate.quad(self._ResponseSHM_Finite, ER_minus, ER_plus,
                                     args=(Eee1, Eee2, mx, fp, fn, delta),
                                     points=midpoints, epsrel=PRECISSION, epsabs=0)
-#            integr = integrate.dblquad(self.DifferentialResponseSHM, ER_minus, ER_plus, \
-#                                       lambda Eee: Eee1, lambda Eee: Eee2, \
-#                                       args=(mx, fp, fn, delta), epsrel = PRECISSION,
-#                                       epsabs = 0)
+
             return integr[0]
         else:
             return 0.
@@ -434,6 +455,310 @@ class PoissonExperiment(Experiment):
         return result
 
 
+class Extended_likelihood(Experiment):
+    """ Class for experiments with Poisson analysis.
+    Input:
+        exper_name: string
+            Name of experiment.
+        scattering_type: string
+            Type of scattering.
+        mPhi: float, optional
+            Mass of the mediator.
+        quenching_factor: float, optional
+            Quenching factor. If not given, the default used is specified in the data
+            modules.
+    """
+    def __init__(self, exper_name, scattering_type, mPhi=mPhiRef, quenching_factor=None):
+        super().__init__(exper_name, scattering_type, mPhi)
+        module = import_file(INPUT_DIR + exper_name + ".py")
+        self.mu_bkg = module.mu_BKG_i
+        self.data = module.ERecoilList
+        self.nobs = len(self.data)
+        self.bkg = module.NBKG
+        self.Exposure = module.Exposure
+        self.lowE = np.array([module.Ethreshold])
+        self.HighE = np.array([module.ERmaximum])
+
+        self.expername = exper_name
+        self.ERecoilList = module.ERecoilList
+        self.ElistMaxGap = \
+            np.append(np.insert(np.array(list(filter(lambda x:
+                                                     self.Ethreshold < x < self.Emaximum,
+                                                     self.ERecoilList))), 0, self.Ethreshold), self.Emaximum)
+
+
+    def UpperLimit(self, fp, fn, delta, mx_min, mx_max, num_steps, output_file,
+                   processes=None):
+        """ Computes the upper limit in cross-section as a function of DM mass mx.
+        """
+        self.fp = fp
+        self.fn = fn
+        self.delta = delta
+        mx_list = np.logspace(np.log10(mx_min), np.log10(mx_max), num_steps)
+
+        kwargs = ({'mx': mx,
+                   'fp': fp,
+                   'fn': fn,
+                   'delta': delta,
+                   'output_file': output_file}
+                  for mx in mx_list)
+        #upper_limit = np.array(par.parmap(self.MaximumGapUpperBoundSHM, kwargs, processes)
+        #                       ).flatten()
+        #upper_limit = 1. / conversion_factor * mx_list * upper_limit
+        #print("mx_list = ", mx_list)
+        #print("upper_limit = ", upper_limit)
+        #result = np.log10(np.transpose([mx_list, upper_limit]))
+        #return result[result[:, 1] != np.inf]
+        upper_limit = np.array(par.parmap(self.RegionSHM, kwargs, processes))
+        print("mx_list = ", mx_list)
+        print("upper_limit = ", upper_limit)
+        return upper_limit
+
+
+    def _Predicted(self, mx, fp, fn, delta):
+        return self.Exposure * conversion_factor / mx * \
+            np.array([self.IntegratedResponseSHM(self.lowE, self.HighE, mx, fp, fn, delta)])
+
+    def mlog_likelihood(self, sigp, mx, fp, fn, delta):
+        pred = self._Predicted(mx, fp, fn, delta)
+        d_pred = self.Exposure * conversion_factor / mx * \
+                 np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, fp, fn, delta)
+                           for erg in self.data])
+
+        prefac = 2. * ((10**sigp * pred + self.bkg) - np.log((10.**sigp * d_pred + self.mu_bkg)/self.Exposure).sum())
+        return prefac
+
+
+    def RegionSHM(self, mx, output_file, fp, fn, delta):
+        pred = self._Predicted(mx, fp, fn, delta)
+
+        d_pred = self.Exposure * conversion_factor / mx * \
+                 np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, fp, fn, delta)
+                           for erg in self.data])
+
+        log_like_call = minimize(lambda x: 2. * (10. ** x * pred + self.bkg -
+                                                 np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()),
+                                 np.array([-43.]),
+                                 method='SLSQP', bounds=[(-50., -20.)])
+        log_likelihood_max = log_like_call.fun
+        sigma_fit = log_like_call.x
+        
+        predicted = 10**sigma_fit * pred
+        
+        print("mx = ", mx)
+        print("sigma_fit = ", sigma_fit)
+        print("max log likelihood = ", log_likelihood_max)
+        to_print = np.hstack((mx, sigma_fit, log_likelihood_max, predicted))
+        with open(output_file, 'ab') as f_handle:
+            np.savetxt(f_handle, to_print)
+        return to_print
+
+
+    def LogLMax(self, output_file, mx_fit_guess=None):
+        table = np.transpose(np.loadtxt(output_file))
+        mx_list = table[0]
+        mx_min = mx_list[0]
+        mx_max = mx_list[-1]
+        if mx_fit_guess is None:
+            mx_fit_guess = (mx_min + mx_max)/2
+        print('mx_min, mx_max =', mx_min, mx_max)
+        log_likelihood_max = table[2]
+        neg_log_likelihood_max_interp = interpolate.interp1d(mx_list, log_likelihood_max,
+                                                             kind='linear')
+        print('logL_guess =', neg_log_likelihood_max_interp(mx_fit_guess))
+        mx_fit = minimize(neg_log_likelihood_max_interp, mx_fit_guess, tol=1e-4,
+                          bounds=[(1.1 * mx_min, 0.9 * mx_max)]).x
+        print('mx_fit =', mx_fit)
+        logL_max = neg_log_likelihood_max_interp(mx_fit)
+        print('logL_max =', logL_max)
+        return mx_fit, logL_max, mx_list, log_likelihood_max
+
+    def _UpperLowerLists(self, mx, logL_max, sigma):
+        #print('Mass, sigma, logL_max, self.logL_targ: ', mx, sigma, logL_max, self.logL_target)
+        pred = self._Predicted(mx, self.fp, self.fn, self.delta)
+        d_pred = self.Exposure * conversion_factor / mx * \
+                 np.array([self._ResponseSHM_Finite(erg, self.lowE, self.HighE, mx, self.fp, self.fn, self.delta)
+                           for erg in self.data])
+
+        if logL_max < self.logL_target:
+            sig_low = minimize(lambda x: np.abs(2. * (10. ** x * pred + self.bkg -
+                                                      np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()) -
+                                                self.logL_target),
+                               np.array([sigma-0.1]),
+                               bounds=[(sigma-8., sigma)], method='SLSQP', tol=0.01).x
+
+            sig_high = minimize(lambda x: np.abs(2. * (10. ** x * pred + self.bkg -
+                                                       np.log((10.**x * d_pred + self.mu_bkg)/self.Exposure).sum()) -
+                                                 self.logL_target),
+                               np.array([sigma+0.1]),
+                               bounds=[(sigma, sigma+8.)], method='SLSQP', tol=0.01).x
+                               
+            print('Mass, Sigma_low, Sigma_high: ', mx, sig_low, sig_high)
+            return [[np.log10(mx), sig_low],
+                    [np.log10(mx), sig_high]]
+        return []
+
+    def UpperLowerLists(self, CL, output_file, output_file_lower, output_file_upper,
+                        num_mx=1000, processes=None):
+        print('CL =', CL, 'chi2 =', chi_squared(2, CL))
+        self.logL_target = self.logL_max + chi_squared(2, CL)
+
+        table = np.transpose(np.loadtxt(output_file))
+        mx_list = table[0]
+        sigma_fit_interp = interpolate.interp1d(mx_list, table[1])
+        log_likelihood_max_interp = interpolate.interp1d(mx_list, table[2])
+
+        mx_list = np.logspace(np.log10(mx_list[0]), np.log10(mx_list[-1]), num=num_mx)
+
+        sigma_fit = np.array([sigma_fit_interp(mx) for mx in mx_list])
+        logL_max = np.array([log_likelihood_max_interp(mx) for mx in mx_list])
+
+        kwargs = ({'mx': mx_list[index],
+                   'logL_max': logL_max[index],
+                   'sigma': sigma_fit[index],
+                   }
+                  for index in range(len(mx_list)))
+        limits = [l for l in par.parmap(self._UpperLowerLists, kwargs,
+                                        processes=processes, verbose=False) if l]
+        if limits:
+            limits = np.transpose(limits, axes=(1, 0, 2))
+            limit_low = limits[0]
+            limit_high = limits[1]
+        else:
+            limit_low = limit_high = []
+        return [np.array(limit_low), np.array(limit_high)]
+
+    def Region(self, delta, CL, output_file, output_file_lower, output_file_upper,
+               num_mx=500, processes=None):
+        self.CL = CL
+        self.mx_fit, self.logL_max, mx_list, log_likelihood_max = \
+            self.LogLMax(output_file)
+        [limit_low, limit_high] = \
+            self.UpperLowerLists(CL, output_file, output_file_lower, output_file_upper,
+                                 num_mx=num_mx, processes=processes)
+        np.savetxt(output_file_lower, limit_low)
+        np.savetxt(output_file_upper, limit_high)
+
+        return
+
+    def feldcous(self, CL):
+        #very specific. generalize.
+        if CL == 0.90:
+            return np.array([0.4, 6.72])
+        else:
+            return np.array([0.7, 4.6])
+
+
+class PoissonLikelihood(Experiment):
+    """ Class for experiments with Poisson analysis.
+    Input:
+        exper_name: string
+            Name of experiment.
+        scattering_type: string
+            Type of scattering.
+        mPhi: float, optional
+            Mass of the mediator.
+        quenching_factor: float, optional
+            Quenching factor. If not given, the default used is specified in the data
+            modules.
+    """
+    def __init__(self, exper_name, scattering_type, mPhi=mPhiRef, quenching_factor=None):
+        super().__init__(exper_name, scattering_type, mPhi)
+        module = import_file(INPUT_DIR + exper_name + ".py")
+        self.BinEdges_left = module.BinEdges_left
+        self.BinEdges_right = module.BinEdges_right
+        self.BinData = module.BinData
+        self.BinSize = module.BinSize
+        self.BinBkgr = module.BinBkgr
+        self.chiSquared = chi_squared(1)
+        self.BinExposure = module.BinExposure
+        self.exper_name = module.name
+
+    def _MinusLogLikelihood(self, mx, fp, fn, delta):
+        """
+        Calculates -2 log likelihood
+        """
+    
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+
+        resp_integr = self.BinExposure[0] * conversion_factor / mx * self.IntegratedResponseSHM(
+                            self.BinEdges_left[0], self.BinEdges_right[0], mx, fp, fn, delta)
+        
+        if resp_integr < 0.0:
+            rate_partials[0] = 0.0
+        else:
+            rate_partials[0] = resp_integr
+
+        result = 0
+        if self.exper_name == "LUX2016zero" or self.exper_name == "PandaX":
+            if self.exper_name == "LUX2016zero":
+                events = 3.2
+            else:
+                events = 3.
+            result = np.log10(rate_partials[0]) - np.log10(events)
+            print(result)
+            return result
+        
+        likemin = minimize(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
+                                            self.BinBkgr[0] - self.BinData[0] *
+                                            log(10.0 ** (-y) * rate_partials[0] +
+                                                self.BinBkgr[0])), 44.,
+                            method = 'SLSQP', bounds = [(20., 100.)])
+        
+        result = minimize(lambda y: np.abs(2.0 * (10.0 ** (-y) * rate_partials[0] +
+                                                  self.BinBkgr[0]  - self.BinData[0] *
+                                                  np.log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0]))
+                                           - self.chiSquared - likemin.fun), 40.,
+                           method = 'SLSQP', bounds = [(20., 60.)])
+        
+        """
+        result = fsolve(lambda y: 2.0 * (10.0 ** (-y) * rate_partials[0] +
+                                        self.BinBkgr[0]  - self.BinData[0] *
+                                        np.log(10.0 ** (-y) * rate_partials[0] + self.BinBkgr[0]))
+                        - self.chiSquared - likemin.fun, 40.)
+        """
+        
+        print(result.x)
+        return result.x
+    
+
+    def UpperLimit(self, fp, fn, delta, mx_min, mx_max, num_steps, output_file,
+                   processes=None):
+        """ Computes the upper limit in cross-section as a function of DM mass mx.
+        Input:
+            fp, fn: float
+                Couplings to proton and neutron.
+            delta: float
+                DM mass split.
+            mx_min, mx_max: float
+                Minimum and maximum DM mass.
+            num_steps: int
+                Number of steps in the range of DM mass values.
+            output_file: string
+                Name of output file where the result will be printed.
+        Returns:
+            upperlimit: ndarray
+                Table with the first row giving the base-10 log of the DM mass, and
+                the second row giving the base-10 log of the upper limit in cross-section.
+        """
+        mx_list = np.logspace(np.log10(mx_min), np.log10(mx_max), num_steps)
+        kwargs = ({'mx': mx,
+                   'fp': fp,
+                   'fn': fn,
+                   'delta': delta}
+                  for mx in mx_list)
+
+        upper_limit = np.array(par.parmap(self._MinusLogLikelihood, kwargs, processes)).flatten()
+        print("mx_list = ", mx_list)
+        print("upper_limit = ", upper_limit)
+        result = np.log10(np.transpose([mx_list, 10.0**-upper_limit]))
+        result = result[result[:, 1] != np.inf]
+        with open(output_file, 'ab') as f_handle:
+            np.savetxt(f_handle, result)
+        return result
+
+
 class GaussianExperiment(Experiment):
     """ Class for experiments with Gaussian analysis.
     Input:
@@ -521,7 +846,9 @@ class MaxGapExperiment(Experiment):
         print("mx = ", mx)
         xtable = np.array([self.IntegratedResponseSHM(i, j, mx, fp, fn, delta)
                            for i, j in zip(self.ElistMaxGap[:-1], self.ElistMaxGap[1:])])
+
         mu_scaled = xtable.sum()
+
         x_scaled = np.max(xtable)
         if x_scaled == 0:
             mu_over_x = np.inf
@@ -547,6 +874,13 @@ class MaxGapExperiment(Experiment):
         """ Computes the upper limit in cross-section as a function of DM mass mx.
         """
         mx_list = np.logspace(np.log10(mx_min), np.log10(mx_max), num_steps)
+#        mx_list= np.array([2.891, 3.029, 3.175, 3.327, 3.486, 3.654, 3.829, 4.012, 4.205, 4.406, \
+#            4.617, 4.839, 5.071, 5.314, 5.569, 5.836, 6.116, 6.409, 6.716, 7.038, \
+#            7.376, 7.729, 8.1, 8.488, 8.895, 9.322, 9.769, 10.237, 10.728, \
+#                11.242, 11.781, 12.346, 12.938, 13.558, 14.208, 14.89, 15.603, \
+#                16.352, 17.136, 17.957, 18.818, 19.72, 20.666, 21.657, 22.695, \
+#                23.783, 24.924, 26.119, 27.371, 28.683, 30.058, 31.5, 33.01, 34.593, \
+#                36.251, 37.989, 39.811])
         kwargs = ({'mx': mx,
                    'fp': fp,
                    'fn': fn,
@@ -581,11 +915,14 @@ class DAMAExperiment(Experiment):
         self.BinEdges = module.BinEdges
         self.BinData = module.BinData
         self.BinError = module.BinError
+
 #        self._Rebin()
         self.BinEdges_left = self.BinEdges[:-1]
         self.BinEdges_right = self.BinEdges[1:]
         self.BinData = self.Exposure * self.BinData
+
         self.BinError = self.Exposure * self.BinError
+
         if quenching_factor is not None:
             self.QuenchingFactor = lambda e: quenching_factor
 
@@ -654,18 +991,24 @@ class DAMAExperiment(Experiment):
 
     def _UpperLowerLists(self, mx, logL_max, sigma, pred, data, err):
         def logL(ratio, pred=pred, data=data, err=err):
-            return -sum((ratio * pred - data)**2 / (2 * err**2)) - self.logL_target
+            #return -sum((ratio * pred - data)**2 / (2 * err**2)) - self.logL_target
+            return -sum((ratio * pred - data) ** 2 / (2 * err ** 2)) - self.logL_target
         if logL_max > self.logL_target:
             ratio_low = fsolve(logL, 0.5)[0]
             ratio_high = fsolve(logL, 3)[0]
-            return [[np.log10(mx), np.log10(ratio_low * sigma)],
+            print('Rlow,Rhigh',ratio_low,ratio_high)
+            if ratio_low < 0.:
+                r_low = 0.
+            else:
+                r_low = np.log10(ratio_low * sigma)
+            return [[np.log10(mx), r_low],
                     [np.log10(mx), np.log10(ratio_high * sigma)]]
         return []
 
     def UpperLowerLists(self, CL, output_file, output_file_lower, output_file_upper,
                         num_mx=1000, processes=None):
         print('CL =', CL, 'chi2 =', chi_squared(2, CL))
-        self.logL_target = self.logL_max - chi_squared(2, CL)/2
+        self.logL_target = self.logL_max - chi_squared(2, CL)
 
         table = np.transpose(np.loadtxt(output_file))
         num_dimensions = table.shape[0]

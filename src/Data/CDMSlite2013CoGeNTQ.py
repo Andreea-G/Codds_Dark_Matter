@@ -53,15 +53,15 @@ def QuenchingFactor(e):
     return (1 + 69./3 * 0.19935 * e**0.1204)/(1 + 69./3)
 
 Ethreshold = 0.17
-Emaximum = 12
-ERmaximum = 12
+Emaximum = 7
+ERmaximum = 7
 
 def Efficiency(e): return np.array(0.985) if Ethreshold <= e < Emaximum else np.array(0.)
 
 def Efficiency_ER(er):
     return np.ones_like(er)
 
-Exposure = 577.
+Exposure = 0.6 * 10.
 ERecoilList = np.array([0.10142857142857144, 0.10285714285714286, 0.10428571428571429,
                         0.10571428571428572, 0.10714285714285715, 0.10857142857142857,
                         0.11142857142857143, 0.11285714285714286, 0.1142857142857143,

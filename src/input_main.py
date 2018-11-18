@@ -30,7 +30,7 @@ input_filename_list = {True: "input_HaloDep",
 
 EHIBools = namedtuple('EHIBools', ['ResponseTables', 'OptimalLikelihood',
                                    'ImportOptimalLikelihood',
-                                   'ConstrainedOptimalLikelihood',
+                                   'ConstrainedOptimalLikelihood', 'Isotropy',
                                    'VminLogetaSamplingTable', 'LogLikelihoodList',
                                    'ConfidenceBand', 'ConfidenceBandPlot'])
 len_EHIBools = len(EHIBools._fields)
@@ -78,10 +78,11 @@ class Input:
     """
     def __init__(self, HALO_DEP,
                  implemented_exper_list, exper_indices=slice(None),
-                 input_indices=slice(None),
+                 input_indices=slice(None), multiexper_input_indices=slice(None),
                  scattering_types='SI',
-                 RUN_PROGRAM=False, MAKE_REGIONS=False, MAKE_CROSSES=False,
-                 MAKE_LIMITS=False, MAKE_PLOT=False, EHI_METHOD={},
+                 RUN_PROGRAM=False, MAKE_REGIONS=False, MULTI_EXPER=False,
+                 MAKE_CROSSES=False, GENERATE_MC=False,
+                 MAKE_LIMITS=False, MAKE_PLOT=False, EHI_METHOD={}, MULTI_LOGLIKELIST=False,
                  OUTPUT_MAIN_DIR="../Output/", filename_tail_list=[""], extra_tail="",
                  plot_dots=False,
                  CL_list=[0.9], sigma_dev_list=[1]):
@@ -90,12 +91,15 @@ class Input:
 
         self.implemented_exper_list = np.array(implemented_exper_list)
         self.SetExperList(exper_indices)
+
         self.scattering_type_list = scattering_types \
             if isinstance(scattering_types, list) \
             else [scattering_types]
         self.filename_tail_list = filename_tail_list
         self.extra_tail = extra_tail  # for EHI method
         self.input_list = np.array(module.input_list)[input_indices]
+        if MULTI_EXPER == T:
+            self.multiexper_input = self.implemented_exper_list[multiexper_input_indices]
 
         self.OUTPUT_MAIN_DIR = OUTPUT_MAIN_DIR
         self.MAKE_PLOT = MAKE_PLOT
@@ -106,7 +110,9 @@ class Input:
         self.MAKE_LIMITS = MAKE_LIMITS
         self.HALO_DEP = HALO_DEP
         self.EHI_METHOD = EHIBools(**EHI_METHOD)
-
+        self.MULTI_EXPER = MULTI_EXPER
+        self.MULTI_LOGLIKELIST = MULTI_LOGLIKELIST
+        self.GENERATE_MC = GENERATE_MC
         self.qKIMS_list = [0.1, 0.05]
         self.qDAMANa_list = [0.4, 0.3]
         self.qDAMAI_list = [0.09, 0.06]
@@ -136,6 +142,10 @@ class Input:
     def SetInputList(self, input_indices):
         module = import_file(input_filename_list[self.HALO_DEP] + ".py")
         self.input_list = np.array(module.input_list)[input_indices]
+
+    def SetMultiExperInputList(self, multiexper_input_indices):
+        module = import_file(input_filename_list[self.HALO_DEP] + ".py")
+        self.multi_input_list = np.array(module.input_list)[multiexper_input_indices]
 
     def QuenchingList(self):
         quenching_list = {"KIMS2012": self.qKIMS_list,
@@ -168,8 +178,10 @@ class Input:
                 in product(self.scattering_type_list,
                            self.filename_tail_list, self.input_list):
             self.log_sigma_p = None
+
             for self.exper_name in self.exper_list:
-                if self.exper_name == "CDMSSi2012" and np.any(self.EHI_METHOD):
+                if self.exper_name == "CDMSSi2012" and np.any(self.EHI_METHOD) and not self.MULTI_EXPER:
+
                     self.vmin_EHIBand_range = \
                         module.Vmin_EHIBand_range(self.exper_name, self.mx,
                                                   self.delta, self.mPhi)
@@ -188,7 +200,7 @@ class Input:
                                           self.delta, mPhi=self.mPhi,
                                           quenching=self.quenching[0],
                                           EHI_METHOD=np.any(self.EHI_METHOD))
-                    if np.any(self.EHI_METHOD):
+                    if np.any(self.EHI_METHOD) and self.exper_name == "CDMSSi2012":
                         self.vmin_EHIBand_range = \
                             module.Vmin_EHIBand_range(self.exper_name.split()[0],
                                                       self.mx, self.delta, self.mPhi)
@@ -198,10 +210,31 @@ class Input:
                     kwargs = self._GetKwargs()
                     run_program = RunProgram()
                     run_program(**kwargs)
-            PlotData.make_legend(self.HALO_DEP, self.scattering_type, self.mPhi,
+
+            if self.MULTI_EXPER and (self.multiexper_input).size != 0:
+
+                self.vmin_EHIBand_range = \
+                    module.Vmin_EHIBand_range(self.multiexper_input[0], self.mx, self.delta, self.mPhi)
+                self.logeta_EHIBand_percent_range = \
+                    module.logeta_EHIBand_percent_range
+                self.steepness = module.Steepness(self.multiexper_input[0], self.mx, self.delta, self.mPhi)
+                self.logeta_guess = module.Logeta_guess(self.multiexper_input[0], self.mx, self.delta, self.mPhi)
+
+                self.vmin_range = \
+                    module.Vmin_range(self.multiexper_input[0], self.mx, self.delta, mPhi=self.mPhi,
+                                      quenching=1.0, EHI_METHOD=np.any(self.EHI_METHOD))
+                self.vmin_EHIBand_range = module.Vmin_EHIBand_range(self.multiexper_input[0], self.mx, self.delta, self.mPhi)
+                print(self.vmin_range)
+                kwargs = self._GetKwargs()
+                run_program = RunProgram_Multiexperiment()
+                run_program(**kwargs)
+
+
+            if self.MAKE_PLOT or self.EHI_METHOD.ConfidenceBandPlot:
+                PlotData.make_legend(self.HALO_DEP, self.scattering_type, self.mPhi,
                                  self.fp, self.fn, self.delta, mx=self.mx,
                                  log_sigma_p=self.log_sigma_p)
-            if self.MAKE_PLOT or self.EHI_METHOD.ConfidenceBandPlot:
+
                 if xlim is not None:
                     plt.xlim(xlim)
                 if ylim is not None:
@@ -220,6 +253,7 @@ class Input:
         """ Run the program for halo-dependent analysis.
         """
         module = import_file(input_filename_list[self.HALO_DEP] + ".py")
+        
         for self.scattering_type, self.filename_tail, \
                 (self.fn, self.delta, self.mPhi) \
                 in product(self.scattering_type_list,

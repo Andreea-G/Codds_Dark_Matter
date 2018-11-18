@@ -26,15 +26,23 @@ from experiment_HaloIndep import *
 import interp_uniform as unif
 # from interp import interp1d
 from scipy import interpolate
-from scipy.optimize import brentq, minimize
+from scipy.optimize import brentq, minimize, brute
 from basinhopping import *
+from globalfnc import *
+from custom_minimizer import *
 import matplotlib.pyplot as plt
 import os   # for speaking
 import parallel_map as par
+from scipy.stats import poisson
+import numpy.random as random
+import numpy as np
+from scipy.interpolate import interp1d
+from scipy.integrate import quad
+import copy
 
 DEBUG = F
 DEBUG_FULL = F
-USE_BASINHOPPING = T
+USE_BASINHOPPING = F
 ADAPT_KWARGS = F
 ALLOW_MOVE = T
 
@@ -65,19 +73,23 @@ class ConstraintsFunction(object):
             13 - 15: vminStar_index: x.size/2 constraints = 3 for x.size/2 = 3
             16 - 18: vminStar and logetaStar: x.size/2 constraints = 3 for x.size/2 = 3
         """
-        constraints = np.concatenate([x[:x.size/2], self.vmin_max - x[:x.size/2], -x[x.size/2:],
-                                      np.diff(x[:x.size/2]), np.diff(-x[x.size/2:]),
-                                      (x[:x.size/2] - self.vminStar) * (-x[x.size/2:] + self.logetaStar),
+        hxsz = int(x.size/2)
+        constraints = np.concatenate([x[:hxsz], self.vmin_max - x[:hxsz], -x[hxsz:],
+                                      np.diff(x[:hxsz]), np.diff(-x[hxsz:]),
+                                      (x[:hxsz] - self.vminStar) * (-x[hxsz:] + self.logetaStar),
                                       self.vminStar - x[:self.vminStar_index],
-                                      x[self.vminStar_index: x.size/2] - self.vminStar,
-                                      x[x.size/2: x.size/2 + self.vminStar_index] - self.logetaStar,
-                                      self.logetaStar - x[x.size/2 + self.vminStar_index:]])
+                                      x[self.vminStar_index: hxsz] - self.vminStar,
+                                      x[hxsz: hxsz + self.vminStar_index] - self.logetaStar,
+                                      self.logetaStar - x[hxsz + self.vminStar_index:]])
+
         if close:
-            is_not_close = np.logical_not(np.isclose(constraints, np.zeros_like(constraints), atol=1e-5))
-            is_not_close[:3 * (x.size/2)] = True
+            is_not_close = np.logical_not(np.isclose(constraints, np.zeros_like(constraints), atol=1e-9))
+            is_not_close[:3 * hxsz] = True
             constraints = np.where(is_not_close, constraints, np.abs(constraints))
+
         if np.any(np.isnan(constraints)):
-            raise ValueError
+            return np.ones(len(constraints)) * -1000.
+
         return constraints
 
 
@@ -99,23 +111,42 @@ class Experiment_EHI(Experiment_HaloIndep):
             Type of minimization solver to be passed as a parameter to the minimization
                 routine. Can be 'SLSQP' or 'COBYLA'.
     """
-    def __init__(self, expername, scattering_type, mPhi=mPhiRef, method='SLSQP'):
+    def __init__(self, expername, scattering_type, mPhi=mPhiRef, method='SLSQP', pois=False, gaus=False):
         super().__init__(expername, scattering_type, mPhi)
         module = import_file(INPUT_DIR + expername + ".py")
-        self.ERecoilList = module.ERecoilList
-        self.mu_BKG_i = module.mu_BKG_i
-        self.NBKG = module.NBKG
-        self.method = method
+        if not pois and not gaus:
+            self.ERecoilList = module.ERecoilList
+            self.mu_BKG_i = module.mu_BKG_i
+            self.NBKG = module.NBKG
+            self.method = method
+            self.mu_BKG_interp = interp1d(self.ERecoilList, self.mu_BKG_i, bounds_error=False)
+            self.Poisson = False
+            self.Gaussian = False
+        else:
+            self.BinData = module.BinData
+            self.BinEdges_l = module.BinEdges_left
+            self.BinEdges_r = module.BinEdges_right
+            self.Binbkg = module.BinBkgr
+            self.BinExp = module.BinExposure
+            self.Poisson = True
+            self.Nbins = module.Nbins
+
 
     def _VMinSortedList(self, mx, fp, fn, delta):
         """ Computes the list of vmin corresponsing to measured recoil energies,
         sorted in increasing order. Will be useful as starting guesses.
         """
-        self.vmin_sorted_list = np.sort(VMin(self.ERecoilList, self.mT[0], mx, delta))
+
+        if not self.Poisson and not self.Gaussian:
+            self.vmin_sorted_list = np.sort(VMin(self.ERecoilList, self.mT[0], mx, delta))
+        else:
+            # self.vmin_sorted_list = np.sort(VMin(np.mean(np.column_stack((self.BinEdges_r,self.BinEdges_l)),
+            #                                              axis=1), self.mT[0], mx, delta))
+            self.vmin_sorted_list = np.sort(VMin(self.BinEdges_l, self.mT[0], mx, delta))
         return
 
     def ResponseTables(self, vmin_min, vmin_max, vmin_step, mx, fp, fn, delta,
-                       output_file_tail):
+                       output_file_tail, isotropy):
         """ Computes response tables
             - self.diff_response_tab is a table of [vmin, DifferentialResponse(Eee_i)]
         pairs for each vmin in the range [vminmin, vminmax], corresponding to measured
@@ -139,6 +170,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 self.vmin_sorted_list, self.diff_response_tab and self.response_tab
                 are each written to files.
         """
+
         self._VMinSortedList(mx, fp, fn, delta)
         file = output_file_tail + "_VminSortedList.dat"
         print(file)
@@ -148,62 +180,99 @@ class Experiment_EHI(Experiment_HaloIndep):
             branches = [1]
         else:
             branches = [1, -1]
-        self.vmin_linspace = np.linspace(vmin_min, vmin_max,
-                                         (vmin_max - vmin_min)/vmin_step + 1)
-        self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
-        self.response_tab = np.zeros(1)
-        self.curly_H_tab = np.zeros((self.ERecoilList.size, 1))
-        self.xi_tab = np.zeros(1)
-        xi = 0
-        vmin_prev = 0
-        for vmin in self.vmin_linspace:
-            print("vmin =", vmin)
-            diff_resp_list = np.zeros((1, len(self.ERecoilList)))
-            resp = 0
-            curly_H = np.zeros((1, len(self.ERecoilList)))
+        self.vmin_linspace = np.linspace(vmin_min, vmin_max, (vmin_max - vmin_min)/vmin_step + 1)
 
-            for sign in branches:
+        if not self.Poisson and not self.Gaussian:
+            self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
+            self.curly_H_tab = np.zeros((self.ERecoilList.size, 1))
+            self.response_tab = np.zeros(1)
+            self.xi_tab = np.zeros(1)
 
-                (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
-                v_delta = min(VminDelta(self.mT, mx, delta))
-                diff_resp_list += np.array([self.DifferentialResponse(Eee, qER, const_factor)
-                                            for Eee in self.ERecoilList])
-                resp += integrate.quad(self.DifferentialResponse, self.Ethreshold, self.Emaximum,
-                                       args=(qER, const_factor), epsrel=PRECISSION, epsabs=0)[0]
+            xi = 0
+            vmin_prev = 0
+            for vmin in self.vmin_linspace:
+                print("vmin =", vmin)
+                resp = 0
+                diff_resp_list = np.zeros((1, len(self.ERecoilList)))
+                curly_H = np.zeros((1, len(self.ERecoilList)))
+                for sign in branches:
+                    (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
+                    v_delta = min(VminDelta(self.mT, mx, delta))
+                    diff_resp_list += np.array([self.DifferentialResponse(Eee, qER, const_factor)
+                                                for Eee in self.ERecoilList])
+                    curly_H += np.array([[integrate.quad(self.DifferentialResponse_Full, v_delta, vmin,
+                                                         args=(Eee, mx, fp, fn, delta, sign),
+                                                         epsrel=PRECISSION, epsabs=0)[0]
+                                          for Eee in self.ERecoilList]])
 
-                curly_H += np.array([[integrate.quad(self.DifferentialResponse_Full, v_delta, vmin,
-                                                     args=(Eee, mx, fp, fn, delta, sign),
-                                                     epsrel=PRECISSION, epsabs=0)[0]
-                                      for Eee in self.ERecoilList]])
-            xi += self.Exposure * \
-                self.IntegratedResponse(vmin_prev, vmin,
-                                        self.Ethreshold, self.Emaximum,
-                                        mx, fp, fn, delta)
-            vmin_prev = vmin
-            self.diff_response_tab = \
-                np.append(self.diff_response_tab, diff_resp_list.transpose(), axis=1)
-            self.response_tab = np.append(self.response_tab, [resp], axis=0)
-            self.curly_H_tab = np.append(self.curly_H_tab, curly_H.transpose(), axis=1)
-            # counts/kg/keVee
-            self.xi_tab = np.append(self.xi_tab, [xi], axis=0)
-            # counts * day
-        self.vmin_linspace = np.insert(self.vmin_linspace, 0., 0)
+                    resp += integrate.quad(self.DifferentialResponse, self.Ethreshold, self.Emaximum,
+                                           args=(qER, const_factor), epsrel=PRECISSION, epsabs=0)[0]
+
+                xi += self.Exposure * \
+                    self.IntegratedResponse(vmin_prev, vmin,
+                                            self.Ethreshold, self.Emaximum,
+                                            mx, fp, fn, delta)
+                vmin_prev = vmin
+                self.diff_response_tab = \
+                    np.append(self.diff_response_tab, diff_resp_list.transpose(), axis=1)
+                self.response_tab = np.append(self.response_tab, [resp], axis=0)
+                self.curly_H_tab = np.append(self.curly_H_tab, curly_H.transpose(), axis=1)
+                # counts/kg/keVee
+                self.xi_tab = np.append(self.xi_tab, [xi], axis=0)
+                # counts * day
+            file = output_file_tail + "_DiffRespTable.dat"
+            print(file)
+            np.savetxt(file, self.diff_response_tab)
+            file = output_file_tail + "_RespTable.dat"
+            print(file)
+            np.savetxt(file, self.response_tab)
+            file = output_file_tail + "_CurlyHTable.dat"
+            print(file)
+            np.savetxt(file, self.curly_H_tab)
+            file = output_file_tail + "_XiTable.dat"
+            print(file)
+            np.savetxt(file, self.xi_tab)
+        elif self.Poisson:
+            self.response_tab = np.zeros((len(self.vmin_linspace), len(self.BinEdges_l)))
+            self.xi_tab = np.zeros((len(self.vmin_linspace), len(self.BinEdges_l)))
+            v_delta = min(VminDelta(self.mT, mx, delta))
+            vmin_prev = 0
+            xi = np.zeros(len(self.BinData))
+            for i, vmin in enumerate(self.vmin_linspace):
+                print("vmin =", vmin)
+                for j in range(len(self.BinEdges_r)):
+                    for sign in branches:
+                        (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
+
+                        # self.response_tab[i, j] += self._Response_Dirac(vmin, self.BinEdges_l[j],
+                        #                                                 self.BinEdges_r[j], mx, fp, fn, delta)
+                        self.response_tab[i, j] += self._Response_Finite(vmin, self.BinEdges_l[j],
+                                                                          self.BinEdges_r[j], mx, fp, fn, delta)
+                        #print(vmin, ERecoilBranch(vmin, 120., mx, delta, 1.), self.BinEdges_l[j], self.response_tab[i, j])
+
+                    xi[j] += self.Exposure * np.trapz(self.response_tab[:i,j], self.vmin_linspace[:i])
+
+                    vmin_prev = vmin
+
+                    self.xi_tab[i, j] = xi[j]
+            self.minVmin = self.vmin_linspace[np.argmin(self.response_tab[:, 0])]
+            self.response_tab = np.insert(self.response_tab, 0, 0, axis=0)
+            self.xi_tab = np.insert(self.xi_tab, 0, 0, axis=0)
+
+            file = output_file_tail + "_RespTable.dat"
+            print(file)
+            np.savetxt(file, self.response_tab)
+            file = output_file_tail + "_XiTable.dat"
+            print(file)
+            np.savetxt(file, self.xi_tab)
+
+
+        self.vmin_linspace = np.insert(self.vmin_linspace, 0, 0)
         file = output_file_tail + "_VminLinspace.dat"
         print(file)
         np.savetxt(file, self.vmin_linspace)
-        file = output_file_tail + "_DiffRespTable.dat"
-        print(file)
-        np.savetxt(file, self.diff_response_tab)
-        file = output_file_tail + "_RespTable.dat"
-        print(file)
-        np.savetxt(file, self.response_tab)
-        file = output_file_tail + "_CurlyHTable.dat"
-        print(file)
-        np.savetxt(file, self.curly_H_tab)
-        file = output_file_tail + "_XiTable.dat"
-        print(file)
-        np.savetxt(file, self.xi_tab)
-        os.system("say Finished response tables.")
+
+#        os.system("say Finished response tables.")
         return
 
     def PlotTable(self, func, dimension=0, xlim=None, ylim=None,
@@ -249,33 +318,49 @@ class Experiment_EHI(Experiment_HaloIndep):
         if plot_show:
             plt.show()
 
-    def ImportResponseTables(self, output_file_tail, plot=True):
+    def ImportResponseTables(self, output_file_tail, isotropy,
+                             plot=False, pois=False):
         """ Imports the data for the response tables from files.
         """
+
         file = output_file_tail + "_VminSortedList.dat"
+
         with open(file, 'r') as f_handle:
             self.vmin_sorted_list = np.loadtxt(f_handle)
+
         file = output_file_tail + "_VminLinspace.dat"
         with open(file, 'r') as f_handle:
             self.vmin_linspace = np.loadtxt(f_handle)
-        file = output_file_tail + "_DiffRespTable.dat"
-        with open(file, 'r') as f_handle:
-            self.diff_response_tab = np.loadtxt(f_handle)
         file = output_file_tail + "_RespTable.dat"
         with open(file, 'r') as f_handle:
             self.response_tab = np.loadtxt(f_handle)
-        file = output_file_tail + "_CurlyHTable.dat"
-        with open(file, 'r') as f_handle:
-            self.curly_H_tab = np.loadtxt(f_handle)
         file = output_file_tail + "_XiTable.dat"
         with open(file, 'r') as f_handle:
             self.xi_tab = np.loadtxt(f_handle)
-        self.diff_response_interp = np.array([unif.interp1d(self.vmin_linspace, dr)
-                                              for dr in self.diff_response_tab])
-        self.response_interp = unif.interp1d(self.vmin_linspace, self.response_tab)
-        self.curly_H_interp = np.array([unif.interp1d(self.vmin_linspace, h)
-                                        for h in self.curly_H_tab])
 
+        if not self.Poisson and not self.Gaussian:
+            file = output_file_tail + "_DiffRespTable.dat"
+            with open(file, 'r') as f_handle:
+                self.diff_response_tab = np.loadtxt(f_handle)
+
+            file = output_file_tail + "_CurlyHTable.dat"
+            with open(file, 'r') as f_handle:
+                self.curly_H_tab = np.loadtxt(f_handle)
+
+            self.diff_response_interp = np.array([unif.interp1d(self.vmin_linspace, dr)
+                                                  for dr in self.diff_response_tab])
+            self.curly_H_interp = np.array([unif.interp1d(self.vmin_linspace, h)
+                                            for h in self.curly_H_tab])
+
+            self.response_interp = unif.interp1d(self.vmin_linspace, self.response_tab)
+        else:
+            self.response_interp = [None] * len(self.response_tab[1,:])
+            self.xi_interp = [None] * len(self.xi_tab[1, :])
+            for i in range(len(self.response_tab[1,:])):
+                self.response_interp[i] = unif.interp1d(self.vmin_linspace, self.response_tab[:, i])
+                self.xi_interp[i] = interp1d(self.vmin_linspace, self.xi_tab[:, i])
+            tab = next(i for i,x in enumerate(self.response_tab[:, 0]) if x > 0.)
+            self.minVmin = self.vmin_linspace[tab]
         if plot:
             self.PlotTable(self.diff_response_interp, dimension=1)
             self.PlotTable(self.response_interp, dimension=0)
@@ -283,17 +368,133 @@ class Experiment_EHI(Experiment_HaloIndep):
         return
 
     def VminIntegratedResponseTable(self, vmin_list):
-        return np.array([[integrate.quad(self.diff_response_interp[i],
-                                         vmin_list[a], vmin_list[a + 1],
-                                         epsrel=PRECISSION, epsabs=0)[0]
-                        for a in range(vmin_list.size - 1)]
-                        for i in range(self.ERecoilList.size)])
+        vmin_max = 1000.
+        vmin_list[vmin_list > vmin_max] = vmin_max
+        tab = np.zeros((vmin_list.size-1) * self.ERecoilList.size)
+        tab = tab.reshape((self.ERecoilList.size, vmin_list.size-1))
 
-    def IntegratedResponseTable(self, vmin_list):
-        return np.array([integrate.quad(self.response_interp,
+        for a in range(vmin_list.size - 1):
+            for i in range(self.ERecoilList.size):
+                if (vmin_list[a+1] - vmin_list[a]) > 1.0 and (vmin_list[a+1] < 1000.):
+                    tab[i,a] = integrate.quad(self.diff_response_interp[i],
+                                      vmin_list[a], vmin_list[a + 1],
+                                      epsrel=PRECISSION, epsabs=0)[0]
+
+        return tab
+
+    def IntegratedResponseTable(self, vmin_list, i=-1):
+        if self.Poisson:
+            response_interp = self.response_interp[i]
+        else:
+            response_interp = self.response_interp
+        tab = np.zeros(vmin_list.size - 1)
+        for a in range(vmin_list.size - 1):
+            if (vmin_list[a+1] - vmin_list[a]) > 0.1 and (vmin_list[a+1] < 1000.):
+                tab[a] = integrate.quad(response_interp,
                                         vmin_list[a], vmin_list[a + 1],
                                         epsrel=PRECISSION, epsabs=0)[0]
-                        for a in range(vmin_list.size - 1)])
+
+        return tab
+
+
+    def diffRespPois(self, vmin, i=-1):
+        return self.response_interp[i](vmin)
+
+
+    def ExpectedNumEvents(self, minfunc, mx, fp, fn, delta):
+
+        vmin_list_w0 = minfunc[:(minfunc.size / 2)]
+        logeta_list = minfunc[(minfunc.size / 2):]
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        resp_integr = self.IntegratedResponseTable(vmin_list_w0)
+        Nsignal = self.Exposure * np.dot(10**logeta_list, resp_integr)
+
+        return Nsignal
+
+    def Simulate_Events(self, Nexpected, minfunc, class_name, mx, fp, fn, delta):
+
+        Nevents = poisson.rvs(Nexpected + 0.41)
+
+        vdelta=min(VminDelta(self.mT, mx, delta))
+        logeta_list = minfunc[(minfunc.size / 2):]
+        eta_list = np.insert(logeta_list,0,-1)
+        vmin_list_w0 = minfunc[:(minfunc.size / 2)]
+        vmin_list_w0 = np.insert(vmin_list_w0, vdelta, 0)
+        vmin_grid = np.linspace(vdelta, vmin_list_w0[-1], 1000)
+
+        x_run = 0
+        resp_integr = np.zeros(len(vmin_grid))
+        for vmin_ind in range(len(vmin_grid)):
+            if vmin_grid[vmin_ind] < (vmin_list_w0[x_run+1]):
+                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.response_interp(vmin_grid[vmin_ind])
+            else:
+                x_run+=1
+                resp_integr[vmin_ind] = 10**eta_list[x_run] * self.response_interp(vmin_grid[vmin_ind])
+
+        #TODO This needs to be generalized for the future. MC must be done in ER
+        #for inelastic scattering and translated to vmin
+
+        if Nevents > 0:
+
+            pdf = resp_integr / np.sum(resp_integr)
+
+            cdf = pdf.cumsum()
+            u = random.rand(Nevents)
+            Q = np.zeros(Nevents)
+            for i in np.arange(Nevents):
+                Q[i] = vmin_grid[np.absolute(cdf - u[i]).argmin()]
+            Q = np.sort(Q)
+        else:
+            Q = np.array([])
+            Nevents = 0
+
+
+        print('Events expected: ', (Nexpected + 0.41), 'Events Simulated: ', Nevents)
+        print('Events: ', Q)
+        for x in Q:
+             recoil = ERecoilBranch(x, self.mT[0], mx, delta, 1)
+             if x == Q[0]:
+                 self.ERecoilList = np.array([recoil])
+             else:
+                 self.ERecoilList = np.append(self.ERecoilList,recoil)
+
+        self.ERecoilList = np.sort(self.ERecoilList)
+        for x in range(len(self.ERecoilList)):
+            if self.ERecoilList[x] < self.Ethreshold:
+                self.ERecoilList[x] = self.Ethreshold + .01
+            elif self.ERecoilList[x] > self.Emaximum:
+                self.ERecoilList[x] = self.Emaximum - .01
+
+        print('Recoil List', self.ERecoilList)
+
+        self.vmin_linspace = np.linspace(vdelta, 1000, 800)
+
+        self.diff_response_tab = np.zeros((self.ERecoilList.size, 1))
+
+        self.mu_BKG_i = np.zeros(len(self.ERecoilList))
+
+        for x in range(0, len(self.ERecoilList)):
+            self.mu_BKG_i[x] = 0.7
+
+        for vmin in self.vmin_linspace:
+            diff_resp_list = np.zeros((1, len(self.ERecoilList)))
+
+            if delta==0:
+                branches = [1]
+            else:
+                branches = [1,-1]
+            for sign in branches:
+                (ER, qER, const_factor) = self.ConstFactor(vmin, mx, fp, fn, delta, sign)
+                diff_resp_list += np.array([self.DifferentialResponse(Eee, qER, const_factor)
+                                            for Eee in self.ERecoilList])
+
+
+            self.diff_response_tab = np.append(self.diff_response_tab, diff_resp_list.transpose(), axis=1)
+            self.diff_response_interp = np.array([unif.interp1d(self.vmin_linspace, dr)
+                                                  for dr in self.diff_response_tab])
+
+        return Q
 
     def _MinusLogLikelihood(self, vars_list, vminStar=None, logetaStar=None,
                             vminStar_index=None):
@@ -306,26 +507,44 @@ class Experiment_EHI(Experiment_HaloIndep):
         Returns:
             -log(L): float
         """
+
         if vminStar is None:
-            vmin_list_w0 = vars_list[: vars_list.size/2]
-            logeta_list = vars_list[vars_list.size/2:]
+            vmin_list_w0 = vars_list[: int(vars_list.size/2)]
+            logeta_list = vars_list[int(vars_list.size/2):]
         else:
-            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+            vmin_list_w0 = np.insert(vars_list[: int(vars_list.size/2)],
                                      vminStar_index, vminStar)
-            logeta_list = np.insert(vars_list[vars_list.size/2:],
+            logeta_list = np.insert(vars_list[int(vars_list.size/2):],
                                     vminStar_index, logetaStar)
+
         vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
-        vmin_resp_integr = self.VminIntegratedResponseTable(vmin_list_w0)
-        resp_integr = self.IntegratedResponseTable(vmin_list_w0)
-        mu_i = self.Exposure * np.dot(vmin_resp_integr, 10**logeta_list)
-        Nsignal = self.Exposure * np.dot(10**logeta_list, resp_integr)
-        if vminStar is None:
-            self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
-            # counts/kg/keVee/days
-        result = self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum()
-        if np.any(self.mu_BKG_i + mu_i < 0):
-            raise ValueError
+
+        if not self.Poisson:
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0)
+            vmin_resp_integr = self.VminIntegratedResponseTable(vmin_list_w0)
+            mu_i = self.Exposure * np.dot(vmin_resp_integr, 10**logeta_list)
+            Nsignal = self.Exposure * np.dot(10**logeta_list, resp_integr)
+            if Nsignal < 0.:
+                Nsignal = 0.
+
+            if vminStar is None:
+                self.gamma_i = (self.mu_BKG_i + mu_i) / self.Exposure
+                # counts/kg/keVee/days
+            for x in range(0, len(mu_i)):
+                if mu_i[x] <= 0.:
+                    mu_i[x] = 0.
+            result = 2.0 * (self.NBKG + Nsignal - np.log(self.mu_BKG_i + mu_i).sum())
+        else:
+            result = 0.
+            for i in range(len(self.BinData)):
+                resp_integr = self.IntegratedResponseTable(vmin_list_w0, i=i)
+                bin_ev = self.BinExp[i] * np.dot(10 ** logeta_list, resp_integr)
+                tot_ev = (bin_ev + self.Binbkg[i])
+
+                result += 2.0 * (tot_ev - self.BinData[i] * np.log(tot_ev))
+
         return result
+
 
     def MinusLogLikelihood(self, vars_list, constr_func=None, vminStar=None,
                            logetaStar=None, vminStar_index=None):
@@ -348,6 +567,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         """
         constraints = constr_func(vars_list)
         constr_not_valid = constraints < 0
+
         if DEBUG_FULL:
             print("*** vars_list =", repr(vars_list))
         if DEBUG_FULL:
@@ -370,7 +590,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 print("Error!!")
                 raise
 
-    def OptimalLikelihood(self, output_file_tail, logeta_guess):
+    def OptimalLikelihood(self, output_file_tail, logeta_guess, pois=False, gaus=False):
         """ Finds the best-fit piecewise constant eta function corresponding to the
         minimum MinusLogLikelihood, and prints the results to file (value of the minimum
         MinusLogLikelihood and the corresponding values of vmin, logeta steps.
@@ -413,14 +633,14 @@ class Experiment_EHI(Experiment_HaloIndep):
             optimum_log_likelihood = minimize(self.MinusLogLikelihood, vars_guess,
                                               args=(constr_func,), constraints=constr)
 
-        print(optimum_log_likelihood)
+        #print(optimum_log_likelihood)
         print("MinusLogLikelihood =", self._MinusLogLikelihood(optimum_log_likelihood.x))
         print("vars_guess =", repr(vars_guess))
         file = output_file_tail + "_GloballyOptimalLikelihood.dat"
         print(file)
         np.savetxt(file, np.append([optimum_log_likelihood.fun],
                                    optimum_log_likelihood.x))
-        os.system("say 'Finished finding optimum'")
+#        os.system("say 'Finished finding optimum'")
         return
 
     def ImportOptimalLikelihood(self, output_file_tail, plot=False):
@@ -449,7 +669,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             self.q_tab = 2 * (self.xi_tab - self.h_sum_tab)
             self.h_sum_interp = unif.interp1d(self.vmin_linspace, self.h_sum_tab)
             self.q_interp = unif.interp1d(self.vmin_linspace, self.q_tab)
-
+            print('gamma', self.gamma_i[0], self.gamma_i[1], self.gamma_i[2])
             file = output_file_tail + "_HSumTable.dat"
             print(file)
             np.savetxt(file, self.h_sum_tab)
@@ -492,6 +712,346 @@ class Experiment_EHI(Experiment_HaloIndep):
                   max(logeta_list[0] * ylim_percentage[1], -35)])
         if plot_show:
             plt.show()
+        return
+
+    def MultiExperimentMinusLogLikelihood(self, vars_list, multiexper_input, class_name,
+                                          mx, fp, fn, delta, constr_func=None, vminStar=None,
+                                          logetaStar=None, vminStar_index=None):
+        """ Computes -log(L) and tests whether constraints are satisfied.
+        Input:
+            vars_list: ndarray
+                List of variables [vmin_1, ..., vmin_No, log(eta_1), ..., log(eta_No)].
+            constr_func: callable, optional
+                Ffunction of vars_list giving an array of values each corresponding to
+                a constraint. If the values are > 0 the constraints are satisfied.
+            vminStar, logetaStar: float, optional
+                Values of fixed vmin^* and log(eta)^*.
+            vminStar_index: int, optional
+                Index corresponding to the position of vminStar in the array of vmin
+                steps.
+        Returns:
+            -log(L) if all constraints are valid, and the result of an artificial
+                function that grows with the invalid constraints if not all constraints
+                are valid.
+        """
+
+        constraints = constr_func(vars_list)
+        constr_not_valid = constraints < 0
+        expernum = multiexper_input.size
+        if DEBUG_FULL:
+            print("*** vars_list =", repr(vars_list))
+        if DEBUG_FULL:
+            print("vminStar =", vminStar)
+            print("logetaStar =", logetaStar)
+            print("constraints =", repr(constraints))
+            print("constr_not_valid =", repr(constr_not_valid))
+        try:
+            if not self.Poisson and not self.Gaussian:
+                return (self._MinusLogLikelihood(vars_list, vminStar=vminStar,
+                                                logetaStar=logetaStar,
+                                                 vminStar_index=vminStar_index) +
+                       sum([class_name[x]._MinusLogLikelihood(vars_list,
+                                                             mx, fp, fn, delta)
+                         for x in range(1, expernum)]))
+            elif self.Poisson:
+                (self._MinusLogLikelihood(vars_list, vminStar=vminStar,
+                                          logetaStar=logetaStar,
+                                          vminStar_index=vminStar_index) +
+                 sum([class_name[x]._MinusLogLikelihood(vars_list,
+                                                        mx, fp, fn, delta)
+                      for x in range(1, expernum)]))
+        except:
+            if np.any(constr_not_valid):
+                constr_list = constraints[constr_not_valid]
+                if DEBUG_FULL:
+                    print("Constraints not valid!!")
+                    print("constr sum =", -constr_list.sum())
+                return min(max(-constr_list.sum(), 0.001) * 1e6, 1e6)
+            else:
+                print("Error!!")
+                raise
+
+    def MultiExperimentOptimalLikelihood(self, multiexper_input, class_name, mx, fp, fn,
+                                         delta, output_file_tail, output_file_CDMS, 
+                                         logeta_guess, nsteps_bin, isotropy):
+        """ Finds the best-fit piecewise constant eta function corresponding to the
+        minimum MinusLogLikelihood, and prints the results to file (value of the minimum
+        MinusLogLikelihood and the corresponding values of vmin, logeta steps.
+        Input:
+            output_file_tail: string
+                Tag to be added to the file name.
+            logeta_guess: float
+                Guess for the value of log(eta) in the minimization procedure.
+        """
+
+        self.ImportResponseTables(output_file_CDMS, plot=False)
+
+        if not self.Poisson:
+            addsteps = self.vmin_sorted_list[-1]* np.ones(nsteps_bin)
+            vminhold = np.append(self.vmin_sorted_list,addsteps)
+            vmin_list = np.sort(vminhold)
+        else:
+            vminhold = np.array([self.vmin_sorted_list])
+            for i in range(0, len(class_name)):
+                if i == 0:
+                    continue
+                # vminhold = np.append(vminhold, class_name[i].vmin_sorted_list)
+                vminhold = np.append(vminhold, np.array([100., 300., 700.]))
+            #print(vminhold)
+
+            vmin_list = np.sort(vminhold)
+
+
+        vars_guess = np.append(vmin_list, logeta_guess * np.ones(vmin_list.size))
+        print("vars_guess = ", vars_guess)
+
+        vmin_max = self.vmin_linspace[-1]
+
+
+
+        if not self.Poisson:
+            constr = ({'type': 'ineq', 'fun': self.constr_func})
+            optimum_log_likelihood, fun_val = \
+                    Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta)
+
+        else:
+
+            logeta_bnd = (-40.0, -20.0)
+            bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
+            vmin_bnd = (0, vmin_max)
+            bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
+            bnd = bnd_vmin + bnd_eta
+
+            constr = ({'type': 'ineq', 'fun': self.constr_func})
+
+            opt = minimize(self.poisson_wrapper, vars_guess,
+                           args=(class_name, mx, fp, fn, delta),
+                           jac=self.pois_jac,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-8,
+                           options={'maxiter':300, 'disp':False})
+            print(opt)
+            optimum_log_likelihood = opt.x
+            fun_val = opt.fun
+
+        print(optimum_log_likelihood)
+        print("MinusLogLikelihood =", fun_val)
+        print("vars_guess =", repr(vars_guess))
+        file = output_file_tail + "_GloballyOptimalLikelihood.dat"
+        print(file)
+        np.savetxt(file, np.append([fun_val], optimum_log_likelihood))
+        return
+
+    def constr_func(self, x, vmin_max=1000.):
+        """ 0 -  8: bounds: 3 * (x.size/2) constraints = 9 for x.size/2 = 3
+            9 - 12: sorted array: 2 * (x.size/2 - 1) constraints = 4 for x.size/2 = 3
+        """
+        constraints = np.concatenate([x[:int(x.size/2)], vmin_max - x[:int(x.size/2)],
+                                      -x[int(x.size/2):],
+                                      np.diff(x[:int(x.size/2)]), np.diff(-x[int(x.size/2):])])
+
+        is_not_close = np.logical_not(
+            np.isclose(constraints, np.zeros_like(constraints), atol=1e-3))
+        is_not_close[:3 * int(x.size/2)] = T
+        constr = np.where(is_not_close, constraints, np.abs(constraints))
+        if DEBUG:
+            print("***constr =", repr(constr))
+            print("tf =", repr(constr < 0))
+        return constr
+
+
+    def pois_jac(self, x0, class_name, mx, fp, fn, delta,
+                 vminStar=None, logetaStar=None, vminStar_index=None):
+
+
+        vmin_l = x0[:int(x0.size/2)]
+        eta_l = x0[int(x0.size/2):]
+
+        if vminStar is not None:
+            vmin_l = np.insert(vmin_l, vminStar_index, vminStar)
+            eta_l = np.insert(eta_l, vminStar_index, logetaStar)
+
+        vmin_list_w0 = np.insert(vmin_l, 0, 0)
+        eta_l_w0 = np.append(eta_l, np.array([-100.]))
+
+        dm_deta = np.zeros(len(eta_l))
+        dm_dv = np.zeros(len(vmin_l))
+
+
+        for cname in class_name:
+            resp_integr = np.zeros(len(cname.BinData)*len(eta_l)).reshape((len(cname.BinData),len(eta_l)))
+            npre = np.zeros(len(cname.BinData))
+            for i in range(len(cname.BinData)):
+                resp_integr[i] = cname.IntegratedResponseTable(vmin_list_w0, i=i)
+                npre[i] = cname.BinExp[i] * np.dot(10 ** eta_l, resp_integr[i])
+            coef = 2. * (1. - cname.BinData / (cname.Binbkg + npre))
+
+            for i in range(len(vmin_l)):
+                for j in range(int(cname.Nbins)):
+                    dm_deta[i] += cname.Exposure * np.log(10.) * 10 ** eta_l[i] * coef[j] * resp_integr[j, i]
+                    dm_dv[i] += coef[j] * cname.Exposure * \
+                                cname.diffRespPois(vmin_l[i], i=j)*(10**eta_l_w0[i] - 10**eta_l_w0[i+1])
+
+        if vminStar is not None:
+            dm_deta = np.delete(dm_deta, vminStar_index)
+            dm_dv = np.delete(dm_dv, vminStar_index)
+
+        ret = np.concatenate((dm_dv, dm_deta))
+        #print(ret)
+        return ret
+
+
+    def poisson_wrapper(self, x0, class_name, mx, fp, fn, delta,
+                        vminStar=None, logetaStar=None, index=None):
+        vmin_max = 1000.
+
+
+        if vminStar is not None:
+            vmin_list_reduced = x0[: int(len(x0) / 2)]
+            vmin_list = np.sort(np.append(vmin_list_reduced, vminStar))
+
+            index_hold = np.argwhere(vmin_list == vminStar)[0, 0]
+            logeta_list_reduced = x0[int(len(x0) / 2):]
+            logeta_list = np.insert(logeta_list_reduced, index_hold, logetaStar)
+        else:
+            vmin_list = x0[: int(len(x0) / 2)]
+            logeta_list = x0[int(len(x0) / 2):]
+            logeta_list_reduced = logeta_list
+            vmin_list_reduced = vmin_list
+            index_hold = None
+        #print(vmin_list, logeta_list)
+        optimize_func = self._MinusLogLikelihood(np.append(vmin_list, logeta_list), vminStar, logetaStar, index_hold)
+
+        for i in range(1, len(class_name)):
+            try:
+                optimize_func += class_name[i]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
+                                                                   mx, fp, fn, delta, vminStar,
+                                                                   logetaStar, index_hold)
+            except:
+                optimize_func += class_name[i]._MinusLogLikelihood(np.append(vmin_list, logeta_list),
+                                                                   vminStar, logetaStar, index_hold)
+        return optimize_func
+
+    def PlotQ_KKT_Multi(self, class_name, mx, fp, fn, delta, output_file, plot=False):
+
+        vminlist = class_name[0].optimal_vmin
+        logetalist = class_name[0].optimal_logeta
+        print(vminlist, logetalist)
+        optimum_steps = np.concatenate((vminlist, logetalist))
+        print('optimum_steps', optimum_steps)
+        explen = len(class_name)
+        q_tab = 0.
+        if plot:
+
+            if not self.Poisson:
+                Q_contrib = [None] * (explen)
+                for x in range(1, explen):
+                    Q_contrib[x] = class_name[x].KKT_Condition_Q(optimum_steps, mx, fp, fn, delta)
+                q_sum = np.zeros(1001)
+                for x in range(0, 1000):
+                    for y in range(1, explen):
+                        q_sum[x + 1] = Q_contrib[y][:, x].sum()
+                q_tab = q_sum
+
+                class_name[0]._MinusLogLikelihood(optimum_steps)  # to get self.gamma_i
+                xi_interp = unif.interp1d(class_name[0].vmin_linspace, class_name[0].xi_tab)
+                h_sum_tab = np.sum([class_name[0].curly_H_tab[i] / class_name[0].gamma_i[i]
+                                    for i in range(self.ERecoilList.size)], axis=0)
+                print('gamma', class_name[0].gamma_i[0], class_name[0].gamma_i[1], class_name[0].gamma_i[2])
+                q_tab += 2.0 * (class_name[0].xi_tab - h_sum_tab)
+                self.h_sum_interp = unif.interp1d(self.vmin_linspace, h_sum_tab)
+                self.PlotTable(self.h_sum_interp, dimension=0,
+                               xlim=[0, 2000], ylim=[-2e24, 5e25],
+                               title='Xi, H_{sum}', plot_close=False)
+
+
+            if self.Poisson:
+
+                prefac = np.array([])
+                uniqueness = np.array([])
+                for x in range(explen):
+                    prehold, unique = class_name[x].KKT_Condition_Q(optimum_steps, mx, fp, fn, delta)
+                    prefac = np.append(prefac, prehold)
+                    uniqueness = np.append(uniqueness, unique)
+            print('Prefactors: ', prefac)
+            print('Uniqueness', uniqueness)
+            if np.any(np.abs(prefac) < 1e-3):
+                print('BF Not Unique!')
+                self.uniqueBF = False
+            else:
+                self.uniqueBF = True
+            # for x in range(explen):
+            #     q_tab += np.dot(class_name[x].xi_tab, prefac)
+            # file = output_file + "KKT_Q.dat"
+            # f_handle = open(file, 'wb')   # clear the file first
+            # np.savetxt(f_handle, q_tab)
+            # f_handle.close()
+            #
+            # self.q_interp = unif.interp1d(self.vmin_linspace, q_tab)
+        return
+
+    def KKT_Condition_Q(self, optimum_steps, mx, fp, fn, delta):
+        vmin_list = optimum_steps[:int(len(optimum_steps) / 2)]
+        logeta_list = optimum_steps[int(len(optimum_steps) / 2):]
+        vmin_list_w0 = np.insert(vmin_list, 0, 0)
+        prefac = np.zeros(len(self.BinData))
+        q_tab = 0.
+        for i in range(len(self.BinData)):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0, i=i)
+            bin_ev = self.BinExp[i] * np.dot(10 ** logeta_list, resp_integr)
+            # print(bin_ev)
+            tot_ev = (bin_ev + self.Binbkg[i])
+            # print('Pre-factor in Bin ', i+1,' of ', len(self.BinData), ' is: ', 1. - self.BinData[i] / tot_ev)
+            prefac[i] = 1. - self.BinData[i] / tot_ev
+            q_tab += (1. - self.BinData[i] / tot_ev) * self.xi_tab[:, i]
+        if np.any(np.abs(prefac) < 1e-3):
+            uniq = False
+        else:
+            uniq = True
+        return prefac, uniq
+
+    def ImportMultiOptimalLikelihood(self, output_file_tail, output_file_CDMS, plot=False):
+        """ Import the minumum -log(L) and the locations of the steps in the best-fit
+        logeta function.
+        Input:
+            output_file_tail: string
+                Tag to be added to the file name.
+            plot: bool, optional
+                Whether to plot response tables.
+        """
+        self.ImportResponseTables(output_file_CDMS, plot=False)
+        file = output_file_tail + "_GloballyOptimalLikelihood.dat"
+        with open(file, 'r') as f_handle:
+            optimal_result = np.loadtxt(f_handle)
+        self.optimal_logL = optimal_result[0]
+        self.optimal_vmin = optimal_result[1: int(optimal_result.size/2) + 1]
+        self.optimal_logeta = optimal_result[int(optimal_result.size/2) + 1:]
+        print("optimal result =", optimal_result)
+        low_eta = np.ones(len(self.optimal_logeta)) * -50.
+        self.badLogLike = int(self._MinusLogLikelihood(np.concatenate((self.optimal_vmin, low_eta))))
+
+        if plot:
+            self._MinusLogLikelihood(optimal_result[1:])  # to get self.gamma_i
+            self.xi_interp = unif.interp1d(self.vmin_linspace, self.xi_tab)
+            self.h_sum_tab = np.sum([self.curly_H_tab[i] / self.gamma_i[i]
+                                     for i in range(self.optimal_vmin.size)], axis=0)
+            self.q_tab = 2 * (self.xi_tab - self.h_sum_tab)
+            self.h_sum_interp = unif.interp1d(self.vmin_linspace, self.h_sum_tab)
+            self.q_interp = unif.interp1d(self.vmin_linspace, self.q_tab)
+
+            file = output_file_tail + "_HSumTable.dat"
+            print(file)
+            np.savetxt(file, self.h_sum_tab)
+            file = output_file_tail + "_QTable.dat"
+            print(file)
+            np.savetxt(file, self.q_tab)
+
+            self.PlotTable(self.xi_interp, dimension=0, plot_show=False)
+            self.PlotTable(self.h_sum_interp, dimension=0,
+                           xlim=[0, 2000], ylim=[-2e24, 2e24],
+                           title='Xi, H_sum', plot_close=False)
+            self.PlotTable(self.q_interp, dimension=0,
+                           xlim=[0, 2000], ylim=[-2e24, 2e24],
+                           title='q', show_zero_axis=True)
         return
 
     def PlotOptimum(self, xlim_percentage=(0., 1.1), ylim_percentage=(1.01, 0.99),
@@ -615,7 +1175,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                         basinhopping(self.MinusLogLikelihood, vars_guess,
                                      minimizer_kwargs=minimizer_kwargs, niter=5,
                                      take_step=take_step, adapt_kwargs=adapt_kwargs,
-                                     stepsize=0.2)
+                                     stepsize=0.1)
                 else:
                     constr_optimum_log_likelihood = \
                         minimize(self.MinusLogLikelihood, vars_guess,
@@ -697,7 +1257,6 @@ class Experiment_EHI(Experiment_HaloIndep):
                 pass
             else:
                 if new_optimum.fun < optim_logL:
-                    os.system("say Moved left")
                     print("Moved left, index is now", index)
                     print("############################################################" +
                           "############################################################")
@@ -714,7 +1273,6 @@ class Experiment_EHI(Experiment_HaloIndep):
                 pass
             else:
                 if new_optimum.fun < optim_logL:
-                    os.system("say Moved right")
                     print("Moved right, index is now", index)
                     print("############################################################" +
                           "############################################################")
@@ -765,14 +1323,229 @@ class Experiment_EHI(Experiment_HaloIndep):
             except:
                 print("Error")
                 pass
-            os.system("say 'Finished plot'")
-            self.PlotConstrainedOptimum(vminStar_rand, logetaStar_rand, vminStar_index,
-                                        xlim_percentage=(0., 1.1),
-                                        ylim_percentage=(1.2, 0.8))
+
         return self.constr_optimal_logl
 
-    def VminSamplingList(self, output_file_tail, vmin_min, vmin_max, vmin_num_steps,
-                         steepness_vmin=1.5, steepness_vmin_center=2.5, plot=False):
+    def _Constrained_MC_Likelihood(self, events, vminStar, logetaStar, vminStar_index,
+                                   multiexper_input, class_name,
+                                   mx, fp, fn, delta, leta_guess=-30.):
+        """ Finds the constrained minimum MinusLogLikelihood for given vminStar,
+        logetaStar and vminStar_index.
+        Input:
+            vminStar, logetaStar: float
+                Location of the constrained step.
+            vminStar_index: int
+                Index of vminStar in the list of vmin steps of the constrained optimum
+                logeta function.
+        Returns:
+            constr_optimal_logl: float
+                The constrained minimum MinusLogLikelihood
+        """
+
+        vmin_guess_left = np.array([events[ind]
+                                    if events[ind] < vminStar
+                                    else vminStar * (1 - 0.001*(vminStar_index - ind))
+                                    for ind in range(vminStar_index)])
+        vmin_guess_right = np.array([events[ind]
+                                    if events[ind] > vminStar
+                                    else vminStar * (1 + 0.001*(ind - vminStar_index + 1))
+                                    for ind in range(vminStar_index, events.size)])
+
+        vmin_guess = np.append(vmin_guess_left, vmin_guess_right)
+
+        logeta_guess = np.array([leta_guess] * len(events))
+        logeta_guess_left = np.maximum(logeta_guess[:vminStar_index],
+                                       np.ones(vminStar_index)*logetaStar)
+        logeta_guess_right = np.minimum(logeta_guess[vminStar_index:],
+                                        np.ones(logeta_guess.size - vminStar_index) *
+                                        logetaStar)
+        logeta_guess = np.append(logeta_guess_left, logeta_guess_right)
+        vars_guess = np.append(vmin_guess, logeta_guess)
+
+        if not self.Poisson:
+            constr_optimum_log_likelihood = \
+                Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta,
+                                                   vminStar, logetaStar, vminStar_index,
+                                                   vmin_err=10.0, logeta_err=0.05)
+        else:
+
+            constr = ({'type': 'ineq', 'fun': ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
+            logeta_bnd = (-80.0, -12.0)
+            bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
+            vmin_bnd = (self.minVmin, 1000.)
+            bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
+            bnd = bnd_vmin + bnd_eta
+            try:
+                opt = minimize(self.poisson_wrapper, vars_guess,
+                               args=(class_name, mx, fp, fn, delta, vminStar, logetaStar, vminStar_index),
+                               jac=self.pois_jac,
+                               method='SLSQP', bounds=bnd, constraints=constr, tol=1e-7,
+                               options={'maxiter': 300, 'disp': False})
+            except ValueError:
+                return [vars_guess, 1e6]
+            if not opt.success:
+                opt.fun = 1e5
+            if (vminStar < self.minVmin) and (logetaStar > self.optimal_logeta[0]):
+                opt.fun = self.optimal_logL
+            constr_optimum_log_likelihood = [opt.x, opt.fun]
+
+        vars_list = constr_optimum_log_likelihood[0]
+        if (np.any(np.ones(int(vars_list.size/2) - 1) * (-0.01) > np.diff(vars_list[:int(vars_list.size/2)])) or
+            np.any(np.ones(int(vars_list.size/2) - 1) * (-0.01) > np.diff(abs(vars_list[int(vars_list.size/2):])))):
+
+            print('Fail ', vars_list)
+            return vars_list, 10**6
+
+        vars_list = np.insert(vars_list, vminStar_index, vminStar)
+        vars_list = np.insert(vars_list, int(vars_list.size/2) + vminStar_index + 1, logetaStar)
+        print(vars_list)
+        return constr_optimum_log_likelihood
+
+    def Constrained_MC_Likelihood(self, events, vminStar, logetaStar,
+                                  multiexper_input, class_name,
+                                  mx, fp, fn, delta, leta_guess=-30.):
+        """ Finds the constrained minimum MinusLogLikelihood for given vminStar,
+        logetaStar. Finds the minimum for all vminStar_index, and picks the best one.
+        Input:
+            vminStar, logetaStar: float
+                Location of constrained step.
+            plot: bool, optional
+                Whether to plot the constrained piecewice-constant logeta function.
+        Returns:
+            constr_optimal_logl: float
+                The constrained minimum MinusLogLikelihood
+        """
+        if isinstance(multiexper_input, str):
+            class_name = [class_name]
+        vminStar_index = 0
+
+        for vminStar_index in range(0, len(events)+1):
+            print('~~~~~~~INDEX: ', vminStar_index, '/', len(events) + 1)
+            constr_optimum_new = \
+                self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
+                                                multiexper_input, class_name, mx,
+                                                fp, fn, delta, leta_guess=leta_guess)
+            if vminStar_index == 0:
+                constr_optimum_old = constr_optimum_new[1]
+            else:
+                if (constr_optimum_new[1] < constr_optimum_old):
+                    constr_optimum_old = constr_optimum_new[1]
+
+        constr_optimal_logl = constr_optimum_old
+
+        return constr_optimal_logl
+
+    def _MultiExperConstrainedOptimalLikelihood(self, vminStar, logetaStar, vminStar_index,
+                                                multiexper_input, class_name,
+                                                mx, fp, fn, delta):
+        """ Finds the constrained minimum MinusLogLikelihood for given vminStar,
+        logetaStar and vminStar_index.
+        Input:
+            vminStar, logetaStar: float
+                Location of the constrained step.
+            vminStar_index: int
+                Index of vminStar in the list of vmin steps of the constrained optimum
+                logeta function.
+        Returns:
+            constr_optimal_logl: float
+                The constrained minimum MinusLogLikelihood
+        """
+
+        if DEBUG:
+            print("~~~~~ vminStar_index =", vminStar_index)
+        vmin_guess_left = np.array([self.optimal_vmin[ind]
+                                    if self.optimal_vmin[ind] < vminStar
+                                    else vminStar * (1 - 0.001*(vminStar_index - ind))
+                                    for ind in range(vminStar_index)])
+        vmin_guess_right = np.array([self.optimal_vmin[ind]
+                                    if self.optimal_vmin[ind] > vminStar
+                                    else vminStar * (1 + 0.001*(ind - vminStar_index + 1))
+                                    for ind in range(vminStar_index, self.optimal_vmin.size)])
+
+        vmin_guess = np.append(vmin_guess_left, vmin_guess_right)
+        logeta_guess = self.optimal_logeta
+        logeta_guess_left = np.maximum(logeta_guess[:vminStar_index],
+                                       np.ones(vminStar_index)*logetaStar)
+        logeta_guess_right = np.minimum(logeta_guess[vminStar_index:],
+                                        np.ones(logeta_guess.size - vminStar_index) *
+                                        logetaStar)
+        logeta_guess = np.append(logeta_guess_left, logeta_guess_right)
+        vars_guess = np.append(vmin_guess, logeta_guess)
+        if not self.Poisson:
+            constr_optimum_log_likelihood = \
+                Custom_SelfConsistent_Minimization(class_name, vars_guess, mx, fp, fn, delta,
+                                                   vminStar, logetaStar, vminStar_index,
+                                                   vmin_err=9.0, logeta_err=0.02)
+        else:
+            constr = ({'type': 'ineq', 'fun': ConstraintsFunction(vminStar, logetaStar, vminStar_index)})
+            logeta_bnd = (-80.0, -15.0)
+            bnd_eta = [logeta_bnd] * int(vars_guess.size / 2)
+            vmin_bnd = (0., 1000.)
+            bnd_vmin = [vmin_bnd] * int(vars_guess.size / 2)
+            bnd = bnd_vmin + bnd_eta
+
+            opt = minimize(self.poisson_wrapper, vars_guess,
+                           args=(class_name, mx, fp, fn, delta,
+                                 vminStar, logetaStar, vminStar_index),
+                           jac=self.pois_jac,
+                           method='SLSQP', bounds=bnd, constraints=constr, tol=1e-3,
+                           options={'maxiter': 100, 'disp': False})
+
+            constr_optimum_log_likelihood = [opt.x, opt.fun]
+
+        if DEBUG:
+            print(constr_optimum_log_likelihood[0])
+            print("Constrained optimum_logL =", constr_optimum_log_likelihood[1])
+            print("vminStar_index =", vminStar_index)
+
+        return constr_optimum_log_likelihood
+
+    def MultiExperConstrainedOptimalLikelihood(self, vminStar, logetaStar,
+                                               multiexper_input, class_name,
+                                               mx, fp, fn, delta, plot=False, leta_guess=-30.):
+        """ Finds the constrained minimum MinusLogLikelihood for given vminStar,
+        logetaStar. Finds the minimum for all vminStar_index, and picks the best one.
+        Input:
+            vminStar, logetaStar: float
+                Location of constrained step.
+            plot: bool, optional
+                Whether to plot the constrained piecewice-constant logeta function.
+        Returns:
+            constr_optimal_logl: float
+                The constrained minimum MinusLogLikelihood
+        """
+
+        events = self.optimal_vmin
+        for vminStar_index in range(0, len(events)+1):
+            print('~~~~~~~INDEX: ', vminStar_index, '/', len(events) + 1)
+            vars_result, constr_optimum_new = \
+                self._Constrained_MC_Likelihood(events, vminStar, logetaStar, vminStar_index,
+                                                multiexper_input, class_name, mx,
+                                                fp, fn, delta, leta_guess=leta_guess)
+            print('constrained optimum: ', constr_optimum_new)
+            if vminStar_index == 0:
+                constr_optimum_old = constr_optimum_new
+                vars_result_old = vars_result
+            else:
+                if constr_optimum_new < constr_optimum_old:
+                    constr_optimum_old = constr_optimum_new
+                    vars_result_old = vars_result
+
+        constr_optimal_logl = constr_optimum_old
+        self.constr_optimal_logl = constr_optimal_logl
+
+        self.constr_optimal_vmin = vars_result[: int(vars_result.size/2)]
+        self.constr_optimal_logeta = vars_result[int(vars_result.size/2):]
+
+        print("vminStar =", vminStar)
+        print("logetaStar =", logetaStar)
+        print("new:", self.constr_optimal_logl, vars_result_old)
+
+        return self.constr_optimal_logl
+
+    def VminSamplingList(self, output_file_tail, output_file_CDMS, vmin_min, vmin_max, vmin_num_steps,
+                         steepness_vmin=1.5, steepness_vmin_center=2.5, MULTI_EXPER=False,
+                         plot=False):
         """ Finds a non-linear way to sample the vmin range, such that more points are
         sampled near the location of the steps of the best-fit logeta function, and
         fewer in between. This is done by building a function of vmin that is steeper
@@ -795,7 +1568,15 @@ class Experiment_EHI(Experiment_HaloIndep):
             plot: bool, optional
                 Whether to plot intermediate results such as the sampling function.
         """
-        self.ImportOptimalLikelihood(output_file_tail)
+        if not MULTI_EXPER:
+            self.ImportOptimalLikelihood(output_file_tail)
+        else:
+            self.ImportMultiOptimalLikelihood(output_file_tail, output_file_CDMS)
+
+        if self.Poisson:
+            self.vmin_sampling_list = np.logspace(np.log10(vmin_min), np.log10(vmin_max), vmin_num_steps)
+            return
+
         xmin = vmin_min
         xmax = vmin_max
         # TODO! This +4 is to compensate for a loss of ~4 points (not always 4 though),
@@ -862,8 +1643,13 @@ class Experiment_EHI(Experiment_HaloIndep):
         print("num_steps =", num_steps)
         y_list = np.array([np.linspace(y_turns[i], y_turns[i+1], num_steps[i])
                            for i in range(num_steps.size)])
-        x_list = np.array([g_inverse_list(y_list[i], x_turns[i], x_turns[i+1])
-                           for i in range(y_list.size)])
+
+        try:
+            x_list = np.array([g_inverse_list(y_list[i], x_turns[i], x_turns[i+1])
+                               for i in range(y_list.size)])
+        except IndexError:
+            x_list = np.array([g_inverse_list(y_list[i], x_turns[i], x_turns[i + 1])
+                               for i in range(y_list[:,0].size)])
         x_list = np.concatenate(x_list)
         y_list = np.concatenate(y_list)
         x_list = x_list[np.array([x_list[i] != x_list[i+1]
@@ -938,9 +1724,12 @@ class Experiment_EHI(Experiment_HaloIndep):
 
         self.vmin_logeta_sampling_table = []
         vmin_last_step = self.optimal_vmin[-1]
+
         if linear_sampling:
             for vmin in self.vmin_sampling_list:
                 logeta_opt = self.OptimumStepFunction(min(vmin, vmin_last_step))
+                if logeta_opt < -40:
+                    logeta_opt = -31.
                 if vmin < self.optimal_vmin[0]:
                     logeta_min = logeta_opt * (1 + 0.6 * logeta_percent_minus)
                     logeta_max = logeta_opt * (1 - logeta_percent_plus)
@@ -967,6 +1756,7 @@ class Experiment_EHI(Experiment_HaloIndep):
                 self.vmin_logeta_sampling_table += [logeta_list_minus + logeta_list_plus]
 
         self.vmin_logeta_sampling_table = np.array(self.vmin_logeta_sampling_table)
+
 
         if plot:
             self.PlotSamplingTable(plot_close=True)
@@ -998,7 +1788,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             output_file_tail: string
                 Tag to be added to the file name.
             logeta_index_range: tuple
-                A touple (index0, index1) between which logetaStar will be considered.
+                A tuple (index0, index1) between which logetaStar will be considered.
                 If this is None, then the whole list of logetaStar is used.
             extra_tail: string
                 Additional tail to be added to filenames.
@@ -1012,6 +1802,7 @@ class Experiment_EHI(Experiment_HaloIndep):
             logetaStar_list = \
                 logetaStar_list[logeta_index_range[0]: logeta_index_range[1]]
             plot = True
+
         print("vminStar =", vminStar)
         table = np.empty((0, 2))
         for logetaStar in logetaStar_list:
@@ -1033,6 +1824,90 @@ class Experiment_EHI(Experiment_HaloIndep):
                 "_LogetaStarLogLikelihoodList" + extra_tail + ".dat"
             print(temp_file)
             np.savetxt(temp_file, table)
+        return
+
+    def GetLikelihoodTableMultiExper(self, index, output_file_tail, logeta_index_range, extra_tail,
+                                     multiexper_input,
+                                     mx, fp, fn, delta, scattering_type,
+                                     mPhi, quenching):
+        """ Prints to file lists of the form [logetaStar_ij, logL_ij] needed for
+        1D interpolation, where i is the index corresponding to vminStar_i and j is
+        the index for each logetaStar. Each file corresponds to a different index i.
+            Here only one file is written for a specific vminStar.
+        Input:
+            index: int
+                Index of vminStar.
+            output_file_tail: string
+                Tag to be added to the file name.
+            logeta_index_range: tuple
+                A touple (index0, index1) between which logetaStar will be considered.
+                If this is None, then the whole list of logetaStar is used.
+            extra_tail: string
+                Additional tail to be added to filenames.
+        """
+
+        print('index =', index)
+        print('output_file_tail =', output_file_tail)
+
+        vminStar = self.vmin_logeta_sampling_table[index, 0, 0]
+        logetaStar_list = self.vmin_logeta_sampling_table[index, :, 1]
+        plot = False
+
+        if logeta_index_range is not None:
+            logetaStar_list = \
+                logetaStar_list[logeta_index_range[0]: logeta_index_range[1]]
+            plot = False
+        # print("vminStar =", vminStar)
+        table = np.empty((0, 2))
+
+        temp_file = output_file_tail + "_" + str(index) + \
+            "_LogetaStarLogLikelihoodList" + extra_tail + ".dat"
+        print('TempFile: ', temp_file)
+        if os.path.exists(temp_file):
+            size_of_file = len(np.loadtxt(temp_file))
+            fileexists = True
+        else:
+            print('File doesnt exist')
+            size_of_file = 0
+            fileexists = False
+        if size_of_file >= 30:
+            pass
+        else:
+            if fileexists and size_of_file > 1 and np.loadtxt(temp_file).ndim == 2:
+                table = np.loadtxt(temp_file)
+                for logetaStar in logetaStar_list:
+                    if logetaStar > table[-1, 0]:
+                        print('V* =', vminStar, 'log(eta)* =', logetaStar)
+                        constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+                                                                                 multiexper_input,
+                                                                                 self.class_name, mx,
+                                                                                 fp, fn, delta, plot)
+
+                        print("index =", index, "; vminStar =", vminStar,
+                              "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                        table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+
+                        print("vminStar =", vminStar, "; table =", table)
+
+                        print(temp_file)
+                        np.savetxt(temp_file, table)
+            else:
+                for logetaStar in logetaStar_list:
+                    print('V* =', vminStar, 'log(eta)* =', logetaStar)
+                    constr_opt = self.MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+                                                                             multiexper_input,
+                                                                             self.class_name, mx,
+                                                                             fp, fn, delta, plot)
+
+                    print("index =", index, "; vminStar =", vminStar,
+                          "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+                    table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+
+                    print("vminStar =", vminStar, "; table =", table)
+
+                    print(temp_file)
+                    print('Saved Line.')
+                    np.savetxt(temp_file, table)
         return
 
     def LogLikelihoodList(self, output_file_tail, extra_tail="", processes=None,
@@ -1069,6 +1944,59 @@ class Experiment_EHI(Experiment_HaloIndep):
                    'extra_tail': extra_tail}
                   for index in vmin_index_list)
         par.parmap(self.GetLikelihoodTable, kwargs, processes)
+
+        return
+
+    def MultiExperLogLikelihoodList(self, output_file_tail, multiexper_input, class_name,
+                                    mx, fp, fn, delta, scattering_type, mPhi, quenching,
+                                    extra_tail="", processes=None,
+                                    vmin_index_list=None, logeta_index_range=None):
+        """ Loops thorugh the list of all vminStar and calls GetLikelihoodTable,
+        which will print the likelihood tables to files.
+        Input:
+            output_file_tail: string
+                Tag to be added to the file name.
+            extra_tail: string, optional
+                Additional tail to be added to filenames.
+            processes: int, optional
+                Number of processes for parallel programming.
+            vmin_index_list: ndarray, optional
+                List of indices in vminStar_list for which we calculate the optimal
+                likelihood. If not given, the whole list of vminStars is used.
+            logeta_index_range: tuple, optional
+                Atuple (index0, index1) between which logetaStar will be considered.
+                If not given, then the whole list of logetaStar is used.
+        """
+        if vmin_index_list is None:
+            vmin_index_list = range(0, self.vmin_logeta_sampling_table.shape[0])
+        else:
+            try:
+                len(vmin_index_list)
+            except TypeError:
+                vmin_index_list = range(vmin_index_list,
+                                        self.vmin_logeta_sampling_table.shape[0])
+        self.class_name = class_name
+        print("vmin_index_list =", vmin_index_list)
+        print("logeta_index_range =", logeta_index_range)
+        kwargs = ({'index': index,
+                   'output_file_tail': output_file_tail,
+                   'logeta_index_range': logeta_index_range,
+                   'extra_tail': extra_tail,
+                   'multiexper_input': multiexper_input,
+                   'scattering_type': scattering_type,
+                   'mPhi': mPhi,
+                   'quenching': quenching,
+                   'mx': mx,
+                   'fp': fp,
+                   'fn': fn,
+                   'delta': delta}
+                  for index in vmin_index_list)
+
+        par.parmap(self.GetLikelihoodTableMultiExper, kwargs, processes)
+#        for y in vmin_index_list:
+#            self.GetLikelihoodTableMultiExper(y, output_file_tail, logeta_index_range,
+#                            extra_tail, multiexper_input, class_name, mx, fp, fn, delta,
+#                            scattering_type, mPhi, quenching,)
         return
 
     def _logL_interp(vars_list, constraints):
@@ -1079,7 +2007,7 @@ class Experiment_EHI(Experiment_HaloIndep):
         return logL_interp(vars_list)
 
     def ConfidenceBand(self, output_file_tail, delta_logL, interpolation_order,
-                       extra_tail="", multiplot=True):
+                       extra_tail="", multiplot=False):
         """ Compute the confidence band.
         Input:
             output_file_tail: string
@@ -1097,6 +2025,8 @@ class Experiment_EHI(Experiment_HaloIndep):
                 horizontal line corresponding to a given delta_logL.
         """
         print("self.vmin_sampling_list =", self.vmin_sampling_list)
+
+
         self.vmin_logeta_band_low = []
         self.vmin_logeta_band_up = []
         vmin_last_step = self.optimal_vmin[-1]
@@ -1116,7 +2046,10 @@ class Experiment_EHI(Experiment_HaloIndep):
                 continue
             x = table[:, 0]   # this is logeta
             y = table[:, 1]   # this is logL
-            logL_interp = interpolate.interp1d(x, y, kind='cubic')
+            if self.Poisson:
+                x = x[y < 1e5]
+                y = y[y < 1e5]
+            logL_interp = interpolate.interp1d(x, y, kind='cubic', bounds_error=False, fill_value=1e5)
 
             def _logL_interp(vars_list, constraints):
                 constr_not_valid = constraints(vars_list)[:-1] < 0
@@ -1129,14 +2062,19 @@ class Experiment_EHI(Experiment_HaloIndep):
             print(np.array([table[0, 0]]), " ", table[-1, 0])
             print(logeta_optim)
 
+            if self.Poisson and logeta_optim < -35:
+                logeta_optim = -30.
+
             def constr_func(logeta, logeta_min=np.array([table[0, 0]]),
                             logeta_max=np.array([table[-1, 0]])):
                 return np.concatenate([logeta - logeta_min, logeta_max - logeta])
 
             constr = ({'type': 'ineq', 'fun': constr_func})
             try:
-                logeta_minimLogL = minimize(_logL_interp, np.array([logeta_optim]),
-                                            args=(constr_func,), constraints=constr).x[0]
+                # logeta_minimLogL = minimize(_logL_interp, np.array([logeta_optim]),
+                #                             args=(constr_func,), constraints=constr).x[0]
+                logeta_minimLogL = minimize(logL_interp, np.array([logeta_optim])).x[0]
+                #logeta_minimLogL = x[np.argmin(y)]
             except ValueError:
                 print("ValueError at logeta_minimLogL")
                 logeta_minimLogL = logeta_optim
@@ -1157,30 +2095,38 @@ class Experiment_EHI(Experiment_HaloIndep):
                 plt.show()
 
             error = F
+
             try:
-                if y[0] > self.optimal_logL + delta_logL and \
-                        logeta_minimLogL < self.optimal_logL + delta_logL:
+                if y[0] > self.optimal_logL + delta_logL:  # and abs(logeta_minimLogL) < self.optimal_logL + delta_logL:
                     sol = brentq(lambda logeta: logL_interp(logeta) - self.optimal_logL -
                                  delta_logL,
-                                 table[0, 0], logeta_minimLogL)
+                                 x[0], logeta_minimLogL)
+
                     self.vmin_logeta_band_low += \
                         [[self.vmin_sampling_list[index], sol]]
+                else:
+                    self.vmin_logeta_band_low += \
+                        [[self.vmin_sampling_list[index], -40.]]
             except ValueError:
                 print("ValueError: Error in calculating vmin_logeta_band_low")
                 error = T
+
             try:
-                if y[-1] > self.optimal_logL + delta_logL and \
-                        logeta_minimLogL < self.optimal_logL + delta_logL:
+                if (y[-1] > self.optimal_logL + delta_logL) and \
+                        (logL_interp(logeta_minimLogL) < self.optimal_logL + delta_logL):
+                    print(logeta_minimLogL, x[-1], logL_interp(logeta_minimLogL), self.optimal_logL + delta_logL)
+
                     sol = brentq(lambda logeta: logL_interp(logeta) - self.optimal_logL -
-                                 delta_logL,
-                                 logeta_minimLogL, table[-1, 0])
+                                 delta_logL, logeta_minimLogL, x[-1])
                     self.vmin_logeta_band_up += \
                         [[self.vmin_sampling_list[index], sol]]
+
             except ValueError:
                 print("ValueError: Error in calculating vmin_logeta_band_hi")
+
                 error = T
 
-            if error:
+            if False:
                 plt.close()
                 plt.plot(x, (self.optimal_logL + 1) * np.ones_like(y))
                 plt.plot(x, (self.optimal_logL + 2.7) * np.ones_like(y))

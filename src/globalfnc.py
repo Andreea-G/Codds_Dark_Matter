@@ -30,7 +30,7 @@ pi = np.pi
 T = True    # short-hand notation
 F = False
 
-PRECISSION = 1.e-3
+PRECISSION = 1.e-5
 # Unit conversions
 fermiGeV = 1./0.1973269602  # Natural[GeV femto Meter]
 kilogram = 1e-9/1.782661758e-36  # kg in GeV  (units: [GeV/kg])
@@ -55,14 +55,22 @@ if False:   # alternative velocities; kept for reference
 """
 MaximumGapLimit_exper = ["SuperCDMS",
                          "LUX2013zero", "LUX2013one", "LUX2013three", "LUX2013five", "LUX2013many",
-                         "XENON10", "XENON100", "CDMSlite2013CoGeNTQ", "CDMSSi2012"]
+                         "XENON10", "XENON100", "CDMSlite2013CoGeNTQ",
+                         "LUX2016one", "LUX2016five", "LUX2016many","PandaX","CDMSlite2016", "Xenon1T",
+                         "CDMS_Snolab_GeHV", "LZ","Darwin", "CDMS_Snolab_SiHV","CDMS_Snolab_GeiZip",
+                         "PICO_500", "DarkSideG2","PICO_60"]
 GaussianLimit_exper = ["KIMS2012", "PICASSO"]
 BinnedSignal_exper = ["DAMA2010Na", "DAMA2010I"]
 Crosses_exper = ["CDMSSi2012", "DAMA2010Na", "DAMA2010I"]
 DAMALimit_exper = ["DAMA2010Na_TotRateLimit"]
 Poisson_exper = ["SIMPLEModeStage2"]
 EHImethod_exper = ["CDMSSi2012", "CDMSSiGeArtif", "CDMSSiArtif"]
+EHI_Pois = ["3BinXe","3BinXe2"]
+MOD_BAND = ["DAMA_2Bin"]
 SHM_line = ["SHM_eta0", "SHM_eta1"]
+Extended_Like = ["CDMSSi2012"]
+Poisson_Like = ["SuperCDMSLessT5", "SuperCDMSLikelihood","LUX2016zero"]
+Poisson_likelihood = ["SuperCDMSLessT5", "SuperCDMSLikelihood", "LUX2016zero"]
 
 """ Colors for plotting.
 """
@@ -77,17 +85,28 @@ Color = {"SuperCDMS": 'peru',
          "DAMA2010Na": 'green',
          "DAMA2010I": 'green',
          "SIMPLEModeStage2": 'saddlebrown',
-         "SHM_eta0": 'gray', "SHM_eta1": 'gray'
-         }
+         "SHM_eta0": 'gray', "SHM_eta1": 'gray', "SuperCDMSLessT5": 'peru',
+         "SuperCDMSLikelihood": 'peru',
+         "LUX2016zero": 'navy', "LUX2016five": 'navy', "LUX2016many": 'navy', "PandaX":'darkorchid',
+         "LUX2016one": 'navy', "CDMSlite2016": 'green', "Xenon1T": 'royalblue',
+         "CDMS_Snolab_GeHV": 'darkturquoise',
+         "LZ": 'black',"Darwin":'black', "CDMS_Snolab_SiHV":'darkturquoise',
+         "CDMS_Snolab_GeiZip":'darkturquoise', "PICO_500":'black', "DarkSideG2":'black',"PICO_60":'green',
+         "3BinXe":'black',"3BinXe2":'black',
+         "DAMA_2Bin": 'black'}
+
 """ Linestyles get cicled through for each experiment name.
 """
 linestyles = ['-', '--', '-.', ':']
 """ For some experiments the linestyles are fixed and customized, passed as dashes.
 """
-line_dashes = {"LUX2013zero": (3, 4), "LUX2013one": (8, 4, 3, 4, 3, 4),
+line_dashes = {"LUX2013one": (8, 4, 3, 4, 3, 4),
                "LUX2013three": (8, 4, 3, 4), "LUX2013five": (8, 4), "LUX2013many": None,
-               "SHM_eta0": (8, 4), "SHM_eta1": (3, 4)
-               }
+               "SHM_eta0": (8, 4), "SHM_eta1": (3, 4), "SuperCDMSLessT5": (3, 4),
+               "SuperCDMSLikelihood": (8, 4, 3, 4, 3, 4),
+               "LUX2016five": (8, 4, 3, 4, 3, 4),
+               "LUX2016many": (8, 4, 3, 4),
+               "LUX2016one": (3,4) }
 """ Legend names, in order of appearence in the legend for the corresponding experiments
 that appear in the plot.
 """
@@ -100,12 +119,21 @@ legend_names = OrderedDict([("DAMA$_0", ["DAMA2010Na_TotRateLimit"]),
                             ("CDMSlite", ["CDMSlite2013CoGeNTQ"]),
                             ("SIMPLE", ["SIMPLEModeStage2"]),
                             ("XENON10", ["XENON10"]), ("XENON100", ["XENON100"]),
-                            ("LUX", ["LUX2013zero", "LUX2013one", "LUX2013three",
+                             ("Xenon1T", ["Xenon1T"]),
+                            ("LUX2013", ["LUX2013zero", "LUX2013one", "LUX2013three",
                                      "LUX2013five", "LUX2013many"]),
                             ("PICASSO", ["PICASSO"]), ("KIMS", ["KIMS2012"]),
                             ("SHM $(\sigma_p = 10^{-40}\mathrm{ cm}^2)$",
-                             ["SHM_eta0", "SHM_eta1"])
-                            ])
+                             ["SHM_eta0", "SHM_eta1"]),
+                            ("LUX2016", ["LUX2016zero","LUX2016zero", "LUX2016five", "LUX2016many"]),
+                            ("PandaX", ["PandaX"]), ("CDMSlite2016", ["CDMSlite2016"]),
+                            ("CDMS_Snolab_GeHV", ["CDMS Snolab Ge HV"]),
+                            ("LZ", ["LZ"]),("Darwin", ["Darwin"]),
+                            ("CDMS_Snolab_SiHV", ["CDMS Snolab Si HV"]),
+                            ("CDMS_Snolab_GeiZip", ["CDMS Snolab Ge iZip"]),
+                            ("PICO_500", ["PICO(500L)"]),("DarkSideG2", ["DarkSide G2"]),
+                            ("PICO_60", ["PICO(60L)"]), ("3BinXe", ["3BinXe"]),
+                            ("3BinXe2", ["3BinXe2"]),  ("DAMA_2Bin", ["DAMA_2Bin"])])
 """ Transparency parameter for filling regions, depending on the quenching factor.
 """
 transp_list = [0.6, 0.4]
@@ -163,7 +191,7 @@ def FileNameTail(fp, fn, mPhi):
         fnfp_string = "_fnfp1"
     elif abs(fnfp) < 1:
         if fnfp < 0:
-            fnfp_string += "_neg0" + str(math.trunc(round(10 * abs(fnfp))))  
+            fnfp_string += "_neg0" + str(math.trunc(round(10 * abs(fnfp))))
         else:
             fnfp_string += "0" + str(math.trunc(round(10 * abs(fnfp))))
     else:
@@ -250,6 +278,47 @@ def Output_file_name(exper_name, scattering_type, mPhi, mx, fp, fn, delta, HALO_
     return output_file_no_extension
 
 
+def MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
+                                filename_tail, OUTPUT_MAIN_DIR, quenching=None):
+    """ Gives the name of the output file name for the given input parameters.
+    Input:
+        multiexper_input: string
+            Names of experiments.
+        scattering_type: string
+            'SI' for spin-dependent, 'SDPS' for pseudo-scalar, 'SDAV' for axial-vector.
+        mPhi: float
+            Mass of mediator.
+        mx: float
+            DM mass.
+        fp and fn: float
+            Couplings to proton and neutron.
+        delta: float
+            DM mass split.
+        confidence_levels: list
+            List of confidence levels.
+
+        filename_tail: string
+            Tag to be added to the file name.
+        OUTPUT_MAIN_DIR: string
+            Name of main output directory.
+        quenching: float, optional
+            quenching factor, needed for experiments that can have multiple options.
+    """
+    output_dir = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
+    output_file_no_extension = "./" + output_dir + "MultiExperiment_EHI_"
+    for x in range(0, multiexper_input.size):
+        output_file_no_extension += multiexper_input[x]
+
+    output_file_no_extension += "_mx_" + str(mx) + "GeV"
+
+    output_file_no_extension += FileNameTail(fp, fn, mPhi) + filename_tail
+
+    if quenching is not None:
+        output_file_no_extension += "_q" + str(quenching)
+    print(output_file_no_extension)
+    return output_file_no_extension
+
+
 def Plot_file_name(HALO_DEP, scattering_type, mPhi, fp, fn, delta,
                    filename_tail, OUTPUT_MAIN_DIR, mx=None):
     """ Gives the name of the plot file name for the given input parameters.
@@ -306,15 +375,19 @@ def GPoisson(x, nu, sigma):
     eps = 1.e-4
     n = 1
     add = nu * np.exp(-(x-1.)**2 / (2 * sigma**2))
-    summation = 0
+    summation = 0.
     nfact = 1  # factorial
-    while add > eps * (summation+add):
-        summation += add
-        n += 1
-        nfact *= n
-        add = 1. * nu**n / nfact * np.exp(-(x-n)**2 / (2. * n * sigma**2)) / np.sqrt(n)
+    try:
+        while add > eps * (summation+add):
+            #print("TEST", add, summation, x, nu, sigma)
+            summation += add
+            n += 1
+            nfact *= n
+            add = 1. * nu**n / nfact * np.exp(-(x-n)**2 / (2. * n * sigma**2)) / np.sqrt(n)
+    except TypeError:
+        return 0.
     result = summation * np.exp(-nu) / np.sqrt(2 * np.pi) / sigma
-#    print("GPoisson: ", result)
+    #print("GPoisson: ", result)
     return result
 
 
@@ -421,10 +494,18 @@ def ERecoilBranch(vmin, mT, mx, delta, sign):
         ER: float
     """
     muT = mx * mT / (mx + mT)
-    return 1.e6 * muT**2 / (2.*mT) * \
-        (vmin / SpeedOfLight +
-         sign * np.sqrt((vmin / SpeedOfLight)**2 - 2.*delta / muT * 1.e-6))**2
-
+    if delta > 0:
+        vdel = np.sqrt(2. * delta / muT)
+    else:
+        vdel = np.array([0.])
+    if vmin >= min(vdel):
+        return 1.e6 * muT**2 / (2.*mT) * \
+            (vmin / SpeedOfLight +
+             sign * np.sqrt((vmin / SpeedOfLight)**2 - 2.*delta / muT * 1.e-6))**2
+    else:
+        return 1.e6 * muT**2 / (2.*mT) * \
+            (vdel / SpeedOfLight +
+             sign * np.sqrt((vdel / SpeedOfLight)**2 - 2.*delta / muT * 1.e-6))**2
 
 def dERecoildVmin(vmin, mT, mx, delta, sign):
     """ Derivative of recoil energy ER with respect to velocity vmin
@@ -445,8 +526,21 @@ def dERecoildVmin(vmin, mT, mx, delta, sign):
         d ER/d vmin: float
     """
     muT = mx * mT / (mx + mT)
-    sqrt_factor = np.sqrt(1. - 2.*delta / (muT * vmin**2) * SpeedOfLight**2 * 1.e-6)
-    return sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
+    if delta > 0:
+        vdel = np.sqrt(2. * delta / muT)
+    else:
+        vdel = np.array([0.])
+
+    if vmin != 0 and vmin >= min(vdel):
+        sqrt_factor = np.sqrt(1. - 2.*delta / (muT * vmin**2) * SpeedOfLight**2 * 1.e-6)
+        ret = sign * muT**2 * vmin / mT * (1. + sign * sqrt_factor)**2 / sqrt_factor
+    elif vmin == 0 and delta == 0:
+        ret = muT**2 * vmin / mT
+    elif vmin == 0 and delta < 0:
+        ret = sign * (- delta * muT) / (np.sqrt(- 2.0 * delta * SpeedOfLight**2 * 1.e-6 / muT) * mT) 
+    else:
+        ret = 0.
+    return ret
 
 
 def eta0Maxwellian(vmin, vobs, v0bar, vesc):

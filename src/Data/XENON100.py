@@ -20,18 +20,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import absolute_import
 from __future__ import division
 import numpy as np
-from interp import interp1d
+from scipy.interpolate import interp1d
 pi = np.pi
 
 name = "XENON100"
 modulated = False
 
 energy_resolution_type = "Poisson"
-
+#energy_resolution_type = "Gaussian"
 
 def EnergyResolution(e):
     return 0.5 * np.ones_like(e)
-
+#    return np.ones_like(e)
 
 FFSD = 'GaussianFFSD'
 FFSI = 'HelmFF'
@@ -53,17 +53,16 @@ target_nuclide_mass_list = np.array([115.418, 117.279, 119.141, 120.074, 121.004
                                      121.937, 122.868, 124.732, 126.597])
 num_target_nuclides = target_nuclide_mass_list.size
 
-x = np.array([0., 0.395837, 0.431065, 0.451241, 0.473339, 0.582546, 0.7747, 0.995997,
+x0 = np.array([0., 0.395837, 0.431065, 0.451241, 0.473339, 0.582546, 0.7747, 0.995997,
               1.09303, 1.18078, 1.30024, 1.41681, 1.4783, 1.6948, 1.76781, 1.9004,
               2.01954, 2.14444, 2.23187 ])
-y = np.array([0., 0.0745321, 0.0792141, 0.0831369, 0.0941459, 0.0999667, 0.116417,
+y0 = np.array([0., 0.0745321, 0.0792141, 0.0831369, 0.0941459, 0.0999667, 0.116417,
               0.144003, 0.147293, 0.154252, 0.159694, 0.169311, 0.17665, 0.191076,
               0.194872, 0.198035, 0.197403, 0.2, 0.2])
 
-QuenchingFactor_interp = interp1d(x, y)
+QuenchingFactor_interp = interp1d(x0, y0, kind='linear', bounds_error=False, fill_value=0.)
 
 def QuenchingFactor(e_list):
-    # Absolutely no clue what this is...
     Ly = 2.28
     Snr = 0.95
     See = 0.58
@@ -71,6 +70,7 @@ def QuenchingFactor(e_list):
         len(e_list)
     except TypeError:
         e_list = [e_list]
+
     q = np.array([0. if e < 1 \
                   else  QuenchingFactor_interp(np.log10(e)) if e < 10**2.23187 \
                   else 0.2
@@ -89,12 +89,12 @@ x = np.array([2.97005128, 2.97105641, 3.54297436, 4.14605128, 5.02051282, 5.9653
 y = np.array([0., 0.91225403, 0.92039356, 0.92790698, 0.93729875, 0.94794275,
               0.95420394, 0.96109123, 0.96797853, 0.97330054, 0.9773703, 0.98175313,
               0.98488372, 0.98864043, 0.99177102, 0.99490161, 0.99740608, 1., 1.])
-Efficiency_interp = interp1d(x, y)
+Efficiency_interp = interp1d(x, y, kind='linear', bounds_error=False, fill_value=0.)
 
 def Efficiency(e):
     return 0. if e < Ethreshold else Efficiency_interp(e) if e < Emaximum else 1.
 
-x = np.array([0.45873015388911353, 0.79316185645953996, 1.1047296966584195,
+x1 = np.array([0.45873015388911353, 0.79316185645953996, 1.1047296966584195,
               1.3339624100643037, 1.5788937330123782, 1.8395236655026428,
               2.11846261362495, 2.4176732628301867, 2.733790809700237, 3.0591810343745269,
               3.3668383101962784, 3.6856409633686673, 4.0157335336200459, 4.36013287450145,
@@ -116,7 +116,7 @@ x = np.array([0.45873015388911353, 0.79316185645953996, 1.1047296966584195,
               26.548491215842752, 26.940036576765863, 27.330076644790548, 27.720866334997794,
               28.114903840747406, 28.515236420501825, 28.916993446597463, 29.309379083410001,
               29.700099953644887, 30.096124660451906])
-y = np.array([4.5716130497434311e-05, 0.052970474143870218, 0.0992277655385298,
+y1 = np.array([4.5716130497434311e-05, 0.052970474143870218, 0.0992277655385298,
               0.14545640475276153, 0.18409119848103203, 0.21538389389828494,
               0.24243309617309067, 0.26696382719072514, 0.29068062952239782,
               0.30688153631739323, 0.32083478457434889, 0.33372924164897683,
@@ -144,19 +144,16 @@ y = np.array([4.5716130497434311e-05, 0.052970474143870218, 0.0992277655385298,
               0.1554166657743882, 0.15810372102057421, 0.16314603797178423,
               0.16858735610788259, 0.17577842336975949, 0.18430146286315846,
               0.19450738576869805, 0.20680835396890743, 0.22319940077087433])
-Efficiency_ER_interp = interp1d(x, y)
+Efficiency_ER_interp = interp1d(x1, y1, kind='linear', bounds_error=False, fill_value=0.)
 
 def Efficiency_ER(er):
     try:
         len(er)
     except TypeError:
         er = [er]
-    return np.array([0. if e < 0.4588
-                     else Efficiency_ER_interp(e) if e < 30.095
-                     else 0.2232
-                     for e in er])
-    # TODO! Check the 0.2232 value!
+    return np.array([Efficiency_ER_interp(e) if e >= 1.4 else 0. for e in er])
 
 
-Exposure = 224.56 * 34.0
+
+Exposure = 224.56 * 34.0 + 48.*365.24
 ERecoilList = np.array([3.22, 3.68])

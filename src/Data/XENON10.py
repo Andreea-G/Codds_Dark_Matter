@@ -53,7 +53,7 @@ target_nuclide_mass_list = np.array([115.418, 117.279, 119.141, 120.074, 121.004
 num_target_nuclides = target_nuclide_mass_list.size
 
 def QuenchingFactor(e):
-    # Absolutely no clue what this is...
+    
     k = 0.110
     NexNi = 1.09
     Xi4Ni = 0.032

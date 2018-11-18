@@ -1,7 +1,4 @@
 """
-Copyright (c) 2015 Andreea Georgescu
-
-Created on Wed Nov 19 00:18:55 2014
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,12 +14,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+## SODIUM ONLY
+
 from __future__ import absolute_import
 from __future__ import division
 import numpy as np
 pi = np.pi
 
-name = "DAMA2010Na"
+name = "DAMA_2Bin"
 modulated = True
 
 energy_resolution_type = "Gaussian"
@@ -62,6 +61,8 @@ def Efficiency(e):
 Exposure = 1.33 * 1000 * 365.25
 ERecoilList = np.array([])
 
-BinEdges = np.array([2., 6., 10.])
-BinData = np.array([0.0116, 0.000])
-BinError = np.array([0.0013])
+BinEdges = np.array([2., 6., 14.])
+BinData_C = np.array([0.0106 * 10.0, 0.0001 * 20.0])  # Table 6 of 1308.5109 in units of counts / (kg * day)
+BinError_C = np.array([0.0012 * 10.0, 0.0007 * 20.0])
+BinData_S = np.array([-0.0006 * 10.0, 0.0000 * 20.0])
+BinError_S = np.array([0.0012 * 10.0, 0.0005 * 20.0])

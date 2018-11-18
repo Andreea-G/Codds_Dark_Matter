@@ -18,11 +18,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from experiment_HaloIndep_Band import *
+from modulation_band import *
 from collections import defaultdict
 from scipy.interpolate import interp1d
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FixedLocator, ScalarFormatter, FuncFormatter
 from matplotlib import rc, rcParams
+import os
 rcParams['text.usetex'] = True  # needed to use LaTeX for labels and legends
 rcParams['text.latex.preamble'] = [r'\boldmath']  # needed for bold labels and legends
 
@@ -152,6 +155,7 @@ class PlotData:
                     alpha=1):
         """ Make a list of the x and y coordinates of the plots, and plot them.
         """
+        
         if upper_limit.size == 0:   # nothing to plot
             print("upper_limit is empty!")
             return None, None
@@ -176,8 +180,10 @@ class PlotData:
                 interp_kind = "quadratic"
             else:
                 interp_kind = "cubic"
+            # print('Interpolation',interp_kind)
             interp = interp1d(x, y, kind=interp_kind)
             x1 = np.linspace(x[0], x[-1], 1000)
+            
             if plot_dots:
                 plt.plot(x, y, "o")
             if dashes is not None:
@@ -189,16 +195,21 @@ class PlotData:
             return x1, interp(x1)
 
     def plot_crosses(self, crosses, linewidth=3, plot_show=True, alpha=1):
-        int_resp = crosses[0]
+#        int_resp = crosses[0]
 
         def xy_points(indices):
             x = crosses[indices[0]]
             xerr_left, xerr_right = crosses[indices[1]], crosses[indices[2]]
             y = np.log10(crosses[indices[3]])
             yerr_up = np.log10(crosses[indices[3]] + crosses[indices[4]]) - y
-            yerr_low = y - np.log10(crosses[indices[3]] - crosses[indices[5]])
-            yerr_low = np.array([ye if ye == ye else 100
-                                 for ye in yerr_low])
+
+            if "DAMA" in self.exper_name:
+                yerr_low = y - np.log10(crosses[indices[3]] - crosses[indices[5]])
+                yerr_low = np.array([ye if ye == ye else 100
+                                     for ye in yerr_low])
+            elif self.exper_name == "CDMSSi2012":
+                yerr_low = - (y - np.log10(crosses[indices[3]] + crosses[indices[5]]))
+
             xerr = [xerr_left, xerr_right]
             yerr = [yerr_low, yerr_up]
             return x, y, xerr, yerr
@@ -242,17 +253,18 @@ class PlotData:
                 Whether the plot should be shown or not.
         """
         linestyle, dashes = self.get_linestyle()
-
+        
+        
         if lower_limit is not None and fill:
             linewidth = 0
-
+        #print('Upper/LowerLimit: ', upper_limit, lower_limit)
         x_upper, y_upper = self.plot_limits(upper_limit, kind, linewidth, linestyle,
                                             dashes, plot_dots, alpha=alpha)
         if lower_limit is not None:
             x_lower, y_lower = self.plot_limits(lower_limit, kind, linewidth, linestyle,
                                                 dashes, plot_dots, alpha=alpha)
             if fill:
-                plt.fill_between(x_lower, y_lower, y_upper,
+                plt.fill_between(x_lower, y_lower, y_upper, where=y_upper>y_lower,
                                  color=Color[self.exper_name.split()[0]], alpha=alpha)
 
         if plot_show:
@@ -267,7 +279,7 @@ class RunProgram:
         """Select which experiment class we must use, depending on what statistical
         analysis we need, and initialize the experiment.
         """
-
+        self.exper_name = exper_name
         print('name = ', exper_name)
         if HALO_DEP:
             print('Halo Dependent')
@@ -283,6 +295,10 @@ class RunProgram:
                 class_name = DAMAExperimentCombined
             elif exper_name in DAMALimit_exper:
                 class_name = DAMATotalRateExperiment
+            elif exper_name in Poisson_likelihood:
+                class_name = PoissonLikelihood
+            elif exper_name in Extended_Like:
+                class_name = Extended_likelihood
             else:
                 print("NotImplementedError: This experiment was not implemented!")
                 return
@@ -301,6 +317,8 @@ class RunProgram:
                 class_name = Crosses_HaloIndep
             elif exper_name.split()[0] in Crosses_exper and MAKE_CROSSES:
                 class_name = Crosses_HaloIndep_Combined
+            elif exper_name in Poisson_Like and MAKE_LIMITS:
+                class_name = Poisson_Likelihood
             elif exper_name in SHM_line:
                 class_name = Standard_Halo_Model
             else:
@@ -322,6 +340,7 @@ class RunProgram:
                      vmin_index_list, logeta_index_range, extra_tail):
         """(Re-)compute the data.
         """
+        
         output_file = self.output_file_no_extension + "_temp.dat"
         f_handle = open(output_file, 'w')   # clear the file first
         f_handle.close()
@@ -332,7 +351,7 @@ class RunProgram:
                                                 output_file)
         else:
             (vmin_min, vmin_max, vmin_step) = vmin_range
-            if not np.any(EHI_METHOD):
+            if self.exper_name != "CDMSSi2012" or not np.any(EHI_METHOD):
                 if MAKE_LIMITS:
                     upper_limit = \
                         self.exper.UpperLimit(mx, fp, fn, delta, vmin_min, vmin_max,
@@ -345,7 +364,7 @@ class RunProgram:
                                               vmin_step, output_file,
                                               initial_energy_bin=initial_energy_bin)
 
-            else:
+            elif np.any(EHI_METHOD) and self.exper_name == "CDMSSi2012":
                 if EHI_METHOD.ResponseTables:
                     self.exper.ResponseTables(vmin_min, vmin_max, vmin_step, mx, fp, fn,
                                               delta, self.output_file_no_extension)
@@ -366,8 +385,8 @@ class RunProgram:
                     self.exper.ImportOptimalLikelihood(self.output_file_no_extension)
                     self.exper.ConstrainedOptimalLikelihood(vminStar, logetaStar,
                                                             plot=True)
-                if np.any(EHI_METHOD[4:]):
-                    if EHI_METHOD._fields[4] != 'VminLogetaSamplingTable':
+                if np.any(EHI_METHOD[5:]):
+                    if EHI_METHOD._fields[5] != 'VminLogetaSamplingTable':
                         raise AttributeError("EHI_METHOD's attribute is not as expected.")
                     (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = \
                         vmin_EHIBand_range
@@ -379,27 +398,34 @@ class RunProgram:
                         print("Steepness:", steepness_vmin, ",",
                               steepness_vmin_center, ",", steepness_logeta)
                         self.exper.VminSamplingList(self.output_file_no_extension,
+                                                    self.output_file_no_extension,
                                                     vmin_Band_min, vmin_Band_max,
                                                     vmin_Band_numsteps,
                                                     steepness_vmin, steepness_vmin_center,
-                                                    plot=not np.any(EHI_METHOD[5:]))
+                                                    MULTI_EXPER,
+                                                    plot=not np.any(EHI_METHOD[6:]))
                         self.exper.VminLogetaSamplingTable(self.output_file_no_extension,
+                                                           self.output_file_no_extension,
                                                            logeta_percent_minus,
                                                            logeta_percent_plus,
                                                            logeta_num_steps,
                                                            steepness_logeta,
-                                                           plot=not np.any(EHI_METHOD[5:]))
+                                                           plot=not np.any(EHI_METHOD[6:]))
                     else:
                         print("Steepness: Default")
                         self.exper.VminSamplingList(self.output_file_no_extension,
+                                                    self.output_file_no_extension,
                                                     vmin_Band_min, vmin_Band_max,
                                                     vmin_Band_numsteps,
-                                                    plot=not np.any(EHI_METHOD[5:]))
+                                                    MULTI_EXPER,
+                                                    plot=not np.any(EHI_METHOD[6:]))
                         self.exper.VminLogetaSamplingTable(self.output_file_no_extension,
+                                                           self.output_file_no_extension,
                                                            logeta_percent_minus,
                                                            logeta_percent_plus,
                                                            logeta_num_steps,
-                                                           plot=not np.any(EHI_METHOD[5:]))
+                                                           plot=not np.any(EHI_METHOD[6:]))
+
                 if EHI_METHOD.LogLikelihoodList:
                     print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max,
                           vmin_Band_numsteps)
@@ -414,11 +440,11 @@ class RunProgram:
                     interpolation_order = 2
                     delta_logL = [chi_squared1(c) for c in confidence_levels]
                     for d_logL in delta_logL:
-                        multiplot = (d_logL == delta_logL[0]) and MAKE_PLOT
+#                        multiplot = (d_logL == delta_logL[0])
                         self.exper.ConfidenceBand(self.output_file_no_extension, d_logL,
                                                   interpolation_order,
                                                   extra_tail=extra_tail,
-                                                  multiplot=multiplot)
+                                                  multiplot=False)
 
         if HALO_DEP or not np.any(EHI_METHOD) and MAKE_LIMITS:
             print("upper_limit = ", upper_limit)
@@ -437,18 +463,24 @@ class RunProgram:
         """ Make regions for halo-dependent analysis and experiments with potential DM
         signal.
         """
+
         output_file = self.output_file_no_extension + ".dat"
+        #print(output_file)
+
         for CL in confidence_levels:
             output_file_regions = self.output_file_no_extension + \
                 "_" + str(round(sigma_dev(CL), 2)) + "sigma"
             output_file_lower = output_file_regions + "_lower_limit.dat"
             output_file_upper = output_file_regions + "_upper_limit.dat"
+            #print(output_file_lower)
+
             self.exper.Region(delta, CL, output_file, output_file_lower,
                               output_file_upper)
 
     def plot_limits(self, exper_name, confidence_levels, HALO_DEP, plot_dots, alpha=1):
         plot_data = PlotData(exper_name, HALO_DEP, plot_close=False)
-        if HALO_DEP and exper_name.split()[0] in BinnedSignal_exper:
+        if (HALO_DEP and exper_name.split()[0] in BinnedSignal_exper) or \
+                (HALO_DEP and exper_name=='CDMSSi2012'):
             PlotData.count[exper_name] = -1
             for index, CL in enumerate(confidence_levels):
                 output_file_regions = self.output_file_no_extension + \
@@ -476,8 +508,8 @@ class RunProgram:
 
     def plot_EHI_band(self, exper_name, confidence_levels, HALO_DEP, extra_tail,
                       plot_dots):
-        output_file = self.output_file_no_extension + ".dat"
         self.exper.ImportOptimalLikelihood(self.output_file_no_extension)
+#        output_file = self.output_file_no_extension + ".dat"
         interp_kind = 'linear'
         plot_limits = PlotData(exper_name, HALO_DEP, plot_close=False)
 
@@ -512,8 +544,9 @@ class RunProgram:
 
     def __call__(self, exper_name, scattering_type, mPhi, fp, fn, delta,
                  confidence_levels,
-                 HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MAKE_CROSSES,
-                 MAKE_PLOT, EHI_METHOD, MAKE_LIMITS,
+                 HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MAKE_CROSSES, MULTI_EXPER,
+                 MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, MULTI_LOGLIKELIST, GENERATE_MC,
+                 multiexper_input=None,
                  mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
                  vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
                  steepness=None, logeta_guess=None,
@@ -625,15 +658,22 @@ class RunProgram:
                                   vmin_index_list, logeta_index_range, extra_tail)
 
         # make regions
-        if MAKE_REGIONS and HALO_DEP and exper_name.split()[0] in BinnedSignal_exper:
+        if (MAKE_REGIONS and HALO_DEP and exper_name.split()[0] in BinnedSignal_exper) or \
+                (MAKE_REGIONS and exper_name in Extended_Like):
             self.make_regions(delta, confidence_levels)
 
         # make plot
         if MAKE_PLOT and not np.any(EHI_METHOD[:-1]) and MAKE_LIMITS:
             try:
                 print(quenching)
+                if exper_name.split()[0] in BinnedSignal_exper:
+                    alp = transparency.get(quenching, 1)
+                elif exper_name == "CDMSSi2012":
+                    alp = 0.4
+                else:
+                    alp = 1.
                 self.plot_limits(exper_name, confidence_levels, HALO_DEP, plot_dots,
-                                 alpha=transparency.get(quenching, 1))
+                                 alpha=alp)
             except np.linalg.linalg.LinAlgError:
                 pass
 
@@ -645,5 +685,392 @@ class RunProgram:
 
         # make band plot
         if EHI_METHOD.ConfidenceBandPlot and exper_name == "CDMSSi2012":
-            self.plot_EHI_band(exper_name, confidence_levels, HALO_DEP, extra_tail,
+            self.plot_EHI_band(exper_name, class_name, confidence_levels, HALO_DEP, extra_tail,
                                plot_dots)
+
+
+class RunProgram_Multiexperiment:
+    """ Class implementing the main run of the multiexperiment EHI method.
+    """
+
+    def plot_limits(self, exper_name, confidence_levels, HALO_DEP, plot_dots, alpha=1):
+        plot_data = PlotData(exper_name, HALO_DEP, plot_close=False)
+        if HALO_DEP and exper_name.split()[0] in BinnedSignal_exper:
+            PlotData.count[exper_name] = -1
+            for index, CL in enumerate(confidence_levels):
+                output_file_regions = self.output_file_no_extension + \
+                    "_" + str(round(sigma_dev(CL), 2)) + "sigma"
+                output_file_lower = output_file_regions + "_lower_limit.dat"
+                output_file_upper = output_file_regions + "_upper_limit.dat"
+                lower_limit = np.loadtxt(output_file_lower)
+                upper_limit = np.loadtxt(output_file_upper)
+                plot_data(upper_limit, lower_limit=lower_limit, fill=(index < 2),
+                          alpha=alpha, plot_dots=plot_dots, plot_show=False)
+                if index < 2:
+                    PlotData.count[exper_name] -= 1
+        else:
+            output_file = self.output_file_no_extension + ".dat"
+            upper_limit = np.loadtxt(output_file)
+            # print("upper_limit = ", upper_limit)
+            plot_data(upper_limit, plot_dots=plot_dots, plot_show=False)
+
+    def plot_crosses(self, exper_name, HALO_DEP, alpha=1):
+        plot_data = PlotData(exper_name, HALO_DEP, plot_close=False)
+        output_file = self.output_file_no_extension + ".dat"
+        output_file = output_file.replace("UpperLimit", "BinResponseBoxlike")
+        crosses = np.loadtxt(output_file)
+        plot_data.plot_crosses(crosses, alpha=alpha, plot_show=False)
+
+    def plot_EHI_band(self, multiexper_input, class_name, confidence_levels, HALO_DEP, extra_tail, output_file,
+                      output_file_CDMS, plot_dots):
+
+        class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS)
+        interp_kind = 'linear'
+        plot_limits = PlotData(multiexper_input[0], HALO_DEP, plot_close=False)
+
+#        self.exper.PlotSamplingTable(self.output_file_no_extension,
+#                                plot_close=False, plot_show=False, plot_optimum=False)
+        delta_logL = [chi_squared1(c) for c in confidence_levels]
+        print("delta_logL =", delta_logL)
+        for d_logL in delta_logL:
+            PlotData.count[multiexper_input[0]] = -1
+            class_name[0].ImportConfidenceBand(output_file, d_logL,
+                                               extra_tail=extra_tail)
+            first_vmin_low = class_name[0].vmin_logeta_band_low[0, 0]
+            first_vmin_up = class_name[0].vmin_logeta_band_up[0, 0]
+            last_eta_up = class_name[0].vmin_logeta_band_up[-1, 1]
+            class_name[0].vmin_logeta_band_up = \
+                np.vstack(([[first_vmin_low, -10], [first_vmin_up - 5, -10]],
+                           class_name[0].vmin_logeta_band_up,
+                           [[1000, last_eta_up]]))
+            last_vmin_low = class_name[0].vmin_logeta_band_low[-1, 0]
+            last_vmin_up = class_name[0].vmin_logeta_band_up[-1, 0]
+            class_name[0].vmin_logeta_band_low = \
+                np.vstack((class_name[0].vmin_logeta_band_low,
+                           [[last_vmin_low + 5, -40], [last_vmin_up, -40]]))
+
+            plot_limits(class_name[0].vmin_logeta_band_up,
+                        lower_limit=class_name[0].vmin_logeta_band_low, kind=interp_kind,
+                        fill=True, alpha=0.2, plot_dots=plot_dots, plot_show=False)
+
+        class_name[0].PlotOptimum(ylim_percentage=(1.2, 0.8),
+                                  color=Color[multiexper_input[0] + '_EHI'],
+                                  linewidth=3, plot_close=False,  plot_show=False)
+
+    def __call__(self, multiexper_input, scattering_type, mPhi, fp, fn, delta,
+                 confidence_levels,
+                 HALO_DEP, RUN_PROGRAM, MAKE_REGIONS, MULTI_EXPER, GENERATE_MC,
+                 MAKE_CROSSES, MAKE_PLOT, EHI_METHOD, MAKE_LIMITS, MULTI_LOGLIKELIST,
+                 exper_name=None,
+                 mx=None, mx_range=None, vmin_range=None, initial_energy_bin=None,
+                 vmin_EHIBand_range=None, logeta_EHIBand_percent_range=None,
+                 steepness=None, logeta_guess=None,
+                 vmin_index_list=None, logeta_index_range=None, log_sigma_p=None,
+                 OUTPUT_MAIN_DIR="Output/", filename_tail="", extra_tail="",
+                 plot_dots=True, quenching=None):
+        """ Main run of the program.
+        Input:
+            exper_name: string
+                Name of experiment.
+            scattering_type: string
+                Type of scattering. Can be
+                - 'SI' (spin-independent)
+                - 'SDAV' (spin-independent, axial-vector)
+                - 'SDPS' (spin-independent, pseudo-scalar).
+            mPhi: float
+                Mass of mediator.
+            fp and fn: float
+                Couplings to proton and neutron.
+            delta: float
+                DM mass split.
+            confidence_levels: list
+                List of confidence levels.
+            HALO_DEP: bool
+                Whether the analysis is halo-dependent or halo-independent.
+            RUN_PROGRAM: bool
+                Whether the data should be (re-)computed.
+            MAKE_REGIONS: bool
+                Whether the regions should be (re-)computed in the case of halo-dependent
+                analysis and experiments with potential DM signals.
+            MAKE_PLOT: bool
+                Whether the data should be plotted.
+            EHI_Method: ndarray of bools
+                Whether each step of the EHI Method is to be performed.
+            mx: float, optional
+                DM mass, only for halo-independent analysis.
+            mx_range: tuple (float, float, int), optional
+                (mx_min, mx_max, num_steps) = DM mass range and number or steps,
+                only for halo-dependent analysis.
+            vmin_range: tuple (float, float, float), optional
+                (vmin_min, vmin_max, vmin_step) = vmin range and step size,
+                only for halo-independent analysis.
+            initial_energy_bin: sequence, optional
+                Tuple or list of 2 elements, containing the starting energy bin.
+                Only for DAMA combined analysis.
+            vmin_EHIBand_range: tuple, optional
+                (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = vminStar range and
+                number of steps, used for calculating the EHI confidence band.
+                Only for EHI method.
+            logeta_EHIBand_percent_range: tuple, optional
+                (logeta_percent_minus, logeta_percent_plus, logeta_num_steps) = logetaStar
+                percentage range and number of steps, used for calculating the EHI
+                confidence band. The min and max logetaStar are calculated as a given
+                percentage above and below the optimum value. Only for EHI method.
+            steepness: tuple, optional
+                (steepness_vmin, steepness_vmin_center, steepness_logeta) parameters used
+                for nonlinear sampling in vminStar and logetaStar. The higher the
+                steepnesses the more points are taken close to the steps in the piecewise
+                constant best-fit logeta(vmin) function. Only for EHI method.
+            logeta_guess: float, optional
+                Guessing value of logeta for the best-fit piecewise-constant logeta(vmin)
+                function. Only for EHI method.
+            vmin_index_list: list, optional
+                List of indices in the list of sampling vminStar points for which we
+                calculate the optimal likelihood. If not given, the whole list of
+                vminStars is used. Only for EHI method.
+            logeta_index_range: tuple, optional
+                A tuple (index0, index1) between which logetaStar will be considered.
+                If not given, then the whole list of logetaStar is used. Only for EHI
+                method.
+            log_sigma_p: float, optional
+                Log base 10 of the total reference cross-section to a single proton.
+                Only for halo-independent SHM lines.
+            OUTPUT_MAIN_DIR: string, optional
+                Name of main output directory.
+            filename_tail: string, optional
+                Tag to be added to the file name.
+            extra_tail: string, optional
+                Additional tail to be added to filenames for the EHI confidence band.
+            plot_dots: bool, optional
+                Whether the plot should show the data points or just the interpolation.
+            quenching: float, optional
+                quenching factor, needed for experiments that can have multiple options.
+        """
+        print('Multiexperiment input list ', multiexper_input)
+        num_exper = len(multiexper_input)
+        class_name = [None] * num_exper
+        pois_main = False
+        for x in range(0, num_exper):
+            # initialize the experiment class
+            print('name = ', multiexper_input[x])
+            print('Halo Independent')
+
+            if multiexper_input[x] in Poisson_exper:
+                print('PoissonExperiment')
+                class_name[x] = PoissonExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in GaussianLimit_exper:
+                print('GaussianExperiment')
+                class_name[x] = GaussianExperiment_HaloIndep(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in Poisson_Like:
+                print('Poisson Binned Likelihood')
+                class_name[x] = Poisson_Likelihood(multiexper_input[x], scattering_type, mPhi, quenching)
+            elif multiexper_input[x] in EHI_Pois:
+                print('Poisson EHI')
+                pois_main = True
+                class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, quenching, pois=True)
+            elif multiexper_input[x] == "CDMSSi2012":
+                class_name[x] = Experiment_EHI(multiexper_input[x], scattering_type, mPhi, )
+            elif multiexper_input[x] in MOD_BAND:
+                print('Band Analysis of Modulation')
+                class_name[x] = Experiment_EHI_Modulation(multiexper_input[x], 
+                                                          scattering_type, EHI_METHOD.Isotropy, mPhi, 
+                                                          quenching, gaus=True)
+                pois_main = True
+            else:
+                print("NotImplementedError: This experiment was not implemented!")
+
+        # obtain likelihood
+        if RUN_PROGRAM:
+            (vmin_min, vmin_max, vmin_step) = vmin_range
+            if not pois_main:
+                output_file_CDMS = Output_file_name(multiexper_input[0], scattering_type, mPhi, mx, fp, fn, delta,
+                                                    HALO_DEP, filename_tail, OUTPUT_MAIN_DIR, quenching=None)
+            else:
+                output_dir = OutputDirectory(OUTPUT_MAIN_DIR, scattering_type, mPhi, delta)
+                output_file_CDMS = output_dir + '/MultiExp_NoEHI_'+ multiexper_input[0] +\
+                                   '_mx_{:.2}GeV_fnfp_{:.2f}'.format(mx, fn/fp)
+                if EHI_METHOD.Isotropy:
+                    output_file_CDMS += '_ISOTROPIC'
+            f_handle = open(output_file_CDMS+"_temp.dat", 'w')   # clear the file first
+            f_handle.close()
+
+            if EHI_METHOD.ResponseTables:
+                class_name[0].ResponseTables(vmin_min, vmin_max, vmin_step, mx,
+                                             fp, fn, delta, output_file_CDMS)
+
+
+            class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
+            if pois_main:
+                for i in range(1, len(class_name)):
+                    fil = output_dir + '/MultiExp_NoEHI_'+ multiexper_input[i] + \
+                           '_mx_{:.2}GeV_fnfp_{:.2f}'.format(mx, fn/fp)
+                    if EHI_METHOD.Isotropy:
+                        fil += '_ISOTROPIC'
+                    class_name[i].ImportResponseTables(fil, plot=False)
+
+            output_file = MultiExper_Output_file_name(multiexper_input, scattering_type, mPhi, mx, fp, fn, delta,
+                                                      filename_tail, OUTPUT_MAIN_DIR, quenching=None)
+            if EHI_METHOD.Isotropy:
+                output_file += '_ISOTROPIC'
+            
+            f_handle = open(output_file+"_temp.dat", 'w')   # clear the file first
+            f_handle.close()
+
+            if EHI_METHOD.OptimalLikelihood:
+                nsteps_bin = 0
+                for i in range(1, len(class_name)):
+                    nsteps_bin += class_name[i].Nbins
+                nsteps_bin -= 1
+                class_name[0].MultiExperimentOptimalLikelihood(multiexper_input, class_name, mx,
+                                                               fp, fn, delta, output_file,
+                                                               output_file_CDMS, logeta_guess, nsteps_bin)
+
+            if EHI_METHOD.ImportOptimalLikelihood:
+                    #class_name[0].ImportResponseTables(output_file_CDMS, plot=False)
+                    class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
+                    if pois_main:
+                        kkpt = True
+                    else:
+                        kkpt = False
+                    class_name[0].PlotQ_KKT_Multi(class_name, mx, fp, fn, delta, output_file, kkpt)
+
+            if EHI_METHOD.ConstrainedOptimalLikelihood:
+                    # Tests for delta = 0:
+                    #print([chi_squared1(c) for c in confidence_levels])
+
+                    (vminStar, logetaStar) = (310., -26.6)
+                    print('Constrained Test: ',vminStar, logetaStar)
+                    # Tests for delta = -50:
+#                    (vminStar, logetaStar) = (185.572266287, -19.16840262)
+                    class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
+                    class_name[0].MultiExperConstrainedOptimalLikelihood(vminStar, logetaStar,
+                                                                         multiexper_input, class_name,
+                                                                         mx, fp, fn, delta, False,
+                                                                         leta_guess=logeta_guess)
+
+
+            if np.any(EHI_METHOD[5:]):
+                (vmin_Band_min, vmin_Band_max, vmin_Band_numsteps) = \
+                    vmin_EHIBand_range
+                (logeta_percent_minus, logeta_percent_plus, logeta_num_steps) = \
+                    logeta_EHIBand_percent_range
+
+                if steepness is not None:
+                        (steepness_vmin, steepness_vmin_center, steepness_logeta) = \
+                            steepness
+                        print("Steepness:", steepness_vmin, ",",
+                              steepness_vmin_center, ",", steepness_logeta)
+                        class_name[0].VminSamplingList(output_file, output_file_CDMS,
+                                                       vmin_Band_min, vmin_Band_max,
+                                                       vmin_Band_numsteps,
+                                                       steepness_vmin, steepness_vmin_center,
+                                                       MULTI_EXPER,
+                                                       plot=False)
+                        print('logeta percent minus:', logeta_percent_minus)
+                        print('logeta percent plus:', logeta_percent_plus)
+                        print('logeta number of steps:', logeta_num_steps)
+                        class_name[0].VminLogetaSamplingTable(output_file,
+                                                              logeta_percent_minus,
+                                                              logeta_percent_plus,
+                                                              logeta_num_steps,
+                                                              steepness_logeta,
+                                                              plot=False)
+                else:
+                        print("Steepness: Default")
+                        class_name[0].VminSamplingList(output_file, output_file_CDMS,
+                                                       vmin_Band_min, vmin_Band_max,
+                                                       vmin_Band_numsteps,
+                                                       MULTI_EXPER,
+                                                       plot=False)
+
+                        class_name[0].VminLogetaSamplingTable(output_file,
+                                                              logeta_percent_minus,
+                                                              logeta_percent_plus,
+                                                              logeta_num_steps,
+                                                              plot=False)
+
+#################### MC SETTINGS ###########
+
+            if GENERATE_MC:
+                (vminStar, logetaStar) = (800., -20.)
+
+                MC_directory = "../Output_Band/MC_Files_ContactSI_delta_0/"
+                MC_filename = "MC_CDMSSi2012_SuperCDMS_ContactSI_fnfp1_delta0_mx_9GeV_vminStar_" +\
+                              str(int(vminStar)) + "_etastar_m" + str(abs(logetaStar)) + ".dat"
+                minfunc = np.array([200., 280.3, 438., 677.8, -22., -23.17, -23.17, -23.7])
+
+
+                for i in range(0, len(class_name)):
+
+                    Nexpected = class_name[i].ExpectedNumEvents(minfunc, mx, fp, fn, delta)
+
+                    Obs_events = class_name[i].Simulate_Events(Nexpected, minfunc, class_name, mx, fp, fn, delta)
+                    if i == 0:
+                        Tot_list = [Obs_events]
+                    else:
+                        Tot_list.append(Obs_events)
+
+                LcMaxSuper = class_name[1].Constrained_MC(Obs_events, mx,
+                                                          fp, fn, delta, vminStar, logetaStar)
+                print('LcMaxSuper: ', LcMaxSuper)
+                if Tot_list[0].size > 0:
+                    LcMaxCDMS = class_name[0].Constrained_MC_Likelihood(Tot_list[0], vminStar, logetaStar,
+                                                                        multiexper_input[0], class_name[0],
+                                                                        mx, fp, fn, delta)
+                else:
+                    LcMaxCDMS = class_name[0]._MinusLogLikelihood(Tot_list[0], vminStar, logetaStar, 0)
+
+                print('LcMaxCDMS: ', LcMaxCDMS)
+                if len(Tot_list[0]) > 0:
+                    Lcglobal = class_name[0].Constrained_MC_Likelihood(Tot_list[0], vminStar, logetaStar,
+                                                                       multiexper_input, class_name,
+                                                                       mx, fp, fn, delta)
+                else:
+                    Lcglobal = LcMaxCDMS + class_name[1]._MinusLogLikelihood(np.array([]), mx, fp, fn, delta,
+                                                                             vminStar, logetaStar, vminStar_index=0)
+
+                print('LcGlobal: ', Lcglobal)
+                MC_run = np.array([Lcglobal, LcMaxCDMS, LcMaxSuper])
+                file_name = MC_directory + MC_filename
+                print(MC_run)
+
+                if os.path.exists(file_name):
+                    hold = np.loadtxt(file_name)
+                    hold = np.vstack((hold, MC_run))
+                    np.savetxt(file_name, hold)
+                else:
+                    np.savetxt(file_name, np.transpose(MC_run))
+
+            if MULTI_LOGLIKELIST:
+                (vminStar, logetaStar) = (800., -21.)
+                constr_val = class_name[1].Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
+                print('L_constrained_2;max = ', constr_val)
+
+            if EHI_METHOD.LogLikelihoodList:
+                    print("vmin_EHIBand_range =", vmin_Band_min, vmin_Band_max, vmin_Band_numsteps)
+                    print("logeta_EHIBand_percent_range =", logeta_percent_minus,
+                          logeta_percent_plus, logeta_num_steps)
+                    class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS, plot=False)
+                    class_name[0].MultiExperLogLikelihoodList(output_file, multiexper_input, class_name,
+                                                              mx, fp, fn, delta, scattering_type, mPhi,
+                                                              quenching, extra_tail=extra_tail,
+                                                              vmin_index_list=vmin_index_list,
+                                                              logeta_index_range=logeta_index_range)
+
+            if EHI_METHOD.ConfidenceBand:
+                    class_name[0].ImportMultiOptimalLikelihood(output_file, output_file_CDMS)
+                    interpolation_order = 2
+                    delta_logL = [chi_squared1(c) for c in confidence_levels]
+                    if pois_main:
+                        if not class_name[0].uniqueBF:
+                            delta_logL = [5e-2]
+                    for d_logL in delta_logL:
+                        class_name[0].ConfidenceBand(output_file, d_logL,
+                                                     interpolation_order,
+                                                     extra_tail=extra_tail,
+                                                     multiplot=False)
+
+        # make band plot
+        if EHI_METHOD.ConfidenceBandPlot:
+            self.plot_EHI_band(multiexper_input, class_name, confidence_levels, HALO_DEP, extra_tail, output_file,
+                               output_file_CDMS, plot_dots)

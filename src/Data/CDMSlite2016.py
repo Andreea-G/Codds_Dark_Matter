@@ -1,5 +1,4 @@
 """
-Copyright (c) 2015 Andreea Georgescu
 
 Created on Wed Nov 19 00:18:55 2014
 
@@ -22,13 +21,13 @@ from __future__ import division
 import numpy as np
 pi = np.pi
 
-name = "DAMA2010Na"
-modulated = True
+name = "CDMSlite2016"
+modulated = False
 
 energy_resolution_type = "Gaussian"
 
 def EnergyResolution(e):
-    return 0.448 * np.sqrt(e) + 0.0091 * e
+    return 0.014 * np.ones_like(e)
 
 FFSD = 'GaussianFFSD'
 FFSI = 'HelmFF'
@@ -37,31 +36,29 @@ FF = {'SI': FFSI,
       'SDAV': FFSD,
       }
 
-target_nuclide_AZC_list = np.array([[23, 11, 0.153373]])
+target_nuclide_AZC_list = np.array([[70., 32., 0.19608], [72., 32., 0.27040],
+                                    [73., 32., 0.07790], [74., 32., 0.37378],
+                                    [76., 32., 0.08184]])
 target_nuclide_JSpSn_list = \
-    np.array([[3./2, 0.2477 * np.sqrt(5./3 / pi), .0198 * np.sqrt(5./3 / pi)]])
-target_nuclide_mass_list = np.array([21.4148])
+    np.array([[0., 0., 0.], [0., 0., 0.],
+              [9./2, 0.0392517 * np.sqrt(((2*9./2 + 1)*(9./2 + 1))/(4*pi*9./2)),
+               .375312 * np.sqrt(((2*9./2 + 1)*(9./2 + 1))/(4*pi*9./2))],
+              [0., 0., 0.], [0., 0., 0.]])
+target_nuclide_mass_list = np.array([65.134, 66.995, 67.9278, 68.8571, 70.7203])
+
 num_target_nuclides = target_nuclide_mass_list.size
 
 def QuenchingFactor(e):
-    return 0.4 * np.ones_like(e)
+    return (1 + 69./3 * 0.19935 * e**0.1204)/(1 + 69./3)
 
-def QuenchingFactorOfEee(e):
-    return QuenchingFactor(e)  # since it's a constant function
+Ethreshold = 0.36
+Emaximum = 1.04
+ERmaximum = 7
 
-Ethreshold = 2.
-Emaximum = 1000.
-ERmaximum = 2500.
+def Efficiency(e): return np.array(.55) if Ethreshold <= e < Emaximum else np.array(0.)
 
 def Efficiency_ER(er):
     return np.ones_like(er)
 
-def Efficiency(e):
-    return np.array(1.) if Ethreshold <= e < Emaximum else np.array(0.)
-
-Exposure = 1.33 * 1000 * 365.25
-ERecoilList = np.array([])
-
-BinEdges = np.array([2., 6., 10.])
-BinData = np.array([0.0116, 0.000])
-BinError = np.array([0.0013])
+Exposure = 70.1
+ERecoilList = np.array([0.41, 0.45, 0.49, 0.52, 0.54, 0.61, 0.64, 0.66, 0.70, 0.73, 0.78, 0.84])

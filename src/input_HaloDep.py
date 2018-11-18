@@ -36,7 +36,21 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
     if exper_name == "SuperCDMS":
         num_steps = 60
         mx_range_options = {(0, 1000.): (5, 100, num_steps),
-#        mx_range_options = {(0, 1000.): (7, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7, 100, num_steps),
+                            (0, 0.): (4, 130, num_steps),
+                            (-30, 1000.): (2.3, 100, num_steps),
+                            (-30, 0.): (2, 100, num_steps),
+                            (-50, 1000.): (1.4, 50, num_steps),
+                            (50, 1000.): (20, 100, num_steps),
+                            (100, 1000.): (30, 100, num_steps),
+                            (-200, 1000.): (.5, 7.5, num_steps),
+                            (-225, 1000.): (.43, 5., num_steps),
+                            (-500, 1000.): (.2, 1, num_steps),
+                            }
+    elif "SuperCDMSLessT5" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (5, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
                             (0, 0.): (4, 130, num_steps),
                             (-30, 1000.): (2.3, 100, num_steps),
                             (-30, 0.): (2, 100, num_steps),
@@ -44,10 +58,21 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                             (50, 1000.): (20, 100, num_steps),
                             (100, 1000.): (30, 100, num_steps),
                             }
-    elif "LUX" in exper_name:
+    elif "SuperCDMSLikelihood" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (5, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (4, 130, num_steps),
+                            (-30, 1000.): (2.3, 100, num_steps),
+                            (-30, 0.): (2, 100, num_steps),
+                            (-50, 1000.): (1.8, 50, num_steps),
+                            (50, 1000.): (20, 100, num_steps),
+                            (100, 1000.): (30, 100, num_steps),
+                            }
+    elif "LUX2013" in exper_name:
         num_steps = 30
-        mx_range_options = {(0, 1000.): (5.85, 100, num_steps),
-#        mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+        mx_range_options = {(0, 1000.): (5.5, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
                             (0, 0.): (5.80, 130, num_steps),
                             (-30, 1000.): (3.95, 100, num_steps),
                             (-30, 0.): (3.95, 100, num_steps),
@@ -55,6 +80,213 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                             (50, 1000.): (17.66, 100, num_steps),
                             (100, 1000.): (40, 100, num_steps),
                             (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (1.35, 10., num_steps),
+                            (-225, 1000.): (1.25, 10., num_steps),
+                            (-500, 1000.): (0.615, 1, num_steps)
+                            }
+    elif "LUX2016" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (3.45, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (1.5, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (0.57, 10., num_steps),
+                            (-225, 1000.): (0.5, 10., num_steps),
+                            (-500, 1000.): (0.25, 1, num_steps)
+                            }
+    elif "CDMS_Snolab_GeHV" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (0.5, 100., num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (0.2, 0.73, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (.05, 0.1295, num_steps),
+                            (-225, 1000.): (.05, 0.2, num_steps),
+                            (-500, 1000.): (.3, 1, num_steps)
+                            }
+
+    elif "CDMS_Snolab_SiHV" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (.5, 100., num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (0.2, 0.4, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (.1, 0.28, num_steps),
+                            (-500, 1000.): (.3, 1, num_steps)
+                            }
+    elif "CDMSlite2016" in exper_name:
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (2, 30, num_steps),
+                            (0, 0.): (3, 130, num_steps),
+                            (-30, 1000.): (1, 100, num_steps),
+                            (-30, 0.): (1, 100, num_steps),
+                            (-50, 1000.): (1, 50, num_steps),
+                            (50, 1000.): (10, 100, num_steps),
+                            (100, 1000.): (30, 100, num_steps),
+                            (-200, 1000.): (0.4, 3., num_steps),
+                            (-225, 1000.): (0.2, 2.7, num_steps),
+                            (-500, 1000.): (0.2, 0.95, num_steps)
+                                }
+    elif "XENON100" in exper_name:
+        num_steps = 40
+        mx_range_options = {(0, 1000.): (5.5, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),                                                                                                                                          
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (3., 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (0.8, 8.5, num_steps),
+                            (-225, 1000.): (0.7, 8.2, num_steps),
+                            (-500, 1000.): (0.3, 1, num_steps)
+                            }
+    elif "Xenon1T" in exper_name:
+        num_steps = 40
+        mx_range_options = {(0, 1000.): (4., 1000, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),                                                                                                                                          
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (3., 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (0.8, 10., num_steps),
+                            (-225, 1000.): (0.5, 10., num_steps),
+                            (-500, 1000.): (0.3, 1, num_steps)
+                            }
+
+    elif "DarkSideG2" in exper_name:
+        num_steps = 40
+        mx_range_options = {(0, 1000.): (15.05, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),                                                                                                                                          
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (10.05, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (4.999, 10., num_steps),
+                            (-225, 1000.): (4.62, 10., num_steps),
+                            (-500, 1000.): (0.3, 1, num_steps)
+                            }
+    elif "PICO_500" in exper_name:
+        num_steps = 100
+        mx_range_options = {(0, 1000.): (4., 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),                                                                                                                                          
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (1.31, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (.46, 10., num_steps),
+                            (-225, 1000.): (.415, 10., num_steps),
+                            (-500, 1000.): (0.3, 1, num_steps)
+                            }
+    elif "PICO_60" in exper_name:
+        num_steps = 100
+        mx_range_options = {(0, 1000.): (4., 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),                                                                                                                                          
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (1.31, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (.46, 10., num_steps),
+                            (-225, 1000.): (.415, 10., num_steps),
+                            (-500, 1000.): (0.3, 1, num_steps)
+                            }
+    elif "XENON10" in exper_name:
+        num_steps = 40
+        mx_range_options = {(0, 1000.): (5., 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),                                                                                                                                          
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (1.8, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (0.67, 3.5, num_steps),
+                            (-500, 1000.): (.3, 1, num_steps)
+                            }
+
+    elif exper_name == "PandaX":
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (3.75, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (1.8, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (-200, 1000.): (0.75, 10., num_steps),
+                            (-225, 1000.): (0.7, 10., num_steps),
+                            (-500, 1000.): (0.315, 1, num_steps)
+                            }
+    elif exper_name == "Darwin":
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (7.1, 100, num_steps),
+                            # mx_range_options = {(0, 1000.): (7.6, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (4.39, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (-200, 1000.): (2.05, 10., num_steps),
+                            (-225, 1000.): (1.89, 10., num_steps),
+                            (-500, 1000.): (0.315, 1, num_steps)
+                            }
+    elif exper_name == "LZ":
+        num_steps = 60
+        mx_range_options = {(0, 1000.): (3.25, 100, num_steps),
+                            (0, 0.): (5.80, 130, num_steps),
+                            (-30, 1000.): (3.95, 100, num_steps),
+                            (-30, 0.): (3.95, 100, num_steps),
+                            (-50, 1000.): (1.46, 50, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (100, 1000.): (40, 100, num_steps),
+                            (100, 0.): (40, 300, num_steps),
+                            (50, 1000.): (17.66, 100, num_steps),
+                            (-200, 1000.): (0.54, 10., num_steps),
+                            (-225, 1000.): (0.49, 10., num_steps),
+                            (-500, 1000.): (0.25, 1, num_steps)
                             }
     elif exper_name == "KIMS2012":
         num_steps = 40
@@ -82,27 +314,31 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
         num_steps = 60
         if quenching == 0.4:
             mx_range_options = {(0, 1000.): (5, 25, num_steps),
-#            mx_range_options = {(0, 1000.): (8, 15, num_steps),
+                                # mx_range_options = {(0, 1000.): (8, 15, num_steps),
                                 (0, 0.): (5.5, 25, num_steps),
                                 (-30, 1000.): (2, 4, num_steps),
                                 (-30, 0.): (2, 3, num_steps),
-                                (-50, 1000.): (1.4, 2.5, num_steps),
+                                (-50, 1000.): (1., 5., num_steps),
+                                (-200, 1000.): (0.4, 1.0, num_steps),
+                                (-500, 1000.): (0.1, 0.5, num_steps)
                                 }
         else:
             mx_range_options = {(0, 1000.): (6, 30, num_steps),
-#            mx_range_options = {(0, 1000.): (10, 25, num_steps),
-#                                (0, 0.): (7, 22, num_steps),
+                                # mx_range_options = {(0, 1000.): (10, 25, num_steps),
+                                # (0, 0.): (7, 22, num_steps),
                                 (0, 0.): (7, 29, num_steps),
                                 (-30, 1000.): (3, 5, num_steps),
                                 (-30, 0.): (2.5, 4, num_steps),
                                 (-50, 1000.): (1.9, 3.5, num_steps),
+                                (-200, 1000.): (0.75, 2, num_steps),
+                                (-500, 1000.): (0.35, 2, num_steps)
                                 }
     elif exper_name == "DAMA2010I":
         num_steps = 80
         if quenching == 0.06:
             mx_range_options = {(0, 1000.): (30, 100, num_steps),
-#            mx_range_options = {(0, 1000.): (55, 85, num_steps),
-#                                (0, 0.): (22, 130, num_steps),
+                                # mx_range_options = {(0, 1000.): (55, 85, num_steps),
+                                # (0, 0.): (22, 130, num_steps),
                                 (0, 0.): (22, 100, num_steps),
                                 (-30, 1000.): (25, 100, num_steps),
                                 (-30, 0.): (40, 100, num_steps),
@@ -111,12 +347,12 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                                 (50, 0.): (55, 100, num_steps),
                                 (100, 1000.): (45, 100, num_steps),
                                 (100, 0.): (50, 500, num_steps),
-#                                (100, 0.): (50, 90, num_steps),
+                                # (100, 0.): (50, 90, num_steps),
                                 }
         else:
             mx_range_options = {(0, 1000.): (22, 80, num_steps),
-#            mx_range_options = {(0, 1000.): (40, 65, num_steps),
-#                                (0, 0.): (29, 90, num_steps),
+                                # mx_range_options = {(0, 1000.): (40, 65, num_steps),
+                                # (0, 0.): (29, 90, num_steps),
                                 (0, 0.): (22, 100, num_steps),
                                 (-30, 1000.): (20, 80, num_steps),
                                 (-30, 0.): (30, 100, num_steps),
@@ -125,33 +361,61 @@ def DM_mass_range(exper_name, delta, mPhi=1000., quenching=None):
                                 (50, 0.): (40, 100, num_steps),
                                 (100, 1000.): (41, 100, num_steps),
                                 (100, 0.): (30, 300, num_steps),
-#                                (100, 0.): (42, 65, num_steps),
+                                # (100, 0.): (42, 65, num_steps),
                                 }
     elif exper_name == "DAMA2010Na_TotRateLimit":
         num_steps = 60
-#        mx_range_options = {(0, 1000.): (3, 15, num_steps),
+        # mx_range_options = {(0, 1000.): (3, 15, num_steps),
         mx_range_options = {(0, 1000.): (3, 20, num_steps),
                             (0, 0.): (3, 15, num_steps),
                             (-30, 1000.): (1, 10, num_steps),
                             (-30, 0.): (1, 10, num_steps),
                             (-50, 1000.): (1, 10, num_steps),
                             }
+
+    elif exper_name == "CDMSSi2012":
+        num_steps = 60
+        # mx_range_options = {(0, 1000.): (3, 15, num_steps),
+        mx_range_options = {(0, 1000.): (4, 25, num_steps),
+                            (0, 0.): (3, 15, num_steps),
+                            (-30, 1000.): (1, 10, num_steps),
+                            (-30, 0.): (1, 10, num_steps),
+                            (-50, 1000.): (1, 10, num_steps),
+                            (-190, 1000.): (0.6, 2, num_steps),
+                            (-195, 1000.): (0.6, 2, num_steps),
+                            (-200, 1000.): (0.75, 2, num_steps),
+                            (-203, 1000.): (0.75, 2, num_steps),
+                            (-205, 1000.): (0.75, 2, num_steps),
+                            (-210, 1000.): (0.7, 2, num_steps),
+                            (-215, 1000.): (0.7, 2, num_steps),
+                            (-220, 1000.): (0.7, 2, num_steps),
+                            (-225, 1000.): (0.5, 2, num_steps),
+                            (-500, 1000.): (0.35, 1, num_steps)
+                            }
     else:
         num_steps = 60
         if 'SI' in scattering[0]:
-            mx_range_options = {(0, 1000.): (3, 30, num_steps),
+            mx_range_options = {(0, 1000.): (5, 30, num_steps),
                                 (-50, 1000.): (2, 10, num_steps),
                                 (-200, 1000.): (0.4, 2, num_steps),
                                 (-500, 1000.): (0.2, 1, num_steps)
                                 }
         else:
-            mx_range_options = {(0, 1000.): (3, 100, num_steps),
+            mx_range_options = {(0, 1000.): (5, 100, num_steps),
                                 (0, 0.): (3, 130, num_steps),
                                 (-30, 1000.): (1, 100, num_steps),
                                 (-30, 0.): (1, 100, num_steps),
                                 (-50, 1000.): (1, 50, num_steps),
                                 (50, 1000.): (10, 100, num_steps),
                                 (100, 1000.): (30, 100, num_steps),
+                                (-200, 1000.): (0.4, 2, num_steps),
+                                (-195, 1000.): (0.4, 2, num_steps),
+                                (-200, 1000.): (0.75, 2, num_steps),
+                                (-210, 1000.): (0.7, 2, num_steps),
+                                (-215, 1000.): (0.7, 2, num_steps),
+                                (-220, 1000.): (0.7, 2, num_steps),
+                                (-225, 1000.): (0.3, 1.5, num_steps),
+                                (-500, 1000.): (0.2, 1, num_steps)
                                 }
     return mx_range_options[(delta, mPhi)]
 
@@ -162,7 +426,9 @@ scattering = 'SI'
 if scattering == 'SI':
     input_list = [(1, 0, 1000.), (1, -50, 1000.), (1, -200, 1000.), (1, -500, 1000.),  # 0 - 3
                   (-0.8, 0, 1000.), (-0.8, -50, 1000.), (-0.8, -200, 1000.), (-0.8, -500, 1000.),  # 4 - 7
-                  (-0.7, 0, 1000.), (-0.7, -50, 1000.), (-0.7, -200, 1000.)]  # 8 - 10
+                  (-0.7, 0, 1000.), (-0.7, -50, 1000.), (-0.7, -200, 1000.), (-0.7, -500, 1000.), # 8 - 11
+                  (-0.7,-225, 1000.), (-0.7, -210, 1000.), (-0.7, -190, 1000.), (-0.7, -205, 1000.), # 12 - 15
+                  (-0.7, -195, 1000.), (-0.7, -215, 1000.), (-0.7, -220, 1000.), (-0.7, -203, 1000.)] # 16 - 19
 else:
     input_list = [(-1/16.4, 0, 1000.),  # 0
                   (0, 0, 1000.), (0, -30, 1000.),  (0, -50, 1000.), (0, 0, 0.), (0, -30, 0.),  # 1 - 5

@@ -17,7 +17,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Code taken from http://blogs.mathworks.com/cleve/2013/09/02/the-lambert-w-function/ 
+Code taken from http://blogs.mathworks.com/cleve/2013/09/02/the-lambert-w-function/
 
 
 In case scipy.special.lambertw.py is not correctly installed this can be used.

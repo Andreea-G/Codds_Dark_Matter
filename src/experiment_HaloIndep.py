@@ -22,12 +22,16 @@ from __future__ import absolute_import
 from __future__ import print_function
 from experiment import *
 from experiment_HaloIndep_er import *
+from math import *
+from globalfnc import *
 import parallel_map as par
 from scipy.linalg import det, inv
 # from scipy.special import lambertw
 from lambertw import *
 from scipy.optimize import brentq
 import os
+from scipy.stats import poisson
+import numpy.random as random
 
 
 class Experiment_HaloIndep(Experiment):
@@ -66,6 +70,7 @@ class Experiment_HaloIndep(Experiment):
         r_list = const_factor * self.Efficiency(Eee) * \
             np.array([self.ResolutionFunction(Eee, qer, self.EnergyResolution(qer))
                       for qer in qER])
+        
         return r_list.sum()
 
     def ConstFactor(self, vmin, mx, fp, fn, delta, sign):
@@ -127,11 +132,15 @@ class Experiment_HaloIndep(Experiment):
             branches = [1, -1]
         r_list_sum = 0
         for sign in branches:
+
             ER = ERecoilBranch(vmin, self.mT, mx, delta, sign)
             q = self.QuenchingFactor(ER)
             qER = q * ER
             integrated_delta = np.array([1. if Eee1 <= i < Eee2 else 0. for i in qER])
-            efficiencyEee = self.Efficiency(Eee1, qER)
+            try:
+                efficiencyEee = self.Efficiency(Eee1, qER)
+            except TypeError:
+                efficiencyEee = 1.
 #            efficiencyER = self.Efficiency_ER(qER)
             efficiencyER = np.array(list(map(self.Efficiency_ER, qER)))
             r_list = kilogram/SpeedOfLight**2 * \
@@ -152,6 +161,11 @@ class Experiment_HaloIndep(Experiment):
                                 args=(Eee1, Eee2, mx, fp, fn, delta), points=midpoints,
                                 epsrel=PRECISSION, epsabs=0)
         return integr[0]
+
+    def IntegratedResponseTable(self, vmin_list, E1, E2, mx, fp, fn, delta):
+        return np.array([self.IntegratedResponse(vmin_list[a], vmin_list[a+1],
+                        E1, E2, mx, fp, fn, delta)
+                        for a in range(0, vmin_list.size - 1)])
 
 
 class MaxGapExperiment_HaloIndep(Experiment_HaloIndep):
@@ -308,6 +322,11 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         print('BinData', self.BinData)
         print('BinError', self.BinError)
 
+#        If you want to calculate the limit as is done in fig 2 of arxiv 1409.5446v2
+#        self.BinData = module.BinData/module.Exposure
+#        self.chiSquared = chi_squared(self.BinData.size)
+#        self.Expected_limit = module.Expected_limit * self.BinSize
+
     def _GaussianUpperBound(self, vmin, mx, fp, fn, delta):
         int_response = \
             np.array(list(map(lambda i, j:
@@ -333,6 +352,545 @@ class GaussianExperiment_HaloIndep(Experiment_HaloIndep):
         with open(output_file, 'ab') as f_handle:
             np.savetxt(f_handle, upper_limit)
         return upper_limit
+
+    def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
+                            vminStar=None, logetaStar=None, vminStar_index=None):
+        """ Compute -log(L)
+        Input:
+            vars_list: ndarray
+                List of variables [vmin_1, ..., vmin_No, log(eta_1), ..., log(eta_No)]
+            vminStar, logetaStar: float, optional
+                Values of fixed vmin^* and log(eta)^*.
+        Returns:
+            -2log(L): float
+
+        """
+        if vminStar is None:
+            vmin_list_w0 = vars_list[: vars_list.size/2]
+            logeta_list = vars_list[vars_list.size/2:]
+        else:
+            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+                                     vminStar_index, vminStar)
+            logeta_list = np.insert(vars_list[vars_list.size/2:],
+                                    vminStar_index, logetaStar)
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+        for x in range(0, self.BinEdges_left.size):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                                                       self.BinEdges_left[x],
+                                                       self.BinEdges_right[x],
+                                                       mx, fp, fn, delta)
+
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+
+        result = 0
+
+        if self.energy_resolution_type == "Dirac":
+            self.Response = self._Response_Dirac
+        else:
+            self.Response = self._Response_Finite
+
+        for x in range(0, self.BinData.size):
+                if self.BinData[x] != 0:
+                    result += ((rate_partials[x] - self.BinData[x] / self.Exposure) ** 2.0 /
+                               (self.BinError[x] ** 2.0))
+
+        return result
+
+    def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
+                        vminStar=None, logetaStar=None, vminStar_index=None):
+        """This is intended to calculate the contribution to q(vmin) from a particular experiment.
+        It may currently have issues, has not been tested.
+        """
+
+        if vminStar is None:
+            vmin_list_w0 = vars_list[: vars_list.size/2]
+            logeta_list = vars_list[vars_list.size/2:]
+
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        self.curly_H_tab = np.zeros((self.BinData.size, 1001))
+        self.Q_contrib = np.zeros((self.BinData.size, 1001))
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+        for x in range(0, self.BinEdges_left.size):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                                                       self.BinEdges_left[x],
+                                                       self.BinEdges_right[x],
+                                                       mx, fp, fn, delta)
+
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+
+        if self.energy_resolution_type == "Dirac":
+            self.Response = self._Response_Dirac
+        else:
+            self.Response = self._Response_Finite
+
+        result = np.zeros((self.BinData.size, 1001))
+        # TODO parallelize this section of the code
+        calculate_Q = False
+        if calculate_Q:
+            for x in range(0, self.BinData.size):
+                for v_dummy in range(1, 1001):
+                    self.curly_H_tab[x, v_dummy] =\
+                    integrate.quad(self.Response, min(VminDelta(self.mT, mx, delta)),
+                                   v_dummy,args=(self.BinEdges_left[x],
+                                                 self.BinEdges_right[x], mx,
+                                                 fp, fn, delta),
+                                   epsrel=PRECISSION, epsabs=0)[0]
+
+                    if self.BinData[x] != 0:
+                            result[x, v_dummy] = (2.0 * ((rate_partials[x] - self.BinData[x] /
+                                                          self.Exposure) / self.BinError[x] ** 2.0)
+                                                          * self.curly_H_tab[x, v_dummy])
+
+                    self.Q_contrib[x, v_dummy] = result[x, v_dummy]
+            file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                                    F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+            f_handle = open(file, 'wb')   # clear the file first
+            np.savetxt(f_handle, self.Q_contrib)
+            f_handle.close()
+        else:
+            file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                                    F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+            f_handle = open(file, 'rb')
+            self.Q_contrib = np.loadtxt(f_handle)
+            f_handle.close()
+
+        print('Obtained Variational of Likelihood')
+
+        return self.Q_contrib
+
+
+class Poisson_Likelihood(Experiment_HaloIndep):
+    """ Class for multi EHI method experiments with binned possoin analysis.
+    Input:
+        exper_name: string
+            Name of experiment.
+        scattering_type: string
+            Type of scattering.
+        mPhi: float, optional
+            Mass of the mediator.
+        quenching_factor: float, optional
+            Quenching factor. If not given, the default used is specified in the data
+            modules.
+    """
+    def __init__(self, exper_name, scattering_type, mPhi=mPhiRef, quenching_factor=None):
+        super().__init__(exper_name, scattering_type, mPhi)
+        module = import_file(INPUT_DIR + exper_name + ".py")
+        self.BinEdges_left = module.BinEdges_left
+        self.BinEdges_right = module.BinEdges_right
+        self.BinData = module.BinData
+        self.BinSize = module.BinSize
+        self.BinBkgr = module.BinBkgr
+        self.BinExposure = module.BinExposure
+
+        self.Expected_limit = module.Expected_limit / self.BinExposure
+
+        self.mT_avg = np.sum(module.target_nuclide_AZC_list[:, 2] * module.target_nuclide_mass_list)
+
+        print('BinData', self.BinData)
+
+    def UpperLimit(self, mx, fp, fn, delta, vmin_min, vmin_max, vmin_step,
+                   output_file, processes=None, **unused_kwargs):
+        vmin_list = np.linspace(vmin_min, vmin_max, (vmin_max - vmin_min)/vmin_step + 1)
+        kwargs = ({'vmin': vmin, 'mx': mx, 'fp': fp, 'fn': fn, 'delta': delta}
+                  for vmin in vmin_list)
+        upper_limit = np.array(par.parmap(self._PoissonUpperBound, kwargs, processes))
+        upper_limit = upper_limit[upper_limit[:, 1] != np.inf]
+        print("upper_limit = ", upper_limit)
+        with open(output_file, 'ab') as f_handle:
+            np.savetxt(f_handle, upper_limit)
+        return upper_limit
+
+    def _PoissonUpperBound(self, vmin, mx, fp, fn, delta):
+        int_response = \
+            np.array(list(map(lambda i,j:
+                              self.IntegratedResponse(0, vmin, i, j, mx, fp, fn, delta),
+                              self.BinEdges_left, self.BinEdges_right)))
+        result = [i for i in self.Expected_limit / int_response if i > 0]
+        result = np.min(result)
+        if result > 0:
+            result = np.log10(result)
+        else:
+            result = np.inf
+        print("(vmin, result) =", (vmin, result))
+        return [vmin, result]
+
+    def ExpectedNumEvents(self, minfunc, mx, fp, fn, delta):
+        vmin_list_w0 = minfunc[:(minfunc.size / 2)]
+        logeta_list = minfunc[(minfunc.size / 2):]
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                                                   self.BinEdges_left[0],
+                                                   self.BinEdges_right[0],
+                                                   mx, fp, fn, delta)
+        Nsignal = self.BinExposure * np.dot(10**logeta_list, resp_integr)
+        return Nsignal
+
+    def Simulate_Events(self, Nexpected, minfunc, class_name, mx, fp, fn, delta):
+        Totexpected = Nexpected + self.BinBkgr[0]
+        Nevents = poisson.rvs(Totexpected)
+
+        vdelta=min(VminDelta(self.mT, mx, delta))
+        vmin_list_w0 = minfunc[:(minfunc.size / 2)]
+        logeta_list = minfunc[(minfunc.size / 2):]
+        eta_list = np.insert(logeta_list,0,-1)
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+        vmin_grid = np.linspace(vdelta, vmin_list_w0[-1], 1000)
+
+        x_run = 0
+        resp_integr = np.zeros(len(vmin_grid))
+        for vmin_ind in range(len(vmin_grid)):
+            if vmin_grid[vmin_ind] < (vmin_list_w0[x_run+1]):
+                resp_integr[vmin_ind] = 10**eta_list[x_run] *\
+                self.Response(vmin_grid[vmin_ind],self.BinEdges_left[0],
+                              self.BinEdges_right[0], mx, fp, fn, delta)
+            else:
+                x_run+=1
+                resp_integr[vmin_ind] = 10**eta_list[x_run] *\
+                self.Response(vmin_grid[vmin_ind],self.BinEdges_left[0],
+                              self.BinEdges_right[0], mx, fp, fn, delta)
+
+        if Nevents > 0:
+            pdf = resp_integr / np.sum(resp_integr)
+            cdf = pdf.cumsum()
+            u = random.rand(Nevents)
+            Q = np.zeros(Nevents)
+            for i in np.arange(Nevents):
+                Q[i] = vmin_grid[np.absolute(cdf - u[i]).argmin()]
+            Q = np.sort(Q)
+        else:
+            Q = np.array([])
+            Nevents = 0
+            Nexpected = 0
+
+        print('Events expected: ', Totexpected, 'Events Simulated: ', Nevents)
+        print('Events: ', Q)
+
+        self.BinData = np.array([Q.size])
+
+        return Q
+
+    def _MinusLogLikelihood(self, vars_list, mx, fp, fn, delta,
+                            vminStar=None, logetaStar=None, vminStar_index=None):
+        """ Compute -log(L)
+        Input:
+            vars_list: ndarray
+                List of variables [vmin_1, ..., vmin_No, log(eta_1), ..., log(eta_No)]
+            vminStar, logetaStar: float, optional
+                Values of fixed vmin^* and log(eta)^*.
+        Returns:
+            -2log(L): float
+
+        """
+
+        if vminStar is None:
+            vmin_list_w0 = vars_list[: vars_list.size/2]
+            logeta_list = vars_list[vars_list.size/2:]
+        else:
+            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+                                     vminStar_index, vminStar)
+            logeta_list = np.insert(vars_list[vars_list.size/2:],
+                                    vminStar_index, logetaStar)
+
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+        for x in range(0, self.BinEdges_left.size):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                                                       self.BinEdges_left[x],
+                                                       self.BinEdges_right[x],
+                                                       mx, fp, fn, delta)
+
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+            if rate_partials[x] < 0:
+                rate_partials[x] = 0.0
+
+        result = 0
+
+        if self.energy_resolution_type == "Dirac":
+            self.Response = self._Response_Dirac
+        else:
+            self.Response = self._Response_Finite
+
+        for x in range(0, self.BinData.size):
+            result += 2.0 * (self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x] +
+                             log(factorial(self.BinData[x])) - self.BinData[x] *
+                             log(self.BinExposure[x] * rate_partials[x] + self.BinBkgr[x]))
+
+        return result
+
+    def KKT_Condition_Q(self, vars_list, mx, fp, fn, delta,
+                        vminStar=None, logetaStar=None, vminStar_index=None):
+        """This is intended to calculate the contribution to q(vmin) from a particular experiment.
+        It may currently have issues, has not been tested.
+        """
+
+        if vminStar is None:
+            vmin_list_w0 = vars_list[: vars_list.size/2]
+            logeta_list = vars_list[vars_list.size/2:]
+        else:
+            vmin_list_w0 = np.insert(vars_list[: vars_list.size/2],
+                                     vminStar_index, vminStar)
+            logeta_list = np.insert(vars_list[vars_list.size/2:],
+                                    vminStar_index, logetaStar)
+
+        vmin_list_w0 = np.insert(vmin_list_w0, 0, 0)
+
+        self.curly_H_tab = np.zeros((self.BinData.size, 1001))
+        self.Q_contrib = np.zeros((self.BinData.size, 1001))
+        rate_partials = [None] * (self.BinEdges_left.size)
+
+        for x in range(0, self.BinEdges_left.size):
+            resp_integr = self.IntegratedResponseTable(vmin_list_w0,
+                                                       self.BinEdges_left[x],
+                                                       self.BinEdges_right[x],
+                                                       mx, fp, fn, delta)
+
+            rate_partials[x] = np.dot(10**logeta_list, resp_integr)
+
+        if self.energy_resolution_type == "Dirac":
+            self.Response = self._Response_Dirac
+        else:
+            self.Response = self._Response_Finite
+
+        result = np.zeros((self.BinData.size, 1001))
+        # TODO parallelize this section of the code
+        calculate_Q = False
+        if calculate_Q:
+            for x in range(0, self.BinData.size):
+                for v_dummy in range(1, 1001):
+                        self.curly_H_tab[x, v_dummy] = integrate.quad(self.Response,
+                                                                      min(VminDelta(self.mT, mx, 
+                                                                                    delta)),
+                                                                      v_dummy, 
+                                                                      args=(self.BinEdges_left[x],
+                                                                            self.BinEdges_right[x],
+                                                                            mx, fp, fn, delta),
+                                                                      epsrel=PRECISSION, epsabs=0)[0]
+
+                        result[x, v_dummy] = (2.0 * ((self.BinExposure[x] * rate_partials[x] +
+                                                      self.BinBkgr[x] - self.BinData[x]) /
+                                                     (rate_partials[x] + self.BinBkgr[x] /
+                                                     self.BinExposure[x])) *
+                                              self.curly_H_tab[x, v_dummy])
+                        self.Q_contrib[x, v_dummy] = result[x, v_dummy]
+
+            file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                                    F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+            f_handle = open(file, 'wb')   # clear the file first
+            np.savetxt(f_handle, self.Q_contrib)
+            f_handle.close()
+        else:
+            file = Output_file_name(self.name, self.scattering_type, self.mPhi, mx, fp, fn, delta,
+                                    F, "_KKT_Cond_1", "../Output_Band/") + ".dat"
+            f_handle = open(file, 'rb')
+            self.Q_contrib = np.loadtxt(f_handle)
+            f_handle.close()
+
+        print('Obtained Variational of Likelihood')
+
+        return self.Q_contrib
+
+    def Constrained_likelihood(self, mx, fp, fn, delta, vminStar, logetaStar):
+
+        if delta == 0:
+            vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+            vd = 0.
+        elif delta < 0:
+            er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
+            vd = 0.
+            if self.BinEdges_left > er_delta:
+                vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+            else:
+                vmin_low = 0.
+        elif delta > 0:
+            er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
+            vd = np.sqrt(2. * delta * 10**(-6.) * (mx + np.mean(self.mT)) /
+                         (mx * np.mean(self.mT))) * SpeedOfLight
+            if self.BinEdges_left > er_delta:
+                vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+            else:
+                vmin_low = vd
+
+        if vminStar > vmin_low:
+            mu_max = np.inf
+            mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, vminStar,
+                                                                                 self.BinEdges_left,
+                                                                                 self.BinEdges_right,
+                                                                                 mx, fp,
+                                                                                 fn, delta)
+
+        else:
+            mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, 1000.,
+                                                                                 self.BinEdges_left,
+                                                                                 self.BinEdges_right,
+                                                                                 mx, fp,
+                                                                                 fn, delta)
+            mu_min = 0.
+
+        if self.BinData > self.BinBkgr:
+            optimal_mu = (self.BinData - self.BinBkgr)
+
+            if mu_min < optimal_mu < mu_max:
+                mu = optimal_mu
+            elif optimal_mu <= mu_min:
+                mu = mu_min
+            else:
+                mu = mu_max
+        else:
+            optimal_mu = 0.
+            if mu_min > optimal_mu:
+                mu = mu_min
+            else:
+                mu = optimal_mu
+
+        mloglike = 2.0 * (mu + self.BinBkgr + np.log(factorial(self.BinData)) - self.BinData *
+                          np.log(mu + self.BinBkgr))
+
+        return mloglike[0]
+
+    def Constrained_MC(self, data, mx, fp, fn, delta, vminStar, logetaStar):
+        nobs = len(data)
+        if delta == 0:
+            vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+            vd = 0.
+        elif delta < 0:
+            er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
+            vd = 0.
+            if self.BinEdges_left > er_delta:
+                vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+            else:
+                vmin_low = 0.
+        elif delta > 0:
+            er_delta = np.abs(delta) * mx / (mx + np.mean(self.mT))
+            vd = np.sqrt(2. * delta * 10**(-6.) * (mx + np.mean(self.mT)) /
+                         (mx * np.mean(self.mT))) * SpeedOfLight
+
+            if self.BinEdges_left > er_delta:
+                vmin_low = min(VMin(self.BinEdges_left, self.mT, mx, delta))
+            else:
+                vmin_low = vd
+
+        if vminStar > vmin_low:
+            mu_max = np.inf
+            mu_min = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, vminStar,
+                                                                                 self.BinEdges_left,
+                                                                                 self.BinEdges_right,
+                                                                                 mx, fp,
+                                                                                 fn, delta)
+
+        else:
+            mu_max = self.BinExposure * 10**logetaStar * self.IntegratedResponse(vd, 1000.,
+                                                                                 self.BinEdges_left,
+                                                                                 self.BinEdges_right,
+                                                                                 mx, fp,
+                                                                                 fn, delta)
+            mu_min = 0.
+
+        if nobs > self.BinBkgr:
+            optimal_mu = (nobs - self.BinBkgr)
+
+            if mu_min < optimal_mu < mu_max:
+                mu = optimal_mu
+            elif optimal_mu <= mu_min:
+                mu = mu_min
+            else:
+                mu = mu_max
+        else:
+            optimal_mu = 0.
+            if mu_min > optimal_mu:
+                mu = mu_min
+            else:
+                mu = optimal_mu
+
+        mloglike = 2.0 * (mu + self.BinBkgr - nobs *
+                          np.log(mu + self.BinBkgr) + np.log(factorial(self.BinData)))
+
+        return mloglike[0]
+
+    def GetLikelihoodTable(self, index, output_file_loc, mx, fp, fn, delta):
+
+        print('index =', index)
+
+        vminStar = self.call_table.vmin_logeta_sampling_table[index, 0, 0]
+        logetaStar_list = self.call_table.vmin_logeta_sampling_table[index, :, 1]
+
+        print("vminStar =", vminStar)
+
+        temp_file = output_file_loc + str(self.name) + "_" + str(index) + \
+            "_mx_" + str(mx) + "GeV_" + "fpfn" + str(fp) + "_" + str(fn) + \
+            "_ConstrainedLogLikelihoodList" + ".dat"
+        table = np.empty((0, 2))
+
+        if os.path.exists(temp_file):
+            size_of_file = len(np.loadtxt(temp_file))
+            fileexists = True
+        else:
+            size_of_file = 0
+            fileexists = False
+        if size_of_file >= 30:
+            pass
+        else:
+            if fileexists and size_of_file > 1 and np.loadtxt(temp_file).ndim == 2:
+                table = np.loadtxt(temp_file)
+                for logetaStar in logetaStar_list:
+                    if logetaStar > table[-1, 0]:
+                        print('V* =', vminStar, 'log(eta)* =', logetaStar)
+
+                        constr_opt = self.Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
+                        if constr_opt < 0.:
+                            pass
+                        else:
+                            print("index =", index, "; vminStar =", vminStar,
+                                  "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+
+                            table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+
+                            print("vminStar =", vminStar, "; table =", table)
+                            print(temp_file)
+                            np.savetxt(temp_file, table)
+            else:
+                for logetaStar in logetaStar_list:
+                    print('V* =', vminStar, 'log(eta)* =', logetaStar)
+
+                    constr_opt = self.Constrained_likelihood(mx, fp, fn, delta, vminStar, logetaStar)
+                    if constr_opt < 0.:
+                        pass
+                    else:
+                        print("index =", index, "; vminStar =", vminStar,
+                              "; logetaStar =", logetaStar, "; constr_opt =", constr_opt)
+
+                        table = np.append(table, [[logetaStar, constr_opt]], axis=0)
+
+                        print("vminStar =", vminStar, "; table =", table)
+                        print(temp_file)
+                        np.savetxt(temp_file, table)
+        return
+
+    def ConstrainedLikelihoodList(self, class_name, output_file_loc, mx, fp, fn, delta, processes=None):
+
+        vmin_index_list = range(0, class_name[0].vmin_logeta_sampling_table.shape[0])
+
+        print("vmin_index_list =", vmin_index_list)
+        self.call_table = class_name[0]
+        kwargs = ({'index': index,
+                   'mx': mx,
+                   'fp': fp,
+                   'fn': fn,
+                   'delta': delta,
+                   'output_file_loc': output_file_loc
+                   }
+                  for index in vmin_index_list)
+
+        par.parmap(self.GetLikelihoodTable, kwargs, processes)
+
+        return
 
 
 class Crosses_HaloIndep(Experiment_HaloIndep):
@@ -462,12 +1020,17 @@ class Crosses_HaloIndep(Experiment_HaloIndep):
         mT_avg = np.sum(self.mT * self.mass_fraction) / np.sum(self.mass_fraction)
         print("mT_avg =", mT_avg)
         print('vmax =', vmax)
-        kwargs = ({'Eee1': Eee1, 'Eee2': Eee2, 'mT_avg': mT_avg,
-                   'mx': mx, 'fp': fp, 'fn': fn, 'delta': delta, 'vmax': vmax,
-                   'output_file': output_file}
-                  for Eee1, Eee2 in zip(self.BinEdges_left, self.BinEdges_right))
+        arraybox = np.array([])
+        for Eee1, Eee2 in zip(self.BinEdges_left, self.BinEdges_right):
+            kwargs = {'Eee1': Eee1, 'Eee2': Eee2, 'mT_avg': mT_avg,
+                      'mx': mx, 'fp': fp, 'fn': fn, 'delta': delta, 'vmax': vmax,
+                      'output_file': output_file}
+            if Eee1 == self.BinEdges_left[0]:
+                arraybox = np.append(arraybox, self._Box(**kwargs))
+            else:
+                arraybox = np.column_stack((arraybox, np.array(self._Box(**kwargs))))
 
-        return np.array(par.parmap(self._Box, kwargs, processes))
+        return arraybox
 
     def _Rebin(self, index=9):
         self.BinEdges = np.append(self.BinEdges[:index + 1],  self.BinEdges[-1])
@@ -487,10 +1050,10 @@ class Crosses_HaloIndep(Experiment_HaloIndep):
 
         box_table = self._Boxes(mx, fp, fn, delta, vmax=vmin_max, processes=processes)
 
-        int_resp_list = box_table[:, 0]
-        vmin_center_list = box_table[:, 1]
-        vmin_error_left_list = box_table[:, 2]
-        vmin_error_right_list = box_table[:, 3]
+        int_resp_list = box_table[0, :]
+        vmin_center_list = box_table[1, :]
+        vmin_error_left_list = box_table[2, :]
+        vmin_error_right_list = box_table[3, :]
         eta_list = self.BinData / int_resp_list
         eta_error_list = self.BinError / int_resp_list
         print('Bin Data', self.BinData)
